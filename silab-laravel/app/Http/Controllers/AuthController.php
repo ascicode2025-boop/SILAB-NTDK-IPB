@@ -3,10 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Otp;
+use App\Mail\WelcomeEmail;
+use App\Mail\SendOtpMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules;
+use Carbon\Carbon;
+
 
 class AuthController extends Controller
 {
@@ -30,40 +38,50 @@ class AuthController extends Controller
             'email' => $request->email,
             'institusi' => $request->institusi,
             'nomor_telpon' => $request->nomor_telpon,
-            'password' => Hash::make($request->password),
+            'password' => Hash::make($request->password), // Password di-hash
         ]);
 
-        // 3. Buat token API
-        $token = $user->createToken('auth_token')->plainTextToken;
 
-        // 4. Response sukses
+        try {
+            Mail::to($user->email)->send(new WelcomeEmail($user));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Gagal kirim welcome email: ' . $e->getMessage());
+        }
+
+
+       $token = $user->createToken('auth_token')->plainTextToken;
+
+
         return response()->json([
-            'message' => 'Akun berhasil dibuat!',
+            'message' => 'Akun berhasil dibuat! Silakan cek email Anda.',
             'user' => $user,
             'token' => $token
         ], 201);
     }
 
     /**
-     * Handle (Login) - menggunakan kolom 'name'
+     * Handle (Login) - MENGGUNAKAN KOLOM 'NAME' UNTUK LOGIN
      */
     public function login(Request $request)
     {
         // 1. Validasi input
         $credentials = $request->validate([
-            'email' => ['required', 'string'], // Frontend mengirim 'email'
+            'email' => ['required', 'string'], // Frontend kirim sebagai 'email'
             'password' => ['required'],
         ]);
 
-        // 2. Ubah 'email' menjadi 'name'
+
         $credentials['name'] = $credentials['email'];
         unset($credentials['email']);
 
-        // 3. Auth attempt
+
         if (Auth::attempt($credentials)) {
+
             $user = Auth::user();
 
+            // 5. Buat token
             $token = $user->createToken('auth_token')->plainTextToken;
+
 
             return response()->json([
                 'message' => 'Login berhasil',
@@ -72,7 +90,7 @@ class AuthController extends Controller
             ], 200);
         }
 
-        // Jika gagal
+        // 7. Jika gagal
         return response()->json([
             'message' => 'Username atau password salah.'
         ], 401);
@@ -83,8 +101,10 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
+        // 1. Hapus token saat ini (untuk API)
         $request->user()->currentAccessToken()->delete();
 
+        // 2. Kembalikan response
         return response()->json([
             'message' => 'Logout berhasil'
         ], 200);

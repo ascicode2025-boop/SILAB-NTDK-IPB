@@ -204,10 +204,6 @@ function LoginPage() {
             Register Disini!
           </Link>
         </p>
-
-        <div>
-          <p>Forget Password</p>
-        </div>
       </div>
 
       {/* ✅ Tambahan CSS Responsif */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Form, Button, InputGroup } from "react-bootstrap";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -9,9 +9,6 @@ const API_URL = process.env.REACT_APP_API_BASE_URL;
 function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showPopup, setShowPopup] = useState(false);
-  const [emailForPopup, setEmailForPopup] = useState("");
-
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -20,72 +17,14 @@ function RegisterPage() {
     password: "",
     password_confirmation: "",
   });
-
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // ===== HANDLE INPUT =====
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
-
-  // ==============================================================
-  //  POPUP CEK VERIFIKASI
-  // ==============================================================
-
-  const checkEmailVerified = async () => {
-    try {
-      const token = localStorage.getItem("token");
-
-      const res = await axios.get(`${API_URL}/user`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (res.data.email_verified_at !== null) {
-        setShowPopup(false);
-        alert("Email berhasil diverifikasi!");
-        window.location.href = "/login";
-      }
-    } catch (err) {
-      console.log("Gagal cek verifikasi:", err);
-    }
-  };
-
-  useEffect(() => {
-    if (showPopup) {
-      const interval = setInterval(() => {
-        checkEmailVerified();
-      }, 3000);
-
-      return () => clearInterval(interval);
-    }
-  }, [showPopup]);
-
-  const resendEmail = async () => {
-    try {
-      const token = localStorage.getItem("token");
-
-      await axios.post(
-        `${API_URL}/email/verification-notification`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      alert("Email verifikasi baru telah dikirim!");
-    } catch (err) {
-      alert("Gagal mengirim ulang email verifikasi.");
-    }
-  };
-
-  // ==============================================================
-  //  HANDLE REGISTER
-  // ==============================================================
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -106,16 +45,12 @@ function RegisterPage() {
     }
 
     try {
-      const res = await axios.post(`${API_URL}/register`, formData);
-
-      // Simpan token untuk cek verifikasi
-      localStorage.setItem("token", res.data.token);
-
-      setEmailForPopup(formData.email);
-      setShowPopup(true);
-
-      setSuccess("Registrasi berhasil!");
+      await axios.post(`${API_URL}/register`, formData);
       setLoading(false);
+      setSuccess("Registrasi berhasil! Anda akan dialihkan ke halaman Login...");
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 2000);
     } catch (err) {
       setLoading(false);
       const errors = err.response?.data?.errors || {};
@@ -130,69 +65,17 @@ function RegisterPage() {
         errors.name?.includes("The name has already been taken.") ||
         message.includes("username")
       ) {
-        setError("Username sudah digunakan.");
+        setError("Username sudah digunakan, silakan pilih username lain.");
       } else if (Object.keys(errors).length > 0) {
         const allErrors = Object.values(errors).flat().join(" ");
         setError(allErrors);
+      } else if (message) {
+        setError(message);
       } else {
-        setError("Registrasi gagal.");
+        setError("Registrasi gagal. Tidak bisa terhubung ke server.");
       }
     }
   };
-
-  // ==============================================================
-  //  POPUP KOMPONEN
-  // ==============================================================
-
-  const EmailVerificationPopup = () => (
-    <div
-      className="fixed-top d-flex justify-content-center align-items-center"
-      style={{
-        width: "100%",
-        height: "100vh",
-        background: "rgba(0,0,0,0.4)",
-        zIndex: 9999,
-      }}
-    >
-      <div
-        style={{
-          background: "#fff",
-          padding: "25px",
-          borderRadius: "12px",
-          width: "90%",
-          maxWidth: "420px",
-          textAlign: "center",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-        }}
-      >
-        <h5 className="fw-bold mb-2">Verifikasi Email Anda</h5>
-        <p className="text-muted" style={{ fontSize: "14px" }}>
-          Kami telah mengirim email verifikasi ke:
-        </p>
-        <p className="fw-bold">{emailForPopup}</p>
-
-        <p style={{ fontSize: "13px", color: "#666" }}>
-          Setelah email diverifikasi, halaman akan otomatis dialihkan.
-        </p>
-
-        <Button
-          className="mt-3"
-          style={{
-            backgroundColor: "#8D6E63",
-            border: "none",
-            width: "100%",
-          }}
-          onClick={resendEmail}
-        >
-          Kirim Ulang Email Verifikasi
-        </Button>
-      </div>
-    </div>
-  );
-
-  // ==============================================================
-  //  RENDER PAGE
-  // ==============================================================
 
   return (
     <div
@@ -212,6 +95,7 @@ function RegisterPage() {
           borderRadius: "12px",
         }}
       >
+        {/* Logo */}
         <img
           src="/asset/gambarLogo.png"
           alt="IPB University"
@@ -219,10 +103,15 @@ function RegisterPage() {
           style={{ width: "200px", maxWidth: "80%" }}
         />
 
-        <h5 className="login-title fw-semibold mb-3" style={{ fontSize: "14px", color: "#8D6E63" }}>
+        {/* Judul */}
+        <h5
+          className="login-title fw-semibold mb-3"
+          style={{ fontSize: "14px", color: "#8D6E63" }}
+        >
           Sistem Informasi Laboratorium Nutrisi Ternak Daging dan Kerja
         </h5>
 
+        {/* Pesan Error / Success */}
         {error && (
           <div
             style={{
@@ -238,7 +127,6 @@ function RegisterPage() {
             {error}
           </div>
         )}
-
         {success && (
           <div
             style={{
@@ -255,7 +143,7 @@ function RegisterPage() {
           </div>
         )}
 
-        {/* ===== FORM REGISTER ===== */}
+        {/* Form Register */}
         <Form onSubmit={handleSubmit}>
           <Form.Group className="mb-3 text-start">
             <Form.Label className="fw-medium">Username</Form.Label>
@@ -374,6 +262,12 @@ function RegisterPage() {
               borderRadius: "8px",
               transition: "all 0.3s",
             }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.filter = "brightness(1.1)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.filter = "brightness(1)")
+            }
           >
             {loading ? "Mendaftar..." : "Register"}
           </Button>
@@ -387,8 +281,35 @@ function RegisterPage() {
         </p>
       </div>
 
-      {/* POPUP VERIFIKASI */}
-      {showPopup && <EmailVerificationPopup />}
+      {/* ✅ Tambahan CSS Responsif */}
+      <style>
+        {`
+          @media (max-width: 576px) {
+            .login-container {
+              padding: 30px 20px !important;
+              max-width: 95% !important;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            }
+
+            .login-title {
+              font-size: 12px !important;
+              line-height: 1.4;
+            }
+
+            .login-logo {
+              width: 150px !important;
+            }
+
+            .form-label, .form-control, button, p {
+              font-size: 0.9rem !important;
+            }
+
+            button[type="submit"] {
+              padding: 8px 10px !important;
+            }
+          }
+        `}
+      </style>
     </div>
   );
 }
