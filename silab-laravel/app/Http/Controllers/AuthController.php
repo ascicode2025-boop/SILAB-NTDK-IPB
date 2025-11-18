@@ -61,6 +61,7 @@ class AuthController extends Controller
 
     /**
      * Handle (Login) - MENGGUNAKAN KOLOM 'NAME' UNTUK LOGIN
+     * frontend mengirim 'email' tapi kita anggap itu 'name'
      */
     public function login(Request $request)
     {
