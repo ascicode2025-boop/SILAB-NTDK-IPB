@@ -1,14 +1,18 @@
 import React from "react";
 import { Container, Button } from "react-bootstrap";
 import { FaFacebookF, FaLinkedinIn, FaYoutube, FaInstagram } from "react-icons/fa";
+import { useHistory } from "react-router-dom";
 
 function Footer() {
+  const history = useHistory();
+
   return (
-    <footer id="kontak" className="py-5 mt-5">
+    <footer id="kontak" className="py-5" style={{ marginTop: 0}}>
       <Container>
         {/* Bagian atas */}
         <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap">
           <h5 className="fw-semibold m-0">SOP Analisis Lab</h5>
+
           <Button
             variant="light"
             style={{
@@ -19,6 +23,11 @@ function Footer() {
               fontWeight: "500",
               padding: "6px 16px",
             }}
+              onClick={() => {
+              history.push("/panduanSampel");
+              window.scrollTo(0, 0);
+            }}
+            
           >
             Analisis Lab
           </Button>
@@ -56,8 +65,8 @@ function Footer() {
             }}
           >
             <p className="mb-1">
-              Sekretariat Departemen INTP Fapet IPB Gedung Fakultas Peternakan Wing 8 Level 3
-            </p>
+              Divisi Nutrisi Ternak Daging dan Kerja
+              <br />Departeman Ilmu Nutrisi dan Teknologi Pakan Fakultas Peternakan IPB</p>
             <p className="mb-1">
               Jl. Agatis Kampus IPB Darmaga Bogor, 16680 Jawa Barat - Indonesia
             </p>

@@ -23,7 +23,7 @@ function Dashboard() {
         style={{
           fontFamily: "Poppins, sans-serif",
           minHeight: "100vh",
-          backgroundColor: "#fafafa",
+          backgroundColor: "#f1f1f1",
         }}
       >
         <div className="container-fluid">

@@ -15,7 +15,7 @@ function NavbarLandingPage() {
 
   const sections = [
     { key: "beranda", label: "Beranda", path: "/LandingPage" },
-    { key: "galeriHeader", label: "Galeri", path: "/LandingPage", scroll: "galeriHeader" },
+    { key: "galeri", label: "Galeri", path: "/galeri"},
     { key: "profil", label: "Profil", path: "/profile" },
     { key: "daftarAnalisis", label: "Daftar Harga Analisis", path: "/daftarAnalisis" },
     { key: "kontak", label: "Contact", path: "/LandingPage", scroll: "kontak" },
@@ -26,6 +26,7 @@ function NavbarLandingPage() {
     const path = location.pathname;
     if (path === "/LandingPage") setActiveSection("beranda");
     else if (path === "/profile") setActiveSection("profil");
+    else if (path === "/galeri") setActiveSection("galeri");
     else if (path === "/daftarAnalisis") setActiveSection("daftarAnalisis");
     else setActiveSection("");
   }, [location.pathname]);

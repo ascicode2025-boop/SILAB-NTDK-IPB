@@ -5,16 +5,16 @@ import "@fontsource/poppins";
 
 function DaftarAnalisisLogin() {
   const Metabolit = [
-    { kategori: "Metabolit", nama: "Analisis A", harga: "Rp. 40.000", img: "/daftarAnalisis/Rectangle19.png" },
-    { kategori: "Metabolit", nama: "Analisis B", harga: "Rp. 50.000", img: "/daftarAnalisis/Rectangle19.png" },
-    { kategori: "Metabolit", nama: "Analisis C", harga: "Rp. 60.000", img: "/daftarAnalisis/Rectangle19.png" },
-    { kategori: "Metabolit", nama: "Analisis D", harga: "Rp. 70.000", img: "/daftarAnalisis/Rectangle19.png" },
+    { kategori: "Metabolit", nama: "Analisis A", harga: "Rp. 40.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
+    { kategori: "Metabolit", nama: "Analisis B", harga: "Rp. 50.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
+    { kategori: "Metabolit", nama: "Analisis C", harga: "Rp. 60.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
+    { kategori: "Metabolit", nama: "Analisis D", harga: "Rp. 70.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
   ];
 
   const Hematologi = [
-    { kategori: "Hematologi", nama: "Analisis Darah Lengkap", harga: "Rp. 80.000", img: "/daftarAnalisis/Rectangle19.png" },
-    { kategori: "Hematologi", nama: "Analisis Hemoglobin", harga: "Rp. 55.000", img: "/daftarAnalisis/Rectangle19.png" },
-    { kategori: "Hematologi", nama: "Analisis Eritrosit", harga: "Rp. 60.000", img: "/daftarAnalisis/Rectangle19.png" },
+    { kategori: "Hematologi", nama: "Analisis Darah Lengkap", harga: "Rp. 80.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
+    { kategori: "Hematologi", nama: "Analisis Hemoglobin", harga: "Rp. 55.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
+    { kategori: "Hematologi", nama: "Analisis Eritrosit", harga: "Rp. 60.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
   ];
 
   const renderKategori = (title, data) => (
@@ -81,7 +81,7 @@ function DaftarAnalisisLogin() {
         id="daftarAnalisis"
         style={{
           fontFamily: "Poppins, sans-serif",
-          backgroundColor: "#FAF7F5",
+          backgroundColor: "#f1f1f1",
           padding: "50px 0 0 0",
         }}
       >

@@ -10,7 +10,7 @@ function FooterSetelahLogin() {
         borderTop: "1px solid #e6e6e6",
         boxShadow: "0 -1px 8px rgba(0, 0, 0, 0.05)",
         width: "100%",
-        marginTop: "auto", // penting agar footer turun ke bawah
+        marginTop: "auto",
       }}
     >
       <Container>

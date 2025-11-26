@@ -3,6 +3,7 @@ import { Form, Button, InputGroup } from "react-bootstrap";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
 import axios from "axios";
+import "../css/RegisterPage.css";
 
 const API_URL = process.env.REACT_APP_API_BASE_URL;
 

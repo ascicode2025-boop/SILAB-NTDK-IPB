@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useHistory } from "react-router-dom";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const API_URL = "http://127.0.0.1:8000/api";
 
@@ -10,11 +11,63 @@ function ForgetPassword() {
   const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const history = useHistory();
+
+  const cardStyle = {
+    maxWidth: "420px",
+    margin: "60px auto",
+    padding: "30px",
+    borderRadius: "12px",
+    boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+    backgroundColor: "#ffffff",
+  };
+
+  const labelStyle = {
+    fontWeight: 600,
+    fontSize: "14px",
+    color: "#4E342E",
+  };
+
+  const inputWrapper = {
+    position: "relative",
+    width: "100%",
+  };
+
+  const inputStyle = {
+    width: "100%",
+    padding: "10px 40px 10px 12px",
+    borderRadius: "8px",
+    border: "1px solid #ccc",
+    marginTop: "6px",
+  };
+
+  const buttonStyle = {
+    width: "100%",
+    padding: "12px",
+    marginTop: "5px",
+    backgroundColor: "#8D6E63",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    fontSize: "15px",
+    fontWeight: 600,
+    cursor: "pointer",
+  };
+
+  const iconStyle = {
+    position: "absolute",
+    right: "12px",
+    top: "50%",
+    transform: "translateY(-50%)",
+    cursor: "pointer",
+    color: "#6d6d6d",
+  };
 
   const sendOtp = async (e) => {
     e.preventDefault();
@@ -23,7 +76,7 @@ function ForgetPassword() {
     setMessage("");
 
     try {
-      const response = await axios.post(`${API_URL}/send-otp`, { email });
+      await axios.post(`${API_URL}/send-otp`, { email });
       setMessage("OTP telah dikirim ke email Anda");
       setStep("otp");
     } catch (err) {
@@ -56,14 +109,14 @@ function ForgetPassword() {
     }
 
     try {
-      const response = await axios.post(`${API_URL}/reset-password`, {
+      await axios.post(`${API_URL}/reset-password`, {
         email,
         otp,
         password,
         password_confirmation: confirmPassword,
       });
       setMessage("Password berhasil direset");
-      setTimeout(() => history.push("/login"), 3000);
+      setTimeout(() => history.push("/login"), 2500);
     } catch (err) {
       setError(err.response?.data?.message || "Gagal reset password");
     } finally {
@@ -72,25 +125,24 @@ function ForgetPassword() {
   };
 
   return (
-    <div style={{ maxWidth: "400px", margin: "50px auto", padding: "20px", border: "1px solid #ccc", borderRadius: "8px" }}>
-      <h2 style={{ textAlign: "center" }}>Lupa Password</h2>
+    <div style={cardStyle}>
+      <h2 style={{ textAlign: "center", marginBottom: "20px", color: "#5D4037" }}>Lupa Password</h2>
 
-      {message && <div style={{ color: "green", marginBottom: "10px", textAlign: "center" }}>{message}</div>}
-      {error && <div style={{ color: "red", marginBottom: "10px", textAlign: "center" }}>{error}</div>}
+      {message && <div style={{ color: "green", marginBottom: "15px", textAlign: "center" }}>{message}</div>}
+      {error && <div style={{ color: "red", marginBottom: "15px", textAlign: "center" }}>{error}</div>}
 
       {step === "email" && (
         <form onSubmit={sendOtp}>
-          <div style={{ marginBottom: "15px" }}>
-            <label>Email:</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-            />
-          </div>
-          <button type="submit" disabled={loading} style={{ width: "100%", padding: "10px", backgroundColor: "#007bff", color: "white", border: "none", borderRadius: "4px" }}>
+          <label style={labelStyle}>Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            style={inputStyle}
+          />
+
+          <button type="submit" disabled={loading} style={buttonStyle}>
             {loading ? "Mengirim..." : "Kirim OTP"}
           </button>
         </form>
@@ -98,53 +150,61 @@ function ForgetPassword() {
 
       {step === "otp" && (
         <form onSubmit={verifyOtp}>
-          <div style={{ marginBottom: "15px" }}>
-            <label>Kode OTP (6 digit):</label>
-            <input
-              type="text"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              maxLength={6}
-              required
-              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-            />
-          </div>
-          <button type="submit" style={{ width: "100%", padding: "10px", backgroundColor: "#28a745", color: "white", border: "none", borderRadius: "4px" }}>
-            Verifikasi OTP
-          </button>
+          <label style={labelStyle}>Kode OTP (6 digit)</label>
+          <input
+            type="text"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+            maxLength={6}
+            required
+            style={inputStyle}
+          />
+
+          <button type="submit" style={buttonStyle}>Verifikasi OTP</button>
         </form>
       )}
 
       {step === "password" && (
         <form onSubmit={resetPassword}>
-          <div style={{ marginBottom: "15px" }}>
-            <label>Password Baru:</label>
+          <label style={labelStyle}>Password Baru</label>
+          <div style={inputWrapper}>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+              style={inputStyle}
             />
+            <span style={iconStyle} onClick={() => setShowPassword(!showPassword)}>
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
+            </span>
           </div>
-          <div style={{ marginBottom: "15px" }}>
-            <label>Konfirmasi Password:</label>
+
+          <label style={{ ...labelStyle, marginTop: "15px" }}>Konfirmasi Password</label>
+          <div style={inputWrapper}>
             <input
-              type="password"
+              type={showConfirmPassword ? "text" : "password"}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+              style={inputStyle}
             />
+            <span style={iconStyle} onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+              {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+            </span>
           </div>
-          <button type="submit" disabled={loading} style={{ width: "100%", padding: "10px", backgroundColor: "#dc3545", color: "white", border: "none", borderRadius: "4px" }}>
+
+          <button type="submit" disabled={loading} style={buttonStyle}>
             {loading ? "Menyimpan..." : "Reset Password"}
           </button>
         </form>
       )}
 
       <div style={{ textAlign: "center", marginTop: "20px" }}>
-        <button onClick={() => history.push("/login")} style={{ background: "none", border: "none", color: "#007bff", textDecoration: "underline" }}>
+        <button
+          onClick={() => history.push("/login")}
+          style={{ background: "none", border: "none", color: "#6A4F4B", textDecoration: "underline", cursor: "pointer" }}
+        >
           Kembali ke Login
         </button>
       </div>

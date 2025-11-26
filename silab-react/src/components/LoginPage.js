@@ -5,6 +5,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import { Link, useHistory } from "react-router-dom";
 import axios from "axios";
 import { setSession } from "../services/AuthService";
+import "../css/LoginPage.css";
 
 const API_URL = process.env.REACT_APP_API_BASE_URL;
 
@@ -202,6 +203,16 @@ function LoginPage() {
             style={{ color: "#4f46e5" }}
           >
             Register Disini!
+          </Link>
+        </p>
+
+          <p className="mt-3 mb-0" style={{ fontSize: "0.85rem" }}>
+          <Link
+            to="/forgetPassword"
+            className="text-link"
+            style={{ color: "#4f46e5" }}
+          >
+            Lupa Password?
           </Link>
         </p>
       </div>
