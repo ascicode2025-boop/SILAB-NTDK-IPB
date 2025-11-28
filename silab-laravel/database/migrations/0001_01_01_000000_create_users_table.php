@@ -22,9 +22,14 @@ return new class extends Migration
             $table->string('nomor_telpon')->nullable();
             // --- BATAS TAMBAHAN ---
 
+             $table->enum('role', ['klien', 'teknisi', 'koordinator', 'kepala'])->default('klien');
+
             $table->string('password');
             $table->rememberToken();
             $table->timestamps();
+
+
+
         });
     }
 

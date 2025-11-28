@@ -6,6 +6,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\TeknisiAuthController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -37,3 +39,5 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 });
+
+

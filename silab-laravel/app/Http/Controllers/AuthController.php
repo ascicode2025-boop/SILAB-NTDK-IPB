@@ -3,111 +3,95 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\Otp;
 use App\Mail\WelcomeEmail;
-use App\Mail\SendOtpMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules;
-use Carbon\Carbon;
-
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
-    /**
-     * Handle (Register)
-     */
+    // --- 1. FITUR REGISTER (KHUSUS KLIEN) ---
     public function register(Request $request)
     {
-        // 1. Validasi data
+        // Validasi input
         $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:users'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'institusi' => ['required', 'string', 'in:umum,mahasiswa'],
+            'institusi' => ['required', 'string'],
             'nomor_telpon' => ['required', 'string', 'max:20'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        // 2. Buat user baru
+        // Buat user baru (Role otomatis 'klien')
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'institusi' => $request->institusi,
             'nomor_telpon' => $request->nomor_telpon,
-            'password' => Hash::make($request->password), // Password di-hash
+            'password' => Hash::make($request->password),
+            'role' => 'klien', // Default role untuk pendaftar umum
         ]);
 
-
+        // Kirim email welcome (Opsional)
         try {
             Mail::to($user->email)->send(new WelcomeEmail($user));
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Gagal kirim welcome email: ' . $e->getMessage());
+            Log::error('Gagal kirim welcome email: ' . $e->getMessage());
         }
 
-
-       $token = $user->createToken('auth_token')->plainTextToken;
-
+        // Buat token langsung agar user bisa langsung login
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Akun berhasil dibuat! Silakan cek email Anda.',
+            'message' => 'Registrasi berhasil!',
             'user' => $user,
             'token' => $token
         ], 201);
     }
 
-    /**
-     * Handle (Login) - MENGGUNAKAN KOLOM 'NAME' UNTUK LOGIN
-     * frontend mengirim 'email' tapi kita anggap itu 'name'
-     */
+    // --- 2. FITUR LOGIN (MENGGUNAKAN USERNAME/NAME) ---
     public function login(Request $request)
     {
-        // 1. Validasi input
-        $credentials = $request->validate([
-            'email' => ['required', 'string'], // Frontend kirim sebagai 'email'
+        // 1. Validasi input: Pastikan 'name' yang divalidasi, BUKAN email
+        $request->validate([
+            'name' => ['required', 'string'],
             'password' => ['required'],
         ]);
 
-
-        $credentials['name'] = $credentials['email'];
-        unset($credentials['email']);
-
-
-        if (Auth::attempt($credentials)) {
-
-            $user = Auth::user();
-
-            // 5. Buat token
-            $token = $user->createToken('auth_token')->plainTextToken;
-
-
+        // 2. Cek Login: Gunakan 'name' untuk mencocokkan di database
+        // PERBAIKAN: Ganti 'email' menjadi 'name' di sini
+        if (!Auth::attempt($request->only('name', 'password'))) {
             return response()->json([
-                'message' => 'Login berhasil',
-                'user' => $user,
-                'token' => $token
-            ], 200);
+                'message' => 'Username atau password salah.'
+            ], 401);
         }
 
-        // 7. Jika gagal
+        // 3. Ambil user yang berhasil login
+        $user = Auth::user();
+
+        // 4. Buat token
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        // 5. Kembalikan response dengan data user & role
         return response()->json([
-            'message' => 'Username atau password salah.'
-        ], 401);
+            'message' => 'Login berhasil',
+            'access_token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role, // Penting untuk redirect di React
+            ]
+        ], 200);
     }
 
-    /**
-     * Handle (Logout)
-     */
+    // --- 3. FITUR LOGOUT ---
     public function logout(Request $request)
     {
-        // 1. Hapus token saat ini (untuk API)
         $request->user()->currentAccessToken()->delete();
-
-        // 2. Kembalikan response
-        return response()->json([
-            'message' => 'Logout berhasil'
-        ], 200);
+        return response()->json(['message' => 'Logout berhasil'], 200);
     }
 }
