@@ -111,27 +111,29 @@ export default function Hematologi() {
                   min={1}
                   value={jumlahSampel}
                   onChange={(e) => {
-                    const val = Number(e.target.value);
+                    const val = e.target.value;
                     setJumlahSampel(val);
 
                     let arr = [...kodeSampel];
 
-                    if (val > arr.length) {
-                      while (arr.length < val) arr.push("");
+                    if (!val) {
+                      arr = [];
+                    } else if (Number(val) > arr.length) {
+                      while (arr.length < Number(val)) arr.push("");
                     } else {
-                      arr.length = val;
+                      arr.length = Number(val);
                     }
 
                     setKodeSampel(arr);
                   }}
                   className="rounded-3 shadow-sm"
+                  placeholder="Masukkan jumlah sampel"
                 />
               </Form.Group>
 
               {/* KODE SAMPEL */}
               <Form.Group className="mb-4">
                 <Form.Label className="fw-semibold">Kode Sampel</Form.Label>
-
                 {kodeSampel.map((kode, index) => (
                   <Form.Control
                     key={index}

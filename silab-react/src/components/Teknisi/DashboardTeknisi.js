@@ -1,77 +1,68 @@
-import React from 'react';
-import { Container, Navbar, Nav, Button, Row, Col, Card } from 'react-bootstrap';
-import { useHistory } from 'react-router-dom';
-import { FaTools, FaClipboardList, FaBoxOpen } from 'react-icons/fa'; // Pastikan install react-icons
+import React, { useState } from "react";
+import { useHistory } from "react-router-dom";
 
+import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
 const DashboardTeknisi = () => {
-    const history = useHistory();
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const history = useHistory();
+  const [search, setSearch] = useState("");
 
-    const handleLogout = () => {
-        localStorage.clear();
-        history.push('/login');
-    };
+  const data = [
+    { no: 1, kode: "MET-241101-002", nama: "Nadine Maulia", analisis: "Metabolit", tanggal: "1-Nov-25", status: "Selesai", nomorTelpon: "081234567890" },
+    { no: 2, kode: "HEM-241102-003", nama: "Yahdillah", analisis: "Hematologi", tanggal: "2-Nov-25", status: "Menunggu Verifikasi", nomorTelpon: "081234567890" },
+    { no: 3, kode: "MET-241103-004", nama: "Aryanto Pratama", analisis: "Metabolit", tanggal: "3-Nov-25", status: "Menunggu Dianalisis", nomorTelpon: "081234567890" },
+    { no: 4, kode: "MET-241104-005", nama: "Putra", analisis: "Metabolit", tanggal: "4-Nov-25", status: "Selesai", nomorTelpon: "081234567890" },
+    { no: 5, kode: "HEM-241105-006", nama: "Putri", analisis: "Hematologi", tanggal: "5-Nov-25", status: "Menunggu Verifikasi", nomorTelpon: "081234567890" },
+    { no: 6, kode: "MET-241106-007", nama: "Ridho", analisis: "Metabolit", tanggal: "6-Nov-25", status: "Menunggu Dianalisis", nomorTelpon: "081234567890" },
+  ];
 
-    return (
-        <div style={{ backgroundColor: '#f4f6f9', minHeight: '100vh' }}>
-            {/* Navbar */}
-            <Navbar bg="dark" variant="dark" expand="lg" className="mb-4">
-                <Container>
-                    <Navbar.Brand href="#home">SILAB - Teknisi</Navbar.Brand>
-                    <Navbar.Toggle aria-controls="basic-navbar-nav" />
-                    <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
-                        <Nav.Item className="text-white me-3 d-flex align-items-center">
-                            Halo, {user.name || 'Teknisi'}
-                        </Nav.Item>
-                        <Button variant="outline-danger" size="sm" onClick={handleLogout}>Logout</Button>
-                    </Navbar.Collapse>
-                </Container>
-            </Navbar>
+  const filteredData = data.filter(
+    (item) =>
+      item.kode.toLowerCase().includes(search.toLowerCase()) || item.nama.toLowerCase().includes(search.toLowerCase()) || item.analisis.toLowerCase().includes(search.toLowerCase()) || item.status.toLowerCase().includes(search.toLowerCase())
+  );
 
-            {/* Content */}
-            <Container>
-                <h3 className="mb-4">Dashboard Operasional</h3>
-                <Row>
-                    <Col md={4} className="mb-3">
-                        <Card className="text-center shadow-sm h-100">
-                            <Card.Body>
-                                <FaTools size={40} className="text-primary mb-3" />
-                                <Card.Title>Perbaikan Alat</Card.Title>
-                                <Card.Text>
-                                    Cek daftar alat yang perlu diperbaiki atau dikalibrasi.
-                                </Card.Text>
-                                <Button variant="primary">Lihat Daftar</Button>
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                    <Col md={4} className="mb-3">
-                        <Card className="text-center shadow-sm h-100">
-                            <Card.Body>
-                                <FaBoxOpen size={40} className="text-success mb-3" />
-                                <Card.Title>Inventaris Lab</Card.Title>
-                                <Card.Text>
-                                    Kelola stok bahan kimia dan peralatan gelas.
-                                </Card.Text>
-                                <Button variant="success">Cek Stok</Button>
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                    <Col md={4} className="mb-3">
-                        <Card className="text-center shadow-sm h-100">
-                            <Card.Body>
-                                <FaClipboardList size={40} className="text-warning mb-3" />
-                                <Card.Title>Log Harian</Card.Title>
-                                <Card.Text>
-                                    Isi laporan kegiatan harian laboratorium.
-                                </Card.Text>
-                                <Button variant="warning" className="text-white">Isi Log</Button>
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                </Row>
-            </Container>
+  return (
+    <NavbarLoginTeknisi>
+      <div className="container py-5" style={{ background: "#f2f2f2", minHeight: "100vh" }}>
+        <div className="mb-4 d-flex justify-content-center">
+          <div className="input-group" style={{ maxWidth: "400px" }}>
+            <input type="text" className="form-control rounded-start-pill" placeholder="Cari" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <span className="input-group-text rounded-end-pill bg-white">
+              <i className="bi bi-search"></i>
+            </span>
+          </div>
         </div>
-    );
+
+        <div className="table-responsive bg-white rounded-4 shadow p-3">
+          <table className="table table-bordered align-middle text-center">
+            <thead className="table-light">
+              <tr>
+                <th>No</th>
+                <th>Kode Sampel</th>
+                <th>Nama Klien</th>
+                <th>Jenis Analisis</th>
+                <th>Tanggal Masuk</th>
+                <th>Nomor Telpon</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.map((row) => (
+                <tr key={row.no}>
+                  <td>{row.no}</td>
+                  <td>{row.kode}</td>
+                  <td>{row.nama}</td>
+                  <td>{row.analisis}</td>
+                  <td>{row.tanggal}</td>
+                  <td>{row.nomorTelpon}</td>
+                  <td>{row.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </NavbarLoginTeknisi>
+  );
 };
 
 export default DashboardTeknisi;

@@ -1,9 +1,12 @@
+/* ============================
+   BASE CONTAINER
+============================ */
 .progress-container {
   min-height: 90vh;
 }
 
 /* ============================
-   PROGRESS WRAPPER
+   PROGRESS WRAPPER (DESKTOP)
 ============================ */
 .progress-wrapper {
   display: flex;
@@ -14,24 +17,8 @@
   transform: translateY(-20px);
 }
 
-/* Tablet */
-@media (max-width: 768px) {
-  .progress-wrapper {
-    gap: 20px;
-    transform: translateY(0);
-  }
-}
-
-/* HP */
-@media (max-width: 576px) {
-  .progress-wrapper {
-    flex-direction: column;
-    gap: 15px;
-  }
-}
-
 /* ============================
-   STEP
+   STEP (DESKTOP)
 ============================ */
 .step {
   text-align: center;
@@ -50,16 +37,7 @@
   font-size: 14px;
 }
 
-/* Label HP */
-@media (max-width: 576px) {
-  .step .label {
-    width: 90px;
-    font-size: 12px;
-    margin-top: 6px;
-  }
-}
-
-/* LABEL ACTIVE */
+/* ACTIVE LABEL */
 .step .label.active-text {
   font-weight: 700;
   color: #5a453f;
@@ -67,7 +45,7 @@
 }
 
 /* ============================
-   ICON
+   ICON (DESKTOP)
 ============================ */
 .icon-wrapper {
   width: 65px;
@@ -82,7 +60,6 @@
   transition: 0.3s ease;
 }
 
-/* Active big icon */
 .icon-wrapper.big {
   width: 75px !important;
   height: 75px !important;
@@ -90,25 +67,9 @@
   border: 4px solid #e7dad6;
 }
 
-/* Active state */
 .icon-wrapper.active {
   background-color: #8c6b60;
   animation: popIn 0.6s ease forwards, glowPulse 2.2s ease-in-out infinite;
-}
-
-/* ICON HP - diperkecil */
-@media (max-width: 576px) {
-  .icon-wrapper {
-    width: 55px !important;
-    height: 55px !important;
-    font-size: 22px !important;
-  }
-
-  .icon-wrapper.big {
-    width: 60px !important;
-    height: 60px !important;
-    font-size: 25px !important;
-  }
 }
 
 /* Hover desktop */
@@ -118,7 +79,7 @@
 }
 
 /* ============================
-   PROGRESS LINE
+   PROGRESS LINE (DESKTOP)
 ============================ */
 .progress-line {
   width: 180px;
@@ -130,24 +91,6 @@
   transition: background-color 0.4s ease;
 }
 
-/* Tablet */
-@media (max-width: 768px) {
-  .progress-line {
-    width: 110px;
-    margin-top: -1rem;
-  }
-}
-
-/* HP - pendek */
-@media (max-width: 576px) {
-  .progress-line {
-    width: 70px !important;
-    height: 3px;
-    margin-top: -0.3rem;
-  }
-}
-
-/* Active fill animation */
 .progress-line.filled {
   background: linear-gradient(90deg, #8c6b60, #c9b2aa, #8c6b60);
   background-size: 200% 100%;
@@ -155,7 +98,7 @@
 }
 
 /* ============================
-   CARD
+   CARD (DESKTOP)
 ============================ */
 .info-card {
   background-color: #f8f4f3;
@@ -165,25 +108,8 @@
   border: 1px solid #e0d3ce;
 }
 
-/* HP card */
-@media (max-width: 576px) {
-  .info-card {
-    padding: 22px;
-    border-radius: 15px;
-    max-width: 92%;
-  }
-
-  .info-card h4 {
-    font-size: 17px;
-  }
-
-  .info-card p {
-    font-size: 13px;
-  }
-}
-
 /* ============================
-   WHATSAPP BUTTON
+   WHATSAPP BUTTON (DESKTOP)
 ============================ */
 .wa-btn {
   background-color: #8c6b60;
@@ -200,8 +126,80 @@
   background-color: #5a453f;
 }
 
-/* HP button */
+/* =======================================================
+   TABLET  (≤ 768px)
+======================================================= */
+@media (max-width: 768px) {
+  .progress-wrapper {
+    gap: 20px;
+    transform: translateY(0);
+  }
+
+  .progress-line {
+    width: 110px;
+    margin-top: -1rem;
+  }
+}
+
+/* =======================================================
+   MOBILE (≤ 576px)  — semua disatukan rapi
+======================================================= */
 @media (max-width: 576px) {
+
+  /* Progress wrapper jadi kolom */
+  .progress-wrapper {
+    flex-direction: column;
+    gap: 15px;
+    margin-top: -85px;
+
+  }
+
+  /* Label mengecil */
+  .step .label {
+    width: 90px;
+    font-size: 12px;
+    margin-top: 6px;
+  }
+
+  /* Icon mengecil */
+  .icon-wrapper {
+    width: 55px !important;
+    height: 55px !important;
+    font-size: 22px !important;
+  }
+
+  .icon-wrapper.big {
+    width: 60px !important;
+    height: 60px !important;
+    font-size: 25px !important;
+  }
+
+  /* Progress line jadi VERTIKAL */
+  .progress-line {
+    width: 3px !important;
+    height: 50px !important;
+    margin: 0;
+    background-color: #d5c8c3;
+  }
+
+  .progress-line.filled {
+    background: #8c6b60 !important;
+  }
+
+  /* Card kecil */
+  .info-card {
+    padding: 22px;
+    border-radius: 15px;
+    max-width: 92%;
+  }
+  .info-card h4 {
+    font-size: 17px;
+  }
+  .info-card p {
+    font-size: 13px;
+  }
+
+  /* WA button full width */
   .wa-btn {
     width: 100%;
     font-size: 14px;

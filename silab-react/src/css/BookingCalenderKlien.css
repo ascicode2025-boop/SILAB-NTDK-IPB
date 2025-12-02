@@ -2,31 +2,62 @@
 /* KALENDER ANT DESIGN – STYLE PROFESIONAL                 */
 /* ======================================================= */
 
+/* Select clean tanpa border */
+.custom-select-clean {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  font-weight: 500;
+  color: #374151;
+  padding-right: 18px;
+  cursor: pointer;
+
+  /* Hilangkan default border browser */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  position: relative;
+}
+
+/* Tambahkan ikon dropdown custom */
+.custom-select-clean {
+  background-image: url("data:image/svg+xml;charset=UTF-8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='%23666' stroke-width='2' stroke-linecap='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right center;
+  background-size: 12px;
+}
+
+/* Hilangkan highlight biru di mobile */
+.custom-select-clean:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+
 /* Reset tabel kalender */
 .custom-calendar .ant-picker-content table {
-  border-collapse: collapse !important;
-  border-top: 1px solid #e5e7eb;
-  border-left: 1px solid #e5e7eb;
+    border-collapse: collapse !important;
+    border-top: 1px solid #e5e7eb;
+    border-left: 1px solid #e5e7eb;
 }
 
-/* Header Hari */
 .custom-calendar .ant-picker-content th {
-  height: 32px !important;
-  padding: 0 !important;
-  text-align: center !important;
-  font-size: 13px;
-  color: #6b7280;
-  font-weight: 600;
-  border-bottom: 1px solid #e5e7eb !important;
-  border-right: 1px solid #e5e7eb !important;
+    height: 32px !important;
+    text-align: center !important;
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 600;
+    border-bottom: 1px solid #e5e7eb !important;
+    border-right: 1px solid #e5e7eb !important;
 }
 
-/* Cell tanggal */
 .custom-calendar .ant-picker-content td {
-  height: 52px !important;
-  padding: 0 !important;
-  border-right: 1px solid #e5e7eb !important;
-  border-bottom: 1px solid #e5e7eb !important;
+    height: 52px !important;
+    padding: 0 !important;
+    border-right: 1px solid #e5e7eb !important;
+    border-bottom: 1px solid #e5e7eb !important;
 }
 
 /* ======================================================= */
@@ -34,45 +65,44 @@
 /* ======================================================= */
 
 .calendar-custom-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 18px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #fafafa;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 18px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fafafa;
 }
 
 /* Grup kontrol */
 .calendar-custom-header .left-controls,
 .calendar-custom-header .right-controls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 /* Tombol navigasi panah */
 .calendar-custom-header .nav-circle {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid #d1d5db;
-  background: white;
-  color: #374151;
-  cursor: pointer;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid #d1d5db;
+    background: white;
+    color: #374151;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Judul bulan */
 .calendar-custom-header .center-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #111827;
-  text-transform: capitalize;
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+    text-transform: capitalize;
 }
-
 /* Tombol Today */
 .btn-today {
   border: 1px solid #000000;
@@ -164,4 +194,114 @@
   align-items: center;
   justify-content: center;
   vertical-align: middle;      /* bantu tambahan */
+  margin-right: 0.3rem;
 }
+
+/* ======================================================= */
+/* FIX RESPONSIVE LEGEND & KUOTA – MOBILE                  */
+/* ======================================================= */
+
+@media (max-width: 640px) {
+
+  /* Legend tetap horizontal */
+  .legend-wrapper {
+    flex-direction: row !important;   /* <<< tetap sejajar */
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    margin: 0.5rem 0 !important;
+    text-align: center !important;
+  }
+
+  .legend-box {
+    width: 16px !important;
+    height: 16px !important;
+    flex-shrink: 0;
+  }
+
+  .legend-text {
+    font-size: 13px !important;
+    line-height: 1.3 !important;
+    margin: 0 !important;
+    display: inline-block;
+  }
+
+  /* Info kuota */
+  .quota-info {
+    font-size: 14px !important;
+    line-height: 1.35 !important;
+    margin-top: 0.3rem !important;
+    padding: 0 10px;
+    text-align: center;
+    display: block;
+    white-space: normal;
+  }
+
+  /* Hindari tanggal terpotong menjadi baris aneh */
+  .quota-info strong {
+    white-space: nowrap;
+  }
+}
+
+
+
+/* ======================================================= */
+/* RESPONSIVE MOBILE – HANYA UNTUK HEADER KALENDER         */
+/* ======================================================= */
+
+@media (max-width: 640px) {
+
+  .custom-select-clean{
+    font-size: 20px;
+    margin-left: 2rem;
+    margin-bottom: 1.5rem;
+  }
+  .calendar-custom-header {
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 10px;
+  }
+
+  .left-controls,
+  .right-controls {
+    width: 100%;
+    display: flex;
+    align-items: center;
+  }
+
+  .left-controls {
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .right-controls {
+    justify-content: flex-end;
+  }
+
+  .center-title {
+    width: 100%;
+    text-align: center;
+    font-size: 16px !important;
+    margin-top: 4px;
+    margin-bottom: 4px;
+  }
+
+  .btn-today {
+    padding: 3px 10px !important;
+    font-size: 12px !important;
+    height: 28px !important;
+  }
+
+  .nav-circle {
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 10px !important;
+  }
+
+  .date-picker-header {
+    width: 120px !important;
+    font-size: 12px !important;
+    height: 28px !important;
+  }
+}
+

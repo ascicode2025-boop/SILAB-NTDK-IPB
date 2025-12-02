@@ -4,7 +4,7 @@ import { useHistory, useLocation } from "react-router-dom";
 import { FaTachometerAlt, FaFileAlt, FaCalendarAlt, FaClipboardList, FaClock, FaFlask, FaCreditCard, FaHistory, FaBars, FaUserCircle } from "react-icons/fa";
 import "@fontsource/poppins";
 
-function NavbarLogin({ children }) {
+function NavbarLoginTeknisi({ children }) {
   const history = useHistory();
   const location = useLocation();
 
@@ -18,19 +18,18 @@ function NavbarLogin({ children }) {
   }, []);
 
   const menus = [
-    { key: "dashboard", label: "Beranda", icon: <FaTachometerAlt /> },
-    { key: "panduanSampelKlien", label: "SOP Analisis Lab", icon: <FaFileAlt /> },
-    { key: "bookingCalenderKlien", label: "Kalender Pemesanan", icon: <FaCalendarAlt /> },
-    { key: "pemesananSampelKlien", label: "Pemesanan Sampel", icon: <FaClipboardList /> },
-    { key: "menungguPersetujuan", label: "Menunggu Persetujuan", icon: <FaClock /> },
-    { key: "prosesAnalisis", label: "Proses Sampel", icon: <FaFlask /> },
-    { key: "pembayaran", label: "Pembayaran & Invoice", icon: <FaCreditCard /> },
-    { key: "riwayat", label: "Riwayat", icon: <FaHistory /> },
+    { key: "dashboard", label: "Dahboard", icon: <FaTachometerAlt /> },
+    { key: "aturTanggalTeknisi", label: "Atur Kouta Harian", icon: <FaFileAlt /> },
+    { key: "jadwalSampel", label: "Jadwal Penerimaan Sampel", icon: <FaCalendarAlt /> },
+    { key: "verifikasiSampel", label: "Verifikasi & Update Sampel", icon: <FaClipboardList /> },
+    { key: "menungguPersetujuan", label: "Input Analisis", icon: <FaClock /> },
+    { key: "prosesAnalisis", label: "Generate Laporan Hasil Analisis (PDF)", icon: <FaFlask /> },
+    { key: "riwayat", label: "Riwayat Analisis", icon: <FaHistory /> },
   ];
 
   // sinkronkan activeMenu berdasarkan URL
   useEffect(() => {
-    const path = location.pathname.replace("/dashboard/", "");
+    const path = location.pathname.replace("/teknisi/dashboard/", "");
     const found = menus.find((m) => path.startsWith(m.key));
     if (found) {
       setActiveMenu(found.key);
@@ -88,7 +87,7 @@ function NavbarLogin({ children }) {
               key={menu.key}
               onClick={() => {
                 setActiveMenu(menu.key);
-                history.push(`/dashboard/${menu.key}`);
+                history.push(`/teknisi/dashboard/${menu.key}`);
                 setSidebarOpen(false);
               }}
               className={`d-flex align-items-center mb-2 py-2 px-3 rounded ${activeMenu === menu.key ? "active" : ""}`}
@@ -149,4 +148,4 @@ function NavbarLogin({ children }) {
   );
 }
 
-export default NavbarLogin;
+export default NavbarLoginTeknisi;

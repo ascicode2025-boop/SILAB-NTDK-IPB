@@ -10,6 +10,7 @@ import Dashboard from "./components/Klien/Dashboard"; // Dashboard Klien
 import ForgetPassword from "./components/ForgetPassword";
 import Galeri from "./components/Galeri";
 import PanduanSampel from "./components/PanduanSampel";
+// --- FITUR DASHBOARD KLIEN ---
 import PanduanSampelKlien from "./components/Klien/PanduanSampelKlien";
 import BookingCalenderKlien from "./components/Klien/BookingCalenderKlien";
 import PemesananSampelKlien from "./components/Klien/PemesananSampelKlien";
@@ -19,10 +20,17 @@ import HematologiDanMetabolit from "./components/Klien/HematologiDanMetabolit";
 import MenungguPersetujuan from "./components/Klien/MenungguPersetujuan";
 import ProsesAnalisis from "./components/Klien/ProsesAnalisis";
 
+// --- FITUR DASHBOARD Teknisi ---
+import DashboardTeknisi from './components/Teknisi/DashboardTeknisi';
+import AturTanggalTeknisi from "./components/Teknisi/AturTanggalTeknisi";
+import JadwalSampel from "./components/Teknisi/JadwalSampel";
+import VerifikasiSampel from "./components/Teknisi/VerifikasiSampel";
+import AlasanMenolak from "./components/Teknisi/AlasanMenolak";
+
 // --- PERBAIKAN IMPORT (Sesuai Screenshot Terbaru) ---
 // Folder: Huruf Besar (Teknisi, Koordinator, Kepala)
 // File: DashboardTeknisi.js, DashboardKoordinator.js, DashboardKepala.js
-import DashboardTeknisi from './components/Teknisi/DashboardTeknisi';
+
 import DashboardKoordinator from './components/Koordinator/DashboardKoordinator';
 import DashboardKepala from './components/Kepala/DashboardKepala';
 
@@ -53,9 +61,17 @@ function AppLayoutWithoutNavbar() {
 
       {/* --- DASHBOARD KHUSUS PERAN (Internal) --- */}
       {/* Path URL menggunakan huruf kecil agar sesuai dengan LoginPage.js */}
-      <Route path="/teknisi/dashboard" component={DashboardTeknisi} />
+      
       <Route path="/koordinator/dashboard" component={DashboardKoordinator} />
       <Route path="/kepala/dashboard" component={DashboardKepala} />
+
+      {/* --- FITUR DASHBOARD Teknisi --- */}
+
+      <Route path="/teknisi/dashboard/verifikasiSampel/alasanMenolak" component={AlasanMenolak} />
+      <Route path="/teknisi/dashboard/verifikasiSampel" component={VerifikasiSampel} />
+      <Route path="/teknisi/dashboard/jadwalSampel" component={JadwalSampel} />
+      <Route path="/teknisi/dashboard/aturTanggalTeknisi" component={AturTanggalTeknisi} />
+      <Route path="/teknisi/dashboard" component={DashboardTeknisi} />
 
       {/* --- FITUR DASHBOARD KLIEN --- */}
       <Route path="/dashboard/prosesAnalisis" component={ProsesAnalisis} />
