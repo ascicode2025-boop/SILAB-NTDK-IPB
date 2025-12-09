@@ -172,22 +172,31 @@ function RegisterPage() {
             />
           </Form.Group>
 
-          <Form.Group className="mb-3 text-start">
-            <Form.Label className="fw-medium">Institusi</Form.Label>
-            <Form.Select
-              name="institusi"
-              value={formData.institusi}
-              onChange={handleChange}
-              required
-              style={{ borderRadius: "8px", padding: "10px" }}
-            >
-              <option value="" disabled>
-                Pilih tipe...
-              </option>
-              <option value="umum">Umum</option>
-              <option value="mahasiswa">Mahasiswa</option>
-            </Form.Select>
-          </Form.Group>
+         <Form.Group className="mb-3 text-start">
+          <Form.Label className="fw-medium">Institusi</Form.Label>
+              <Form.Select
+                  name="institusi"
+                   value={formData.institusi}
+                  onChange={handleChange}
+                 required
+                style={{ borderRadius: "8px", padding: "10px" }}
+>
+                  <option value="" disabled>-- Pilih Jenis Institusi --</option>
+
+                {/* GROUP EKSTERNAL */}
+                  <optgroup label="Eksternal">
+                  <option value="Umum">Umum / Instansi Luar</option>
+                  </optgroup>
+
+                 {/* GROUP INTERNAL IPB */}
+                   <optgroup label="Internal IPB">
+                    <option value="Mahasiswa IPB">Mahasiswa IPB</option>
+                    <option value="Dosen IPB">Dosen IPB</option>
+                    <option value="Tendik IPB">Tendik IPB</option>
+                    </optgroup>
+
+</Form.Select>
+</Form.Group>
 
           <Form.Group className="mb-3 text-start">
             <Form.Label className="fw-medium">Nomor Telpon</Form.Label>

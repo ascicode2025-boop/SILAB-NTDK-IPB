@@ -7,13 +7,14 @@ import axios from "axios";
 import { setSession } from "../services/AuthService"; 
 import "../css/LoginPage.css";
 
+// URL API
 const API_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
 
 function LoginPage() {
   const history = useHistory();
   const [showPassword, setShowPassword] = useState(false);
   
-  // PERBAIKAN 1: Ganti state 'email' menjadi 'name'
+  // State Form
   const [formData, setFormData] = useState({
     name: "", 
     password: "",
@@ -40,20 +41,31 @@ function LoginPage() {
     }
 
     try {
-      // PERBAIKAN 2: Kirim { name, password } ke Backend
+      // POST ke Backend
       const response = await axios.post(`${API_URL}/login`, formData);
-      const { token, user } = response.data;
+      
+      // --- PERBAIKAN LOGIKA TOKEN ---
+      const { access_token, user } = response.data;
 
-      // Debugging: Cek role di console browser (Tekan F12)
-      console.log("Login Berhasil, Role:", user.role);
+      // Validasi Token
+      if (!access_token) {
+          throw new Error("Token tidak diterima dari server.");
+      }
 
-      // Simpan Sesi
-      setSession(token, user); 
+      console.log("Login Berhasil! Token:", access_token);
+      console.log("User Role:", user.role);
+
+      localStorage.setItem("token", access_token);
+
+     
+      setSession(access_token, user); 
+      
+     
       localStorage.setItem("role", user.role);
 
       setLoading(false);
 
-      // PERBAIKAN 3: Redirect Sesuai Role
+      
       switch (user.role) {
         case "teknisi":
           history.push("/teknisi/dashboard");
@@ -74,15 +86,15 @@ function LoginPage() {
 
     } catch (err) {
       setLoading(false);
+      console.error("Login Error:", err);
+      
       if (err.response) {
-        // Handle error 401 (Unauthorized)
         if (err.response.status === 401) {
           setError("Username atau password salah.");
         } else if (err.response.status === 422) {
           const validationErrors = err.response.data.errors;
           let errorMessage = "Data tidak valid. ";
           if (validationErrors) {
-             // Menangani validasi detail dari Laravel
              const errorFields = Object.keys(validationErrors);
              errorMessage += errorFields
                .map((field) => `${field}: ${validationErrors[field].join(", ")}`)
@@ -154,7 +166,6 @@ function LoginPage() {
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3 text-start">
               <Form.Label className="fw-medium">Username</Form.Label>
-              {/* PERBAIKAN 4: Input Type Text & Name='name' */}
               <Form.Control
                 type="text" 
                 placeholder="Masukkan Username"
