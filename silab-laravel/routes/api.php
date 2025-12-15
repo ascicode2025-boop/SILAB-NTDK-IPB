@@ -33,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
 
+    Route::middleware('auth:sanctum')->get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/update-quota', [QuotaController::class, 'updateQuota']);
 
@@ -47,5 +48,3 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/bookings/{id}/status', [BookingController::class, 'updateStatus']);
 
 });
-
-

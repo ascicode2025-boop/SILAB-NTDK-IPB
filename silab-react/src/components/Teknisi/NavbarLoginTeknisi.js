@@ -4,6 +4,7 @@ import { useHistory, useLocation } from "react-router-dom";
 import { FaTachometerAlt, FaFileAlt, FaCalendarAlt, FaClipboardList, FaClock, FaFlask, FaCreditCard, FaHistory, FaBars, FaUserCircle } from "react-icons/fa";
 import "@fontsource/poppins";
 
+
 function NavbarLoginTeknisi({ children }) {
   const history = useHistory();
   const location = useLocation();
@@ -22,8 +23,8 @@ function NavbarLoginTeknisi({ children }) {
     { key: "aturTanggalTeknisi", label: "Atur Kouta Harian", icon: <FaFileAlt /> },
     { key: "jadwalSampel", label: "Jadwal Penerimaan Sampel", icon: <FaCalendarAlt /> },
     { key: "verifikasiSampel", label: "Verifikasi & Update Sampel", icon: <FaClipboardList /> },
-    { key: "menungguPersetujuan", label: "Input Analisis", icon: <FaClock /> },
-    { key: "prosesAnalisis", label: "Generate Laporan Hasil Analisis (PDF)", icon: <FaFlask /> },
+    { key: "inputNilaiAnalisis", label: "Input Analisis", icon: <FaClock /> },
+    { key: "generatePdfAnalysis", label: "Generate Laporan Hasil Analisis (PDF)", icon: <FaFlask /> },
     { key: "riwayat", label: "Riwayat Analisis", icon: <FaHistory /> },
   ];
 
@@ -45,7 +46,7 @@ function NavbarLoginTeknisi({ children }) {
   const handleLogout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
-    history.push("/landingPage");
+    history.push("/LandingPage");
   };
 
   return (

@@ -7,7 +7,7 @@ import updateLocale from "dayjs/plugin/updateLocale";
 import "antd/dist/reset.css";
 import NavbarLoginKlien from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
-import "../../css/AturTanggalTeknisi.css";
+import "../../css/BookingCalenderKlien.css";
 
 import { getMonthlyQuota } from "../../services/QuotaService";
 
@@ -15,10 +15,7 @@ dayjs.extend(updateLocale);
 dayjs.updateLocale("id", {
   weekStart: 1,
   weekdaysShort: ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"],
-  months: [
-    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-  ],
+  months: ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"],
 });
 dayjs.locale("id");
 
@@ -62,7 +59,7 @@ export default function BookingCalenderKlien() {
 
   useEffect(() => {
     const onFocus = () => {
-      fetchData(); 
+      fetchData();
     };
 
     window.addEventListener("focus", onFocus);
@@ -93,7 +90,7 @@ export default function BookingCalenderKlien() {
       remaining = dayData.remaining_quota;
       max = dayData.max_quota;
     } else {
-      if(isStandardHoliday(value, category)) {
+      if (isStandardHoliday(value, category)) {
         isAvailable = false;
         remaining = 0;
       }
@@ -117,9 +114,7 @@ export default function BookingCalenderKlien() {
     setViewDate(value);
     localStorage.setItem("selected_booking_date", dateStr);
 
-    message.success(
-      `Tanggal ${value.format("DD MMMM YYYY")} berhasil disimpan!`
-    );
+    message.success(`Tanggal ${value.format("DD MMMM YYYY")} berhasil disimpan!`);
   };
 
   const getSelectedQuota = () => {
@@ -134,18 +129,12 @@ export default function BookingCalenderKlien() {
   return (
     <NavbarLoginKlien>
       <ConfigProvider locale={idID}>
-        <div className="min-h-screen bg-[#eee9e6] font-poppins flex justify-center p-5">
+        <div className="min-h-screen bg-[#eee9e6] font-poppins flex justify-center p-3">
           <div className="w-full max-w-6xl bg-white shadow-xl rounded-2xl p-8 border border-gray-200">
-
             {/* HEADER */}
-            <div className="flex justify-between items-center mb-6 mt-4">
-              <h2 className="text-xl font-bold text-[#3e2723]">Pilih Jadwal Pengiriman</h2>
+            <div className="flex justify-end mb-6 mt-5 m-lg-4">
               <div className="flex items-center gap-3">
-                <select
-                  className="custom-select-clean border-b border-gray-300"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                >
+                <select className="custom-select-clean border-b border-gray-300" value={category} onChange={(e) => setCategory(e.target.value)}>
                   <option value="metabolit">Metabolit</option>
                   <option value="hematologi">Hematologi</option>
                 </select>
@@ -167,7 +156,6 @@ export default function BookingCalenderKlien() {
                   }}
                   onPanelChange={(value) => setViewDate(value)}
                   className="custom-calendar"
-
                   headerRender={({ value, onChange }) => {
                     const month = value.format("MMMM");
                     const year = value.format("YYYY");
@@ -210,7 +198,7 @@ export default function BookingCalenderKlien() {
                             ▶
                           </button>
 
-                          <div className="center-title" style={{ marginLeft: "20px", fontSize: "18px", fontWeight: "bold" }}>
+                          <div className="center-title" style={{ fontSize: "18px", fontWeight: "500" }}>
                             {month} {year}
                           </div>
                         </div>
@@ -233,7 +221,6 @@ export default function BookingCalenderKlien() {
                       </div>
                     );
                   }}
-
                   fullCellRender={(date, info) => {
                     if (info.type !== "date") return info.originNode;
 
@@ -283,9 +270,7 @@ export default function BookingCalenderKlien() {
                           <>
                             {isFull && <div className="full-badge">PENUH</div>}
                             {!isAvailable && !isFull && <div className="tutup-badge">TUTUP</div>}
-                            {isAvailable && !isFull && (
-                              <div className="quota-badge">Sisa: {displayQuota}</div>
-                            )}
+                            {isAvailable && !isFull && <div className="quota-badge">Sisa: {displayQuota}</div>}
                           </>
                         )}
                       </div>
@@ -294,29 +279,65 @@ export default function BookingCalenderKlien() {
                 />
               </div>
             </Spin>
+          </div>
 
-            {/* SECTION INFO */}
-            <div style={{ marginTop: "2rem" }}>
-              <div className="legend-wrapper flex items-center gap-6 justify-center mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="legend-box red"></div>
-                  <span className="text-sm font-medium text-gray-600">Merah = Tutup</span>
+          {/* LEGENDA */}
+          <div
+            className="calendar-legend-container"
+            style={{
+              marginTop: "-0.5rem",
+            }}
+          >
+            <div className="legend-item">
+              <div className="legend-box red"></div> <span>Merah = Tutup</span>
+            </div>
+            <div className="legend-item ml-4">
+              <div className="legend-box orange"></div> <span>Oranye = Penuh</span>
+            </div>
+          </div>
+
+          {/* QUOTA INFO CARD */}
+          <div className="quota-card-container w-full mb-6">
+            <div className="quota-card bg-white/90 backdrop-blur-xl border border-gray-200 shadow-lg rounded-2xl p-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Informasi Kuota Hari Ini</h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* SISA KUOTA */}
+                <div className="quota-item p-4 rounded-xl bg-green-50 border border-green-200">
+                  <div className="text-sm text-gray-500">Sisa Kuota</div>
+                  <div className="mt-1 text-3xl font-bold text-green-700">{getSelectedQuota()}</div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="legend-box" style={{ background: "#f59e0b" }}></div>
-                  <span className="text-sm font-medium text-gray-600">Oranye = Penuh</span>
+
+                {/* KATEGORI */}
+                <div className="quota-item p-4 rounded-xl bg-blue-50 border border-blue-200">
+                  <div className="text-sm text-gray-500">Kategori Pemeriksaan</div>
+                  <div className="mt-1 text-xl font-semibold text-blue-700">{category === "metabolit" ? "Metabolit" : "Hematologi"}</div>
+                </div>
+
+                {/* TANGGAL */}
+                <div className="quota-item p-4 rounded-xl bg-gray-50 border border-gray-200">
+                  <div className="text-sm text-gray-500">Tanggal Dipilih</div>
+                  <div className="mt-1 text-xl font-semibold text-gray-800">{selectedDate.format("DD MMMM YYYY")}</div>
                 </div>
               </div>
 
-              <div className="quota-info text-center w-full p-4 bg-gray-50 rounded-lg border border-gray-100 text-gray-700">
-                <span>
-                  Kouta yang tersedia untuk <strong>{category}</strong> pada{" "}
-                  <strong>{selectedDate.format("DD MMMM YYYY")}</strong>:
-                </span>
-                <span className="text-xl font-bold text-[#059669] ml-2">{getSelectedQuota()} slot</span>
+              {/* PROGRESS BAR */}
+              <div className="mt-6">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-600">Kapasitas Terpakai </span>
+                  <span className="font-medium text-gray-800">{15 - getSelectedQuota()} / 15</span>
+                </div>
+
+                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-green-500 transition-all"
+                    style={{
+                      width: `${((15 - getSelectedQuota()) / 15) * 100}%`,
+                    }}
+                  ></div>
+                </div>
               </div>
             </div>
-
           </div>
         </div>
 
@@ -335,6 +356,8 @@ export default function BookingCalenderKlien() {
           <p className="text-center text-red-600 font-semibold mt-4">{modalContent}</p>
         </Modal>
       </ConfigProvider>
+
+      <FooterSetelahLogin />
     </NavbarLoginKlien>
   );
 }

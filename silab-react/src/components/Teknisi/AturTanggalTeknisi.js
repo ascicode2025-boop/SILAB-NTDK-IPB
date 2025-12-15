@@ -144,7 +144,7 @@ export default function AturTanggalTeknisi() {
                           <Button onClick={() => { const today = dayjs(); onChange(today); setViewDate(today); setSelectedDate(today); }} className="btn-today" style={{marginRight: '10px'}}>Today</Button>
                           <button className="nav-circle" onClick={() => { const prev = value.clone().subtract(1, "month"); onChange(prev); setViewDate(prev); }}>◀</button>
                           <button className="nav-circle" style={{marginLeft: '5px'}} onClick={() => { const next = value.clone().add(1, "month"); onChange(next); setViewDate(next); }}>▶</button>
-                          <div className="center-title" style={{marginLeft: '20px', fontSize: '18px', fontWeight: 'bold'}}>{month} {year}</div>
+                          <div className="center-title" style={{marginLeft: '20px', fontSize: '18px', fontWeight: '600'}}>{month} {year}</div>
                         </div>
                         <div className="right-controls">
                           <DatePicker value={selectedDate} onChange={(d) => { if (d) { setSelectedDate(d); setViewDate(d); onChange(d); }}} format="DD/MM/YYYY" allowClear={false} className="date-picker-header" />
@@ -152,8 +152,6 @@ export default function AturTanggalTeknisi() {
                       </div>
                     );
                   }}
-
-                 
                   fullCellRender={(date, info) => {
                     if (info.type !== 'date') return info.originNode;
                     

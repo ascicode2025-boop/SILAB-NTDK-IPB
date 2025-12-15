@@ -46,7 +46,7 @@ function NavbarLogin({ children }) {
   const handleLogout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
-    history.push("/landingPage");
+    history.push("/LandingPage");
   };
 
   return (
@@ -74,7 +74,7 @@ function NavbarLogin({ children }) {
             </span>
           </Dropdown.Toggle>
           <Dropdown.Menu>
-            <Dropdown.Item onClick={() => alert("Profil belum tersedia")}>Profil</Dropdown.Item>
+            <Dropdown.Item onClick={() => history.push("/dashboard/ProfileAkunKlien")}>Profil</Dropdown.Item>
             <Dropdown.Item onClick={handleLogout}>Logout</Dropdown.Item>
           </Dropdown.Menu>
         </Dropdown>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
 import { getAllBookings } from "../../services/BookingService"; 
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import { Spin, message } from "antd";
 import dayjs from "dayjs"; 
 
@@ -61,7 +62,7 @@ const DashboardTeknisi = () => {
 
   return (
     <NavbarLoginTeknisi>
-      <div className="container py-5" style={{ background: "#f2f2f2", minHeight: "100vh" }}>
+      <div className="font-poppins container py-5" style={{ background: "#f2f2f2", minHeight: "100vh" }}>
         
         {/* Search Bar */}
         <div className="mb-4 d-flex justify-content-center">
@@ -124,6 +125,7 @@ const DashboardTeknisi = () => {
           </Spin>
         </div>
       </div>
+      <FooterSetelahLogin/>
     </NavbarLoginTeknisi>
   );
 };

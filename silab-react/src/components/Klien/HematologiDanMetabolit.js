@@ -4,19 +4,19 @@ import DatePicker from "react-datepicker";
 import NavbarLogin from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
 import "react-datepicker/dist/react-datepicker.css";
-import { createBooking } from "../../services/BookingService"; 
+import { createBooking } from "../../services/BookingService";
 import dayjs from "dayjs";
 import { useHistory } from "react-router-dom";
 
 export default function HematologiDanMetabolit() {
   const history = useHistory();
   const [tanggalKirim, setTanggalKirim] = useState(null);
-  
+
   // State Data
   const [analyses, setAnalyses] = useState([]);
   const [jumlahSampel, setJumlahSampel] = useState(1);
   const [kodeSampel, setKodeSampel] = useState([""]);
-  
+
   const [jenisHewan, setJenisHewan] = useState("");
   const [jenisHewanLain, setJenisHewanLain] = useState("");
   const [jenisKelamin, setJenisKelamin] = useState("");
@@ -28,34 +28,35 @@ export default function HematologiDanMetabolit() {
   const [showSuccess, setShowSuccess] = useState(false);
 
   const ANIMAL_CODES = {
-      "Ayam": "AY", "Bebek": "BB", "Domba": "DB", "Ikan": "IK",
-      "Kambing": "KB", "Kerbau": "KR", "Puyuh": "PY", "Sapi": "SP",
-      "Lainnya": "XX"
+    Ayam: "AY",
+    Bebek: "BB",
+    Domba: "DB",
+    Ikan: "IK",
+    Kambing: "KB",
+    Kerbau: "KR",
+    Puyuh: "PY",
+    Sapi: "SP",
+    Lainnya: "XX",
   };
 
   const getCurrentPrefix = () => {
-      let hewanCode = "";
-      if (jenisHewan === "Lainnya") {
-          hewanCode = jenisHewanLain ? jenisHewanLain.substring(0, 2).toUpperCase() : "XX";
-      } else {
-          hewanCode = ANIMAL_CODES[jenisHewan] || "";
-      }
-      return `HM-${hewanCode}`;
+    let hewanCode = "";
+    if (jenisHewan === "Lainnya") {
+      hewanCode = jenisHewanLain ? jenisHewanLain.substring(0, 2).toUpperCase() : "XX";
+    } else {
+      hewanCode = ANIMAL_CODES[jenisHewan] || "";
+    }
+    return `HM-${hewanCode}`;
   };
 
   useEffect(() => {
-      const savedDate = localStorage.getItem("selected_booking_date");
-      if (savedDate) {
-          setTanggalKirim(new Date(savedDate));
-      }
+    const savedDate = localStorage.getItem("selected_booking_date");
+    if (savedDate) {
+      setTanggalKirim(new Date(savedDate));
+    }
   }, []);
 
-  const analysisOptions = [
-      "BDP & BDM", "Hemoglobin Darah & Hematokrit", "Diferensiasi Leukosit",
-      "Glukosa", "Total Protein", "Albumin", "Trigliserida", 
-      "Kolestrol", "HDL-kol", "LDL-kol", "Urea/BUN", 
-      "Kreatinin", "Kalsium"
-  ];
+  const analysisOptions = ["BDP & BDM", "Hemoglobin Darah & Hematokrit", "Diferensiasi Leukosit", "Glukosa", "Total Protein", "Albumin", "Trigliserida", "Kolestrol", "HDL-kol", "LDL-kol", "Urea/BUN", "Kreatinin", "Kalsium"];
 
   const handleCheckboxChange = (value) => {
     setAnalyses((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
@@ -67,74 +68,76 @@ export default function HematologiDanMetabolit() {
     setErrorMsg("");
 
     if (!tanggalKirim) {
-        setErrorMsg("Harap pilih Tanggal Kirim!");
-        setLoading(false);
-        window.scrollTo(0, 0);
-        return;
+      setErrorMsg("Harap pilih Tanggal Kirim!");
+      setLoading(false);
+      window.scrollTo(0, 0);
+      return;
     }
 
     try {
-        const payload = {
-            tanggal_kirim: dayjs(tanggalKirim).format("YYYY-MM-DD"),
-            jenis_analisis: "Hematologi & Metabolit",
-            jenis_hewan: jenisHewan,
-            jenis_hewan_lain: jenisHewanLain,
-            jenis_kelamin: jenisKelamin,
-            umur: umur,
-            status_fisiologis: statusFisiologis,
-            jumlah_sampel: jumlahSampel,
-            analisis_items: analyses,
-        };
+      const payload = {
+        tanggal_kirim: dayjs(tanggalKirim).format("YYYY-MM-DD"),
+        jenis_analisis: "Hematologi & Metabolit",
+        jenis_hewan: jenisHewan,
+        jenis_hewan_lain: jenisHewanLain,
+        jenis_kelamin: jenisKelamin,
+        umur: umur,
+        status_fisiologis: statusFisiologis,
+        jumlah_sampel: jumlahSampel,
+        analisis_items: analyses,
+      };
 
-        await createBooking(payload);
-        
-        setShowSuccess(true);
-        localStorage.removeItem("selected_booking_date");
+      await createBooking(payload);
 
+      setShowSuccess(true);
+      localStorage.removeItem("selected_booking_date");
     } catch (err) {
-        console.error("Error:", err);
-        setErrorMsg(err.message || "Gagal mengirim data.");
-        window.scrollTo(0, 0);
+      console.error("Error:", err);
+      setErrorMsg(err.message || "Gagal mengirim data.");
+      window.scrollTo(0, 0);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
   const handleCloseSuccess = () => {
-      setShowSuccess(false);
-      history.push("/dashboard/menungguPersetujuan");
+    setShowSuccess(false);
+    history.push("/dashboard/menungguPersetujuan");
   };
 
   return (
     <NavbarLogin>
       <div className="min-vh-100 d-flex justify-content-center align-items-start py-5 px-3" style={{ background: "#eceae8" }}>
         <Card className="shadow-lg rounded-4" style={{ width: "700px", border: "none", overflow: "hidden" }}>
-          
           <div className="text-center text-white py-3" style={{ background: "#45352F", fontSize: "1.5rem", fontWeight: "600", letterSpacing: "1px" }}>
             Hematologi & Metabolit
           </div>
 
           <Card.Body className="p-4">
-            
-            {errorMsg && <Alert variant="danger" onClose={() => setErrorMsg("")} dismissible>{errorMsg}</Alert>}
+            {errorMsg && (
+              <Alert variant="danger" onClose={() => setErrorMsg("")} dismissible>
+                {errorMsg}
+              </Alert>
+            )}
 
             <Form onSubmit={onSubmit}>
-              
               <Form.Group className="mb-4">
                 <Form.Label className="fw-semibold">Jenis Hewan</Form.Label>
                 <Form.Select className="rounded-3 shadow-sm" value={jenisHewan} onChange={(e) => setJenisHewan(e.target.value)} required>
                   <option value="">Pilih...</option>
-                  {Object.keys(ANIMAL_CODES).map(hewan => (
-                      <option key={hewan} value={hewan}>{hewan}</option>
+                  {Object.keys(ANIMAL_CODES).map((hewan) => (
+                    <option key={hewan} value={hewan}>
+                      {hewan}
+                    </option>
                   ))}
                 </Form.Select>
               </Form.Group>
 
               {jenisHewan === "Lainnya" && (
-                  <Form.Group className="mb-4">
-                    <Form.Label className="fw-semibold">Jenis Hewan Lain</Form.Label>
-                    <Form.Control className="rounded-3 shadow-sm" value={jenisHewanLain} onChange={(e) => setJenisHewanLain(e.target.value)} required />
-                  </Form.Group>
+                <Form.Group className="mb-4">
+                  <Form.Label className="fw-semibold">Jenis Hewan Lain</Form.Label>
+                  <Form.Control className="rounded-3 shadow-sm" value={jenisHewanLain} onChange={(e) => setJenisHewanLain(e.target.value)} required />
+                </Form.Group>
               )}
 
               <Form.Group className="mb-4">
@@ -172,13 +175,23 @@ export default function HematologiDanMetabolit() {
                   max={15}
                   value={jumlahSampel}
                   onChange={(e) => {
-                    const val = Number(e.target.value);
-                    setJumlahSampel(val);
+                    const val = e.target.value;
+
+                    // Jika input kosong, jangan isi 0
+                    if (val === "") {
+                      setJumlahSampel("");
+                      setKodeSampel([]);
+                      return;
+                    }
+
+                    const num = Number(val);
+                    setJumlahSampel(num);
+
                     let arr = [...kodeSampel];
-                    if (val > arr.length) {
-                      while (arr.length < val) arr.push("");
+                    if (num > arr.length) {
+                      while (arr.length < num) arr.push("");
                     } else {
-                      arr.length = val;
+                      arr.length = num;
                     }
                     setKodeSampel(arr);
                   }}
@@ -191,12 +204,10 @@ export default function HematologiDanMetabolit() {
               <Form.Group className="mb-4">
                 <Form.Label className="fw-semibold">Kode Sampel (Label Botol)</Form.Label>
                 {!jenisHewan && <div className="text-muted small mb-2">Pilih jenis hewan dulu.</div>}
-                
+
                 {kodeSampel.map((kode, index) => (
                   <InputGroup key={index} className="mb-2 shadow-sm">
-                    <InputGroup.Text style={{backgroundColor: '#e9ecef', fontWeight: 'bold', color: '#555'}}>
-                        {getCurrentPrefix()}-
-                    </InputGroup.Text>
+                    <InputGroup.Text style={{ backgroundColor: "#e9ecef", fontWeight: "bold", color: "#555" }}>{getCurrentPrefix()}-</InputGroup.Text>
                     <Form.Control
                       placeholder={`Nomor Sampel ${index + 1} (Contoh: 01)`}
                       value={kode}
@@ -205,6 +216,7 @@ export default function HematologiDanMetabolit() {
                         arr[index] = e.target.value;
                         setKodeSampel(arr);
                       }}
+                      className="rounded-3 shadow-sm"
                       required
                     />
                   </InputGroup>
@@ -213,26 +225,18 @@ export default function HematologiDanMetabolit() {
 
               <Form.Group className="mb-4">
                 <Form.Label className="fw-semibold">Analisis (Hematologi & Metabolit)</Form.Label>
-                <Row className="g-2">
+
+                <div className="d-flex flex-column gap-2">
                   {analysisOptions.map((item, index) => (
-                    <Col xs={12} sm={6} md={4} lg={3} key={index}>
-                      <Form.Check type="checkbox" label={item} className="text-secondary" onChange={() => handleCheckboxChange(item)} />
-                    </Col>
+                    <Form.Check key={index} type="checkbox" label={item} className="text-secondary" onChange={() => handleCheckboxChange(item)} />
                   ))}
-                </Row>
+                </div>
               </Form.Group>
 
               <Form.Group className="mb-4">
                 <Form.Label className="fw-semibold">Tanggal Kirim</Form.Label>
                 <div className="position-relative w-100">
-                  <DatePicker 
-                    selected={tanggalKirim} 
-                    onChange={(date) => setTanggalKirim(date)} 
-                    className="form-control rounded-3 shadow-sm pe-5 w-100" 
-                    dateFormat="dd/MM/yyyy" 
-                    placeholderText="Pilih tanggal pengiriman"
-                    required
-                  />
+                  <DatePicker selected={tanggalKirim} onChange={(date) => setTanggalKirim(date)} className="form-control rounded-3 shadow-sm pe-5 w-100" dateFormat="dd/MM/yyyy" placeholderText="Pilih tanggal pengiriman" required />
                 </div>
                 <Form.Text className="text-muted">*Tanggal otomatis terisi dari Kalender.</Form.Text>
               </Form.Group>
@@ -242,16 +246,25 @@ export default function HematologiDanMetabolit() {
                   {loading ? "Mengirim..." : "Kirim"}
                 </Button>
               </div>
-
             </Form>
           </Card.Body>
         </Card>
       </div>
 
       <Modal show={showSuccess} onHide={handleCloseSuccess} centered>
-        <Modal.Header closeButton><Modal.Title className="text-success fw-bold">Berhasil!</Modal.Title></Modal.Header>
-        <Modal.Body><p className="text-center">Pemesanan <strong>Hematologi & Metabolit</strong> berhasil dibuat.</p></Modal.Body>
-        <Modal.Footer><Button variant="success" onClick={handleCloseSuccess}>OK</Button></Modal.Footer>
+        <Modal.Header closeButton>
+          <Modal.Title className="text-success fw-bold">Berhasil!</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-center">
+            Pemesanan <strong>Hematologi & Metabolit</strong> berhasil dibuat.
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="success" onClick={handleCloseSuccess}>
+            OK
+          </Button>
+        </Modal.Footer>
       </Modal>
 
       <FooterSetelahLogin />

@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
+import { BrowserRouter as Router, Switch, Route, Redirect } from "react-router-dom";
 
 // --- IMPORT COMPONENT ---
 import NavbarLandingPage from "./components/NavbarLandingPage";
@@ -23,17 +23,22 @@ import Hematologi from "./components/Klien/Hematologi";
 import HematologiDanMetabolit from "./components/Klien/HematologiDanMetabolit";
 import MenungguPersetujuan from "./components/Klien/MenungguPersetujuan";
 import ProsesAnalisis from "./components/Klien/ProsesAnalisis";
+import ProfileAkunKlien from "./components/Klien/ProfileAkunKlien";
+import EditProfileKlien from "./components/Klien/EditProfileKlien";
 
 // --- IMPORT FITUR DASHBOARD TEKNISI ---
-import DashboardTeknisi from './components/Teknisi/DashboardTeknisi';
+import DashboardTeknisi from "./components/Teknisi/DashboardTeknisi";
 import AturTanggalTeknisi from "./components/Teknisi/AturTanggalTeknisi";
 import JadwalSampel from "./components/Teknisi/JadwalSampel";
 import VerifikasiSampel from "./components/Teknisi/VerifikasiSampel";
 import AlasanMenolak from "./components/Teknisi/AlasanMenolak";
+import InputNilaiAnalisis from "./components/Teknisi/InputNilaiAnalisis";
+import FormInputNilaiAnalisis from "./components/Teknisi/FormInputNilaiAnalisis";
+import GeneratePdfAnalysis from "./components/Teknisi/GeneratePdfAnalysis";
 
 // --- IMPORT FITUR DASHBOARD LAINNYA ---
-import DashboardKoordinator from './components/Koordinator/DashboardKoordinator';
-import DashboardKepala from './components/Kepala/DashboardKepala';
+import DashboardKoordinator from "./components/Koordinator/DashboardKoordinator";
+import DashboardKepala from "./components/Kepala/DashboardKepala";
 
 // ====================================================================
 // 1. Layout dengan Navbar (Untuk Landing Page - PUBLIK)
@@ -49,7 +54,7 @@ function AppLayoutWithNavbar() {
         <Route path="/daftarAnalisis" component={DaftarAnalisis} />
         <Route path="/galeri" component={Galeri} />
         <Route path="/panduanSampel" component={PanduanSampel} />
-        <Route exact path="/" component={LandingPage} />
+        <Redirect exact from="/" to="/LandingPage" />
       </Switch>
     </>
   );
@@ -68,104 +73,40 @@ function AppLayoutWithoutNavbar() {
       <Route path="/forgetPassword" component={ForgetPassword} />
 
       {/* --- DASHBOARD INTERNAL (WAJIB LOGIN + CEK ROLE) --- */}
-      
+
       {/* 1. Koordinator (Hanya role 'koordinator' yang boleh masuk) */}
-      <PrivateRoute 
-        path="/koordinator/dashboard" 
-        component={DashboardKoordinator} 
-        allowedRoles={['koordinator']} 
-      />
+      <PrivateRoute path="/koordinator/dashboard" component={DashboardKoordinator} allowedRoles={["koordinator"]} />
 
       {/* 2. Kepala (Hanya role 'kepala' yang boleh masuk) */}
-      <PrivateRoute 
-        path="/kepala/dashboard" 
-        component={DashboardKepala} 
-        allowedRoles={['kepala']} 
-      />
+      <PrivateRoute path="/kepala/dashboard" component={DashboardKepala} allowedRoles={["kepala"]} />
 
       {/* 3. Teknisi (Hanya role 'teknisi' yang boleh masuk) */}
-      <PrivateRoute 
-        path="/teknisi/dashboard/verifikasiSampel/alasanMenolak" 
-        component={AlasanMenolak} 
-        allowedRoles={['teknisi']} 
-      />
-      <PrivateRoute 
-        path="/teknisi/dashboard/verifikasiSampel" 
-        component={VerifikasiSampel} 
-        allowedRoles={['teknisi']} 
-      />
-      <PrivateRoute 
-        path="/teknisi/dashboard/jadwalSampel" 
-        component={JadwalSampel} 
-        allowedRoles={['teknisi']} 
-      />
-      <PrivateRoute 
-        path="/teknisi/dashboard/aturTanggalTeknisi" 
-        component={AturTanggalTeknisi} 
-        allowedRoles={['teknisi']} 
-      />
-      <PrivateRoute 
-        path="/teknisi/dashboard" 
-        component={DashboardTeknisi} 
-        allowedRoles={['teknisi']} 
-      />
+      <PrivateRoute path="/teknisi/dashboard/generatePdfAnalysis" component={GeneratePdfAnalysis} allowedRoles={["teknisi"]} />
+      <PrivateRoute path="/teknisi/dashboard/inputNilaiAnalisis/input-analisis/:id" component={FormInputNilaiAnalisis} allowedRoles={["teknisi"]} />
+      <PrivateRoute path="/teknisi/dashboard/inputNilaiAnalisis" component={InputNilaiAnalisis} allowedRoles={["teknisi"]} />
+      <PrivateRoute path="/teknisi/dashboard/verifikasiSampel/alasanMenolak" component={AlasanMenolak} allowedRoles={["teknisi"]} />
+      <PrivateRoute path="/teknisi/dashboard/verifikasiSampel" component={VerifikasiSampel} allowedRoles={["teknisi"]} />
+      <PrivateRoute path="/teknisi/dashboard/jadwalSampel" component={JadwalSampel} allowedRoles={["teknisi"]} />
+      <PrivateRoute path="/teknisi/dashboard/aturTanggalTeknisi" component={AturTanggalTeknisi} allowedRoles={["teknisi"]} />
+      <PrivateRoute path="/teknisi/dashboard" component={DashboardTeknisi} allowedRoles={["teknisi"]} />
 
       {/* 4. Klien / Umum (Hanya role 'klien' yang boleh masuk) */}
       {/* Saya tambahkan pembatasan 'klien' agar teknisi tidak salah masuk ke sini */}
-      <PrivateRoute 
-        path="/dashboard/prosesAnalisis" 
-        component={ProsesAnalisis} 
-        allowedRoles={['klien']} 
-      />
-      <PrivateRoute 
-        path="/dashboard/menungguPersetujuan" 
-        component={MenungguPersetujuan} 
-        allowedRoles={['klien']} 
-      />
-      <PrivateRoute 
-        path="/dashboard/pemesananSampelKlien/hematologiDanMetabolit" 
-        component={HematologiDanMetabolit} 
-        allowedRoles={['klien']} 
-      />
-      <PrivateRoute 
-        path="/dashboard/pemesananSampelKlien/hematologi" 
-        component={Hematologi} 
-        allowedRoles={['klien']} 
-      />
-      <PrivateRoute 
-        path="/dashboard/pemesananSampelKlien/metabolit" 
-        component={Metabolit} 
-        allowedRoles={['klien']} 
-      />
-      <PrivateRoute 
-        path="/dashboard/pemesananSampelKlien" 
-        component={PemesananSampelKlien} 
-        allowedRoles={['klien']} 
-      />
-      
-      <PrivateRoute 
-        path="/dashboard/panduanSampelKlien" 
-        component={PanduanSampelKlien} 
-        allowedRoles={['klien']} 
-      />
-      <PrivateRoute 
-        path="/dashboard/bookingCalenderKlien" 
-        component={BookingCalenderKlien} 
-        allowedRoles={['klien']} 
-      />
 
+      <PrivateRoute path="/dashboard/prosesAnalisis" component={ProsesAnalisis} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/menungguPersetujuan" component={MenungguPersetujuan} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/pemesananSampelKlien/hematologiDanMetabolit" component={HematologiDanMetabolit} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/pemesananSampelKlien/hematologi" component={Hematologi} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/pemesananSampelKlien/metabolit" component={Metabolit} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/pemesananSampelKlien" component={PemesananSampelKlien} allowedRoles={["klien"]} />
+
+      <PrivateRoute path="/dashboard/panduanSampelKlien" component={PanduanSampelKlien} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/bookingCalenderKlien" component={BookingCalenderKlien} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/ProfileAkunKlien/EditProfileKlien" component={EditProfileKlien} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/ProfileAkunKlien" component={ProfileAkunKlien} allowedRoles={["klien"]} />
       {/* Halaman Utama Dashboard Klien */}
-      <PrivateRoute 
-        path="/dashboard-klien" 
-        component={Dashboard} 
-        allowedRoles={['klien']} 
-      /> 
-      <PrivateRoute 
-        path="/dashboard" 
-        component={Dashboard} 
-        allowedRoles={['klien']} 
-      />
-      
+      <PrivateRoute path="/dashboard-klien" component={Dashboard} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard" component={Dashboard} allowedRoles={["klien"]} />
     </Switch>
   );
 }
@@ -181,13 +122,13 @@ function App() {
         <Route path="/login" component={AppLayoutWithoutNavbar} />
         <Route path="/register" component={AppLayoutWithoutNavbar} />
         <Route path="/forgetPassword" component={AppLayoutWithoutNavbar} />
-        
+
         {/* Group Dashboard berdasarkan Role */}
         <Route path="/teknisi" component={AppLayoutWithoutNavbar} />
         <Route path="/koordinator" component={AppLayoutWithoutNavbar} />
         <Route path="/kepala" component={AppLayoutWithoutNavbar} />
         <Route path="/dashboard" component={AppLayoutWithoutNavbar} />
-        
+
         {/* B. Sisanya masuk ke Layout DENGAN Navbar (Landing Page) */}
         <Route component={AppLayoutWithNavbar} />
       </Switch>
