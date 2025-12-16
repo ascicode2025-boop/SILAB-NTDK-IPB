@@ -3,6 +3,7 @@ import { getAuthHeader } from "./AuthService";
 
 const API_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
 
+// --- 1. BUAT BOOKING BARU (KLIEN) ---
 export const createBooking = async (bookingData) => {
   try {
     const response = await axios.post(`${API_URL}/bookings`, bookingData, {
@@ -22,7 +23,7 @@ export const createBooking = async (bookingData) => {
   }
 };
 
-
+// --- 2. LIHAT RIWAYAT SAYA (KLIEN) ---
 export const getUserBookings = async () => {
   try {
     const response = await axios.get(`${API_URL}/bookings`, {
@@ -42,11 +43,9 @@ export const getUserBookings = async () => {
   }
 };
 
-
-
+// --- 3. LIHAT SEMUA BOOKING (TEKNISI) ---
 export const getAllBookings = async () => {
   try {
-    
     const response = await axios.get(`${API_URL}/bookings/all`, {
       headers: getAuthHeader()
     });
@@ -62,6 +61,7 @@ export const getAllBookings = async () => {
   }
 };
 
+// --- 4. UPDATE STATUS (SETUJU/TOLAK) ---
 export const updateBookingStatus = async (id, status, alasan = null) => {
   try {
     const payload = { status, alasan };
@@ -76,6 +76,26 @@ export const updateBookingStatus = async (id, status, alasan = null) => {
         throw error.response.data;
     } else {
         throw new Error("Gagal update status pesanan.");
+    }
+  }
+};
+
+// --- 5. UPDATE HASIL ANALISIS (BARU DITAMBAHKAN) ---
+// Fungsi ini dipanggil saat teknisi menekan tombol "Simpan Data & Selesai"
+export const updateAnalysisResult = async (id, data) => {
+  try {
+    // Endpoint ini harus sesuai dengan route di Laravel: Route::put('/bookings/{id}/results', ...)
+    const response = await axios.put(`${API_URL}/bookings/${id}/results`, data, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Gagal menyimpan hasil analisis:", error);
+    
+    if (error.response) {
+        throw error.response.data;
+    } else {
+        throw new Error("Gagal menyimpan data analisis.");
     }
   }
 };
