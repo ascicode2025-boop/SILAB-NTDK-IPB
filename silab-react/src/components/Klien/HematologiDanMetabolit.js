@@ -56,7 +56,7 @@ export default function HematologiDanMetabolit() {
     }
   }, []);
 
-  const analysisOptions = ["BDP & BDM", "Hemoglobin Darah & Hematokrit", "Diferensiasi Leukosit", "Glukosa", "Total Protein", "Albumin", "Trigliserida", "Kolestrol", "HDL-kol", "LDL-kol", "Urea/BUN", "Kreatinin", "Kalsium"];
+  const analysisOptions = ["BDM", "BDP", "Hemoglobin Darah", "Hematokrit", "Diferensiasi Leukosit", "Glukosa", "Total Protein", "Albumin", "Trigliserida", "Kolestrol", "HDL-kol", "LDL-kol", "Urea/BUN", "Kreatinin", "Kalsium"];
 
   const handleCheckboxChange = (value) => {
     setAnalyses((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));

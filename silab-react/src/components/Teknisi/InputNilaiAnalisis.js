@@ -1,99 +1,163 @@
-  import React, { useEffect, useState } from "react";
-  import { useHistory } from "react-router-dom";
-  import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
-  import FooterSetelahLogin from "../FooterSetelahLogin";
-  import { getAllBookings } from "../../services/BookingService";
-  import { Button, Spin } from "antd";
-  import "@fontsource/poppins";
+import React, { useEffect, useState } from "react";
+import { useHistory } from "react-router-dom";
+import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
+import FooterSetelahLogin from "../FooterSetelahLogin";
+import { getAllBookings, updateBookingStatus } from "../../services/BookingService";
+import { Button, Spin, Table, Tag, Card, Typography, Empty } from "antd";
+import { EditOutlined, CheckCircleFilled } from "@ant-design/icons";
+import "@fontsource/poppins";
 
-  function InputNilaiAnalisis() {
-    const [approvedSamples, setApprovedSamples] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const history = useHistory();
+const { Title, Text } = Typography;
 
-    useEffect(() => {
-      fetchData();
-    }, []);
+function InputNilaiAnalisis() {
+  const [approvedSamples, setApprovedSamples] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const history = useHistory();
 
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const data = await getAllBookings();
-        const allBookings = data?.data || [];
-        const approved = allBookings.filter((booking) => booking.status === "Disetujui");
-        setApprovedSamples(approved);
-      } catch (error) {
-        console.error("Failed to fetch approved samples", error);
-      } finally {
-        setLoading(false);
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const data = await getAllBookings();
+      const allBookings = data?.data || [];
+
+      const approved = allBookings.filter((booking) => booking.status === "Sampel Diterima" || booking.status === "Sedang Dianalisis");
+      setApprovedSamples(approved);
+    } catch (error) {
+      console.error("Failed to fetch approved samples", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputNilai = async (record) => {
+    try {
+      setLoading(true);
+
+      // Hanya update status kalau masih Sampel Diterima
+      if (record.status === "Sampel Diterima") {
+        await updateBookingStatus(record.id, "Sedang Dianalisis");
       }
-    };
 
-    return (
-      <NavbarLoginTeknisi>
-        <div
-          className="p-4"
+      history.push(`/teknisi/dashboard/inputNilaiAnalisis/input-analisis/${record.id}`);
+    } catch (error) {
+      console.error("Gagal memperbarui status:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Menggunakan Kolom Ant Design untuk tampilan lebih rapi & responsif
+  const columns = [
+    {
+      title: "No",
+      key: "index",
+      render: (text, record, index) => index + 1,
+      width: 60,
+    },
+    {
+      title: "Kode Sampel",
+      dataIndex: "kode_sampel",
+      key: "kode_sampel",
+      width: 380,
+      render: (text) => (
+        <Text
+          strong
           style={{
-            minHeight: "100vh",
-            backgroundColor: "#f1f1f1",
-            fontFamily: "Poppins, sans-serif",
+            display: "inline-block",
+            maxWidth: "360px",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
+          title={text}
         >
-          <div className="container-fluid">
-            <h4 className="fw-semibold mb-3">Sampel yang Disetujui ✔️</h4>
+          {text || "-"}
+        </Text>
+      ),
+    },
 
-            <div className="card shadow-sm p-3" style={{ borderRadius: "12px" }}>
-              {loading ? (
-                <div className="text-center py-4">
-                  <Spin />
-                </div>
-              ) : approvedSamples.length === 0 ? (
-                <p className="text-muted">Belum ada sampel yang disetujui.</p>
-              ) : (
-                <div className="table-responsive">
-                  <table className="table table-bordered" style={{ background: "white", borderRadius: "10px" }}>
-                    <thead>
-                      <tr>
-                        <th>No</th>
-                        <th>Kode Sampel</th>
-                        <th>Nama Kien</th>
-                        <th>Jenis Analisis</th>
-                        <th>Analisis Item</th>
-                        <th>Status</th>
-                        <th>Aksi</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {approvedSamples.map((item, index) => (
-                        <tr key={item.id}>
-                          <td>{index + 1}</td>
-                          <td>{item.kode_sampel || "-"}</td>
-                          <td>{item.user?.name || "-"}</td>
-                          <td>{item.jenis_analisis || "-"}</td>
-                          <td>{Array.isArray(item.analysis_items) && item.analysis_items.length > 0 ? item.analysis_items.map((analysisItem) => analysisItem.nama_item).join(", ") : "Tidak ada data"}</td>
-                          <td>
-                            <span className="badge bg-success">Disetujui</span>
-                          </td>
-
-                          <td>
-                            <Button type="primary" style={{ backgroundColor: "#4A89F3" }} onClick={() => history.push(`/teknisi/dashboard/inputNilaiAnalisis/input-analisis/${item.id}`)}>
-                              Input Nilai
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
+    {
+      title: "Nama Klien",
+      dataIndex: ["user", "name"],
+      key: "client_name",
+      render: (text) => text || "-",
+    },
+    {
+      title: "Jenis Analisis",
+      dataIndex: "jenis_analisis",
+      key: "jenis_analisis",
+    },
+    {
+      title: "Analisis Item",
+      dataIndex: "analysis_items",
+      key: "analysis_items",
+      width: 500, // <-- Diperlebar
+      render: (items) => (
+        <div style={{ maxWidth: "250px" }}>
+          {Array.isArray(items) && items.length > 0
+            ? items.map((i) => (
+                <Tag color="blue" key={i.id} style={{ marginBottom: "4px" }}>
+                  {i.nama_item}
+                </Tag>
+              ))
+            : "Tidak ada data"}
         </div>
+      ),
+    },
+    {
+      title: "Aksi",
+      key: "action",
+      align: "center",
+      width: 180,
+      fixed: "right",
+      render: (_, record) => {
+        const isLanjut = record.status === "Sedang Dianalisis";
 
-        <FooterSetelahLogin />
-      </NavbarLoginTeknisi>
-    );
-  }
+        return (
+          <Button type={isLanjut ? "default" : "primary"} icon={<EditOutlined />} shape="round" loading={loading} onClick={() => handleInputNilai(record)}>
+            {isLanjut ? "Lanjut Input Nilai" : "Input Nilai"}
+          </Button>
+        );
+      },
+    },
+  ];
 
-  export default InputNilaiAnalisis;
+  return (
+    <NavbarLoginTeknisi>
+      <div
+        style={{
+          minHeight: "90vh",
+          backgroundColor: "#f8f9fa",
+          fontFamily: "Poppins, sans-serif",
+          padding: "40px 20px",
+        }}
+      >
+        <div className="container">
+          <div className="mb-4">
+            <Title level={3}>
+              Input Nilai Analisis <span style={{ fontSize: "18px", fontWeight: "400", color: "#8c8c8c" }}>| Manajemen Sampel</span>
+            </Title>
+            <Text type="secondary">Silahkan masukkan parameter nilai untuk sampel yang telah dikonfirmasi diterima.</Text>
+          </div>
+
+          <Card bordered={false} className="shadow-sm" style={{ borderRadius: "16px", overflow: "hidden" }}>
+            {loading ? (
+              <div className="text-center py-5">
+                <Spin size="large" tip="Memuat data sampel..." />
+              </div>
+            ) : (
+              <Table dataSource={approvedSamples} columns={columns} rowKey="id" pagination={{ pageSize: 10 }} locale={{ emptyText: <Empty description="Belum ada sampel yang disetujui" /> }} className="custom-table" />
+            )}
+          </Card>
+        </div>
+      </div>
+      <FooterSetelahLogin />
+    </NavbarLoginTeknisi>
+  );
+}
+
+export default InputNilaiAnalisis;

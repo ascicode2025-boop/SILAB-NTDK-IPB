@@ -22,6 +22,8 @@ const VerifikasiSampel = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailData, setDetailData] = useState(null);
 
+  const approvedData = dataBookings.filter((item) => item.status === "Disetujui");
+
   // --- 1. AMBIL DATA ---
   const fetchData = async () => {
     setLoading(true);
@@ -109,6 +111,20 @@ const VerifikasiSampel = () => {
     });
   };
 
+  const handleSampelSampai = async (row) => {
+    try {
+      await updateBookingStatus(row.id, "Sampel Diterima");
+      await fetchData(); // refresh data
+
+      message.success("Status diubah menjadi Sampel Diterima");
+
+      history.push(`/teknisi/dashboard/inputNilaiAnalisis`);
+    } catch (err) {
+      console.error("ERROR UPDATE STATUS:", err.response?.data || err);
+      message.error("Gagal mengubah status sampel");
+    }
+  };
+
   return (
     <NavbarLoginTeknisi>
       <div className="font-poppins container py-5">
@@ -183,10 +199,66 @@ const VerifikasiSampel = () => {
             </table>
           </Spin>
         </div>
+
+        {/* ================= TABEL SAMPEL DISETUJUI ================= */}
+        <div className="mt-5">
+          <h5 className="fw-bold text-success mb-3">
+            <i className="bi bi-check-circle-fill me-2"></i>
+            Sampel yang Telah Disetujui
+          </h5>
+
+          <div className="table-responsive bg-white rounded-4 shadow p-3">
+            <table className="table table-bordered align-middle text-center table-hover">
+              <thead className="table-success">
+                <tr>
+                  <th>No</th>
+                  <th>Kode Sampel</th>
+                  <th>Nama Klien</th>
+                  <th>Jumlah</th>
+                  <th>Jenis Analisis</th>
+                  <th>Tanggal</th>
+                  <th>Status</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {approvedData.length > 0 ? (
+                  approvedData.map((row, index) => (
+                    <tr key={row.id}>
+                      <td>{index + 1}</td>
+                      <td className="fw-bold">{row.kode_sampel}</td>
+                      <td>{row.user ? row.user.name : "-"}</td>
+                      <td>
+                        <span className="badge bg-light text-dark border">{row.jumlah_sampel}</span>
+                      </td>
+                      <td>{row.jenis_analisis}</td>
+                      <td>{dayjs(row.tanggal_kirim).format("DD MMM YYYY")}</td>
+                      <td>
+                        <span className="badge bg-success">Disetujui</span>
+                      </td>
+                      <td>
+                        <button className="btn btn-primary btn-sm px-3" onClick={() => handleSampelSampai(row)}>
+                          <i className="bi bi-box-arrow-in-down me-1"></i>
+                          Sampel diterima
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="8" className="text-muted py-4">
+                      Belum ada sampel yang disetujui.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {/* --- MODAL DETAIL (POPUP INFO LENGKAP) --- */}
-      <Modal show={showDetailModal} onHide={() => setShowDetailModal(false)} size="lg" centered style={{marginTop:"3.1rem", marginLeft: "2rem"}}>
+      <Modal show={showDetailModal} onHide={() => setShowDetailModal(false)} size="lg" centered style={{ marginTop: "3.1rem", marginLeft: "2rem" }}>
         <Modal.Header closeButton className="bg-light">
           <Modal.Title className="fw-bold text-dark">
             <i className="bi bi-file-earmark-text me-2"></i> Detail Pesanan

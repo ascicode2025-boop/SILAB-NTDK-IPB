@@ -19,14 +19,15 @@ function NavbarLoginTeknisi({ children }) {
   }, []);
 
   const menus = [
-    { key: "dashboard", label: "Dahboard", icon: <FaTachometerAlt /> },
-    { key: "aturTanggalTeknisi", label: "Atur Kouta Harian", icon: <FaFileAlt /> },
-    { key: "jadwalSampel", label: "Jadwal Penerimaan Sampel", icon: <FaCalendarAlt /> },
-    { key: "verifikasiSampel", label: "Verifikasi & Update Sampel", icon: <FaClipboardList /> },
-    { key: "inputNilaiAnalisis", label: "Input Analisis", icon: <FaClock /> },
-    { key: "generatePdfAnalysis", label: "Generate Laporan Hasil Analisis (PDF)", icon: <FaFlask /> },
-    { key: "riwayat", label: "Riwayat Analisis", icon: <FaHistory /> },
-  ];
+  { key: "dashboard", label: "Dahboard", icon: <FaTachometerAlt /> },
+  { key: "aturTanggalTeknisi", label: "Atur Kouta Harian", icon: <FaFileAlt /> },
+  { key: "jadwalSampel", label: "Jadwal Penerimaan Sampel", icon: <FaCalendarAlt /> },
+  { key: "verifikasiSampel", label: "Verifikasi & Update Sampel", icon: <FaClipboardList /> },
+  { key: "inputNilaiAnalisis", label: "Input Analisis", icon: <FaClock /> },
+  { key: "generatePdfAnalysis", label: "Generate Laporan Hasil Analisis (PDF)", icon: <FaFlask /> },
+  { key: "riwayat", label: "Riwayat Analisis", icon: <FaHistory /> },
+];
+
 
   // sinkronkan activeMenu berdasarkan URL
   useEffect(() => {

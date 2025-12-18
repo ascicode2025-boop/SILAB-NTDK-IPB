@@ -207,4 +207,60 @@ class BookingController extends Controller
             'data' => $booking
         ]);
     }
+
+    public function updateAnalysisResult(Request $request, $id)
+{
+    if (!Auth::check()) {
+        return response()->json(['message' => 'Unauthorized'], 401);
+    }
+
+    $request->validate([
+        'items' => 'required|array',
+        'items.*.id' => 'required|exists:analysis_items,id',
+        'items.*.hasil' => 'nullable|string',
+        'items.*.metode' => 'nullable|string'
+    ]);
+
+    DB::beginTransaction();
+
+    try {
+        $booking = Booking::with('analysisItems')->findOrFail($id);
+
+        foreach ($request->items as $item) {
+            $analysisItem = $booking->analysisItems
+                ->firstWhere('id', $item['id']);
+
+            if ($analysisItem) {
+                $analysisItem->update([
+                    'hasil'  => $item['hasil'],
+                    'metode' => $item['metode'] ?? 'Lab Test',
+                ]);
+            }
+        }
+
+        // OPTIONAL: otomatis set status selesai
+        $booking->update([
+            'status' => 'Selesai'
+        ]);
+
+        DB::commit();
+
+        return response()->json([
+            'message' => 'Hasil analisis berhasil disimpan',
+            'data' => $booking->fresh('analysisItems')
+        ]);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        Log::error('Update Analysis Error: '.$e->getMessage());
+
+        return response()->json([
+            'message' => 'Gagal menyimpan hasil analisis',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+
 }

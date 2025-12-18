@@ -23,24 +23,33 @@ const MenungguPersetujuan = () => {
         const bookings = response.data;
 
         if (!bookings || bookings.length === 0) {
-          message.warning("Anda belum memiliki pesanan aktif.");
-          history.push("/dashboard/pemesananSampelKlien");
+          setLoading(false);
           return;
         }
 
-        setBookingList(bookings);
+        // FILTER: Hanya tampilkan status tertentu
+        // Sampel Diterima, Selesai, atau status akhir lainnya tidak akan muncul di sini
+        const filtered = bookings.filter((b) => 
+          b.status === "Menunggu Persetujuan" || 
+          b.status === "Disetujui" || 
+          b.status === "Ditolak"
+        );
+
+        setBookingList(filtered);
       } catch (error) {
         console.error("Gagal memuat data:", error);
+        message.error("Gagal mengambil data pesanan.");
       } finally {
         setLoading(false);
       }
     };
     fetchBookings();
-  }, [history]);
+  }, []);
 
   const handleSelectBooking = (booking) => {
     setSelectedBooking(booking);
-    if (booking.status === "Disetujui" || booking.status === "Selesai" || booking.status === "Menunggu Dianalisis") {
+    // Jika status "Disetujui", maka nyalakan Step 3
+    if (booking.status === "Disetujui") {
       setCurrentStep(3);
     } else {
       setCurrentStep(2);
@@ -51,16 +60,13 @@ const MenungguPersetujuan = () => {
     switch (status) {
       case "Disetujui":
         return "bg-success";
-      case "Menunggu Dianalisis":
-        return "bg-success";
       case "Ditolak":
         return "bg-danger";
-      case "Selesai":
-        return "bg-primary";
       default:
         return "bg-warning text-dark";
     }
   };
+
   const generateSampleCodes = (booking) => {
     if (!booking) return [];
     const count = booking.jumlah_sampel;
@@ -73,15 +79,13 @@ const MenungguPersetujuan = () => {
     }
     return codes;
   };
+
   const getWALink = () => {
     if (!selectedBooking) return "#";
-
     const phone = "6282111485562";
     const userName = localStorage.getItem("user_name") || "Klien SILAB";
-
-    // Ambil semua kode sampel
     const allCodes = generateSampleCodes(selectedBooking);
-    const codesString = allCodes.join(", ");
+
     let text = `Halo Admin SILAB, konfirmasi pesanan:\n\n`;
     text += `👤 *Nama:* ${userName}\n`;
     text += `📦 *Jumlah:* ${selectedBooking.jumlah_sampel} Sampel\n`;
@@ -94,110 +98,87 @@ const MenungguPersetujuan = () => {
     return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
   };
 
-  // --- TAMPILAN LIST ---
-  const renderList = () => (
-    <div className="container" style={{ maxWidth: "800px", marginTop: "-3rem"  }}>
-      <h4 className="fw-bold mb-4 text-center text-secondary">Daftar Pesanan Anda</h4>
-      <div className="row g-3">
-        {bookingList.map((item) => (
-          <div key={item.id} className="col-12">
-            <div className="card shadow-sm border-0 h-100 hover-card" style={{ cursor: "pointer" }} onClick={() => handleSelectBooking(item)}>
-              <div className="card-body d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="fw-bold mb-1 text-dark">
-                    {item.kode_sampel}
-                    <span className="badge bg-light text-secondary ms-2 border" style={{ fontSize: "0.75rem" }}>
-                      {item.jumlah_sampel} Sampel
-                    </span>
-                  </h6>
-                  <small className="text-muted d-block">{dayjs(item.tanggal_kirim).format("DD MMM YYYY")}</small>
-                  <small className="text-muted">{item.jenis_analisis}</small>
-                </div>
-                <div className="text-end">
-                  <span className={`badge ${getStatusBadge(item.status)} px-3 py-2 rounded-pill`}>{item.status}</span>
-                  <div className="text-muted mt-2 small">
-                    Detail <i className="bi bi-chevron-right"></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
   const renderDetail = () => {
     if (!selectedBooking) return null;
     const sampleCodes = generateSampleCodes(selectedBooking);
+    const isRejected = selectedBooking.status === "Ditolak";
+    const isApproved = selectedBooking.status === "Disetujui";
 
     return (
-      <div className="fade-in" style={{marginTop: "-5rem"}}>
-        <button className="btn btn-outline-secondary btn-sm mb-4" onClick={() => setSelectedBooking(null)} style={{marginTop: "-10px"}}>
+      <div className="fade-in">
+        <button className="btn btn-outline-secondary btn-sm mb-4" onClick={() => setSelectedBooking(null)}>
           <i className="bi bi-arrow-left me-2"></i> Kembali ke Daftar
         </button>
 
-        {/* Stepper */}
-        <div className="progress-wrapper mb-5" style={{marginTop: "3rem"}}>
-          <div className="step fade-in">
-            <div className="icon-wrapper active">
+        {/* Stepper dinamis */}
+        <div className="progress-wrapper mb-5 mt-4">
+          {/* Step 1 */}
+          <div className="step">
+            <div className="icon-wrapper active big-step">
               <i className="bi bi-list-check"></i>
             </div>
-            <p className="label">Mengisi Form</p>
+            <p className="label active-text">Mengisi Form</p>
           </div>
-          <div className={`progress-line ${currentStep >= 2 ? "filled" : ""}`}></div>
-          <div className="step fade-in">
-            <div className={`icon-wrapper ${currentStep >= 2 ? "active big" : ""} ${selectedBooking.status === "Menunggu Persetujuan" ? "rotate-icon" : ""}`}>
-              {selectedBooking.status === "Ditolak" ? <i className="bi bi-x-lg"></i> : <i className="bi bi-clock"></i>}
+
+          <div className={`progress-line big-line filled`}></div>
+
+          {/* Step 2 */}
+          <div className="step">
+            <div className={`icon-wrapper active ${currentStep === 2 ? "pulse-active" : ""} big-step ${selectedBooking.status === "Menunggu Persetujuan" ? "rotate-icon" : ""}`}>
+              {isRejected ? <i className="bi bi-x-lg"></i> : <i className="bi bi-clock"></i>}
             </div>
-            <p className="label active-text">{selectedBooking.status === "Ditolak" ? "Ditolak" : "Menunggu Persetujuan"}</p>
+            <p className={`label ${currentStep === 2 ? "active-text" : ""}`}>{isRejected ? "Ditolak" : "Verifikasi"}</p>
           </div>
-          <div className={`progress-line ${currentStep >= 3 ? "filled" : ""}`}></div>
-          <div className="step fade-in">
-            <div className={`icon-wrapper ${currentStep === 3 ? "active" : ""}`}>
+
+          <div className={`progress-line big-line ${currentStep >= 3 ? "filled" : ""}`}></div>
+
+          {/* Step 3 */}
+          <div className="step">
+            <div className={`icon-wrapper ${currentStep === 3 ? "active pulse-active" : ""} big-step`}>
               <i className="bi bi-check2"></i>
             </div>
-            <p className="label">Disetujui</p>
+            <p className={`label ${currentStep === 3 ? "active-text" : ""}`}>Disetujui</p>
           </div>
         </div>
 
-        {/* Kartu Status + List Kode */}
+        {/* Kartu Status */}
         <div className="d-flex justify-content-center">
           <div
-            className={`info-card text-center shadow-sm ${selectedBooking.status === "Ditolak" ? "border-danger" : selectedBooking.status === "Disetujui" || selectedBooking.status === "Menunggu Dianalisis" ? "border-success" : ""}`}
-            style={{ maxWidth: "600px", borderTop: selectedBooking.status === "Ditolak" ? "5px solid #dc3545" : selectedBooking.status === "Disetujui" || selectedBooking.status === "Menunggu Dianalisis" ? "5px solid #198754" : "" }}
+            className={`info-card text-center shadow-sm ${isRejected ? "border-danger" : isApproved ? "border-success" : ""}`}
+            style={{
+              maxWidth: "600px",
+              borderTop: isRejected ? "5px solid #dc3545" : isApproved ? "5px solid #198754" : "5px solid #ffc107",
+              backgroundColor: "#fff",
+            }}
           >
-            {/* Header Icon & Title */}
-            {selectedBooking.status === "Ditolak" ? (
+            {isRejected ? (
               <>
                 <div className="mb-3 text-danger">
-                  <i className="bi bi-x-circle-fill" style={{ fontSize: "4rem" }}></i>
+                  <i className="bi bi-x-circle-fill" style={{ fontSize: "3.5rem" }}></i>
                 </div>
                 <h4 className="fw-bold text-danger mb-3">Pesanan Ditolak</h4>
                 <div className="alert alert-danger text-start">
-                  <strong>Alasan:</strong>
-                  <br />
-                  {selectedBooking.alasan_penolakan || "Hubungi Admin."}
+                  <strong>Alasan:</strong> {selectedBooking.alasan_penolakan || "Hubungi Admin via WhatsApp."}
                 </div>
               </>
-            ) : selectedBooking.status === "Disetujui" || selectedBooking.status === "Menunggu Dianalisis" ? (
+            ) : isApproved ? (
               <>
                 <div className="mb-3 text-success">
-                  <i className="bi bi-check-circle-fill" style={{ fontSize: "4rem" }}></i>
+                  <i className="bi bi-check-circle-fill" style={{ fontSize: "3.5rem" }}></i>
                 </div>
                 <h4 className="fw-bold text-success mb-3">Pesanan Disetujui!</h4>
                 <div className="alert alert-success text-start">
-                  <i className="bi bi-info-circle me-2"></i> Silakan beri label botol sesuai kode di bawah ini.
+                  <i className="bi bi-info-circle me-2"></i> Silakan beri label botol sesuai daftar kode di bawah ini sebelum dikirim.
                 </div>
               </>
             ) : (
               <>
                 <h4 className="fw-semibold mb-3">Menunggu Persetujuan</h4>
-                <p className="text-muted mb-4">Sedang ditinjau teknisi.</p>
+                <p className="text-muted mb-4">Pesanan Anda sedang ditinjau oleh teknisi laboratorium kami.</p>
               </>
             )}
 
-            {/* LIST KODE SAMPEL DI UI */}
-            <div className="text-start bg-light p-3 rounded mb-3 border">
+            <div className="text-start bg-light p-3 rounded mb-4 border">
               <h6 className="fw-bold text-secondary mb-2">Daftar Label Sampel Anda:</h6>
               <ul className="list-group list-group-flush small" style={{ maxHeight: "150px", overflowY: "auto" }}>
                 {sampleCodes.map((code, idx) => (
@@ -207,52 +188,66 @@ const MenungguPersetujuan = () => {
                   </li>
                 ))}
               </ul>
-              <div className="mt-2 text-end">
-                <small className="text-muted fst-italic">Total: {selectedBooking.jumlah_sampel} Sampel</small>
-              </div>
             </div>
 
-            {/* Tombol Aksi */}
-            {selectedBooking.status === "Ditolak" ? (
-              <button onClick={() => history.push("/dashboard/pemesananSampelKlien")} className="btn btn-outline-danger w-100 mt-2">
-                Buat Pesanan Baru
-              </button>
-            ) : (
-              <>
-                {selectedBooking.status === "Menunggu Persetujuan" && (
-                  <div className="alert alert-warning text-start py-2 mb-2">
-                    <small>
-                      <i className="bi bi-info-circle me-1"></i> Konfirmasi WA mempercepat verifikasi.
-                    </small>
-                  </div>
-                )}
-                <a href={getWALink()} target="_blank" rel="noopener noreferrer" className="btn wa-btn text-white w-100 mt-2">
-                  <i className="bi bi-whatsapp me-2"></i> {selectedBooking.status === "Menunggu Persetujuan" ? "Konfirmasi ke WhatsApp" : "Hubungi Admin via WA"}
-                </a>
-              </>
-            )}
+            <a href={getWALink()} target="_blank" rel="noopener noreferrer" className="btn wa-btn text-white w-100">
+              <i className="bi bi-whatsapp me-2"></i>
+              {selectedBooking.status === "Menunggu Persetujuan" ? "Konfirmasi via WhatsApp" : "Hubungi Admin"}
+            </a>
           </div>
         </div>
       </div>
     );
   };
 
-  if (loading)
-    return (
-      <NavbarLogin>
-        <div className="d-flex justify-content-center align-items-center" style={{ height: "80vh" }}>
-          <Spin size="large" tip="Memuat data..." />
-        </div>
-      </NavbarLogin>
-    );
+  if (loading) {
+      return (
+        <NavbarLogin>
+            <div className="d-flex justify-content-center align-items-center" style={{ height: "60vh" }}>
+                <Spin size="large" tip="Memuat Pesanan..." />
+            </div>
+            <FooterSetelahLogin />
+        </NavbarLogin>
+      )
+  }
 
   return (
     <NavbarLogin>
-      <div className="container py-5 progress-container" style={{ marginTop: "5rem" }}>
-        {selectedBooking ? renderDetail() : renderList()}
+      <div className="container py-5 progress-container">
+        {bookingList.length === 0 ? (
+            <div className="text-center py-5">
+                <i className="bi bi-box-seam text-muted" style={{ fontSize: "4rem" }}></i>
+                <h5 className="mt-3 text-secondary">Tidak ada pesanan dalam tahap persetujuan.</h5>
+                <button className="btn btn-primary mt-3" onClick={() => history.push("/dashboard/pemesananSampelKlien")}>Buat Pesanan Baru</button>
+            </div>
+        ) : selectedBooking ? (
+          renderDetail()
+        ) : (
+          <div className="container" style={{ maxWidth: "800px" }}>
+            <h4 className="fw-bold mb-4 text-center text-secondary">Daftar Persetujuan Pesanan</h4>
+            <div className="row g-3">
+              {bookingList.map((item) => (
+                <div key={item.id} className="col-12">
+                  <div className="card shadow-sm border-0 h-100 hover-card" style={{ cursor: "pointer" }} onClick={() => handleSelectBooking(item)}>
+                    <div className="card-body d-flex justify-content-between align-items-center">
+                      <div>
+                        <h6 className="fw-bold mb-1 text-dark">{item.kode_sampel}</h6>
+                        <small className="text-muted d-block">
+                          {dayjs(item.tanggal_kirim).format("DD MMM YYYY")} | {item.jenis_analisis}
+                        </small>
+                      </div>
+                      <div className="text-end">
+                        <span className={`badge ${getStatusBadge(item.status)} px-3 py-2 rounded-pill`}>{item.status}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       <FooterSetelahLogin />
-      <style>{`.hover-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important; background-color: #f8f9fa; }`}</style>
     </NavbarLogin>
   );
 };

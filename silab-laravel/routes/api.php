@@ -46,5 +46,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
     Route::put('/bookings/{id}/status', [BookingController::class, 'updateStatus']);
+    Route::put('/bookings/{id}/results', [BookingController::class, 'updateAnalysisResult']);
 
 });
