@@ -15,12 +15,13 @@ export default function HematologiDanMetabolit() {
   // State Data
   const [analyses, setAnalyses] = useState([]);
   const [jumlahSampel, setJumlahSampel] = useState(1);
-  const [kodeSampel, setKodeSampel] = useState([""]);
+  const [kodeSampel, setKodeSampel] = useState(["01"]);
 
   const [jenisHewan, setJenisHewan] = useState("");
   const [jenisHewanLain, setJenisHewanLain] = useState("");
   const [jenisKelamin, setJenisKelamin] = useState("");
-  const [umur, setUmur] = useState("");
+  const [umurAngka, setUmurAngka] = useState("");
+  const [umurSatuan, setUmurSatuan] = useState("Tahun");
   const [statusFisiologis, setStatusFisiologis] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -28,15 +29,8 @@ export default function HematologiDanMetabolit() {
   const [showSuccess, setShowSuccess] = useState(false);
 
   const ANIMAL_CODES = {
-    Ayam: "AY",
-    Bebek: "BB",
-    Domba: "DB",
-    Ikan: "IK",
-    Kambing: "KB",
-    Kerbau: "KR",
-    Puyuh: "PY",
-    Sapi: "SP",
-    Lainnya: "XX",
+    Ayam: "AY", Bebek: "BB", Domba: "DB", Ikan: "IK", Kambing: "KB",
+    Kerbau: "KR", Puyuh: "PY", Sapi: "SP", Lainnya: "XX",
   };
 
   const getCurrentPrefix = () => {
@@ -62,6 +56,16 @@ export default function HematologiDanMetabolit() {
     setAnalyses((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
   };
 
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setAnalyses([...analysisOptions]);
+    } else {
+      setAnalyses([]);
+    }
+  };
+
+  const isAllSelected = analysisOptions.length > 0 && analyses.length === analysisOptions.length;
+
   const onSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -74,21 +78,28 @@ export default function HematologiDanMetabolit() {
       return;
     }
 
+    // Hematologi & Metabolit unlimited
+    if (jumlahSampel > 999) {
+      setErrorMsg("Jumlah sampel maksimal 999!");
+      setLoading(false);
+      window.scrollTo(0, 0);
+      return;
+    }
+
     try {
       const payload = {
         tanggal_kirim: dayjs(tanggalKirim).format("YYYY-MM-DD"),
-        jenis_analisis: "Hematologi & Metabolit",
+        jenis_analisis: "hematologi dan metabolit",
         jenis_hewan: jenisHewan,
         jenis_hewan_lain: jenisHewanLain,
         jenis_kelamin: jenisKelamin,
-        umur: umur,
+        umur: `${umurAngka} ${umurSatuan}`,
         status_fisiologis: statusFisiologis,
         jumlah_sampel: jumlahSampel,
         analisis_items: analyses,
       };
 
       await createBooking(payload);
-
       setShowSuccess(true);
       localStorage.removeItem("selected_booking_date");
     } catch (err) {
@@ -114,6 +125,32 @@ export default function HematologiDanMetabolit() {
           </div>
 
           <Card.Body className="p-4">
+            <div className="mb-4">
+              <Button 
+                variant="light"
+                className="d-flex align-items-center gap-2 px-3 py-2 shadow-sm"
+                onClick={() => history.goBack()}
+                style={{
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s ease',
+                  backgroundColor: '#f8f9fa'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#e9ecef';
+                  e.currentTarget.style.transform = 'translateX(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f8f9fa';
+                  e.currentTarget.style.transform = 'translateX(0)';
+                }}
+              >
+                <i className="bi bi-arrow-left" style={{ fontSize: '1.1rem' }}></i>
+                <span>Kembali</span>
+              </Button>
+            </div>
+            
             {errorMsg && (
               <Alert variant="danger" onClose={() => setErrorMsg("")} dismissible>
                 {errorMsg}
@@ -126,9 +163,7 @@ export default function HematologiDanMetabolit() {
                 <Form.Select className="rounded-3 shadow-sm" value={jenisHewan} onChange={(e) => setJenisHewan(e.target.value)} required>
                   <option value="">Pilih...</option>
                   {Object.keys(ANIMAL_CODES).map((hewan) => (
-                    <option key={hewan} value={hewan}>
-                      {hewan}
-                    </option>
+                    <option key={hewan} value={hewan}>{hewan}</option>
                   ))}
                 </Form.Select>
               </Form.Group>
@@ -136,7 +171,7 @@ export default function HematologiDanMetabolit() {
               {jenisHewan === "Lainnya" && (
                 <Form.Group className="mb-4">
                   <Form.Label className="fw-semibold">Jenis Hewan Lain</Form.Label>
-                  <Form.Control className="rounded-3 shadow-sm" value={jenisHewanLain} onChange={(e) => setJenisHewanLain(e.target.value)} required />
+                  <Form.Control className="rounded-3 shadow-sm" value={jenisHewanLain} onChange={(e) => setJenisHewanLain(e.target.value)} placeholder="Sebutkan jenis hewan..." required />
                 </Form.Group>
               )}
 
@@ -152,7 +187,33 @@ export default function HematologiDanMetabolit() {
 
               <Form.Group className="mb-4">
                 <Form.Label className="fw-semibold">Umur</Form.Label>
-                <Form.Control className="rounded-3 shadow-sm" value={umur} onChange={(e) => setUmur(e.target.value)} placeholder="Contoh: 2 Tahun" required />
+                <Row>
+                  <Col xs={6}>
+                    <Form.Control 
+                      type="number" 
+                      min="1"
+                      className="rounded-3 shadow-sm" 
+                      value={umurAngka} 
+                      onChange={(e) => setUmurAngka(e.target.value)} 
+                      placeholder="Masukkan angka" 
+                      required 
+                    />
+                  </Col>
+                  <Col xs={6}>
+                    <Form.Select 
+                      className="rounded-3 shadow-sm" 
+                      value={umurSatuan} 
+                      onChange={(e) => setUmurSatuan(e.target.value)}
+                      required
+                    >
+                      <option value="Hari">Hari</option>
+                      <option value="Minggu">Minggu</option>
+                      <option value="Bulan">Bulan</option>
+                      <option value="Tahun">Tahun</option>
+                    </Form.Select>
+                  </Col>
+                </Row>
+                <Form.Text className="text-muted">Contoh: 2 Tahun, 6 Bulan, 3 Minggu, atau 45 Hari</Form.Text>
               </Form.Group>
 
               <Form.Group className="mb-4">
@@ -168,42 +229,36 @@ export default function HematologiDanMetabolit() {
               </Form.Group>
 
               <Form.Group className="mb-4">
-                <Form.Label className="fw-semibold">Jumlah Sampel</Form.Label>
+                <Form.Label className="fw-semibold">Jumlah Sampel (Maksimal 999)</Form.Label>
                 <Form.Control
                   type="number"
                   min={1}
-                  max={15}
+                  max={999}
                   value={jumlahSampel}
                   onChange={(e) => {
                     const val = e.target.value;
-
-                    // Jika input kosong, jangan isi 0
                     if (val === "") {
                       setJumlahSampel("");
                       setKodeSampel([]);
                       return;
                     }
-
                     const num = Number(val);
                     setJumlahSampel(num);
 
-                    let arr = [...kodeSampel];
-                    if (num > arr.length) {
-                      while (arr.length < num) arr.push("");
-                    } else {
-                      arr.length = num;
-                    }
-                    setKodeSampel(arr);
+                    const newCodes = Array.from({ length: num }, (_, i) => 
+                        String(i + 1).padStart(2, "0")
+                    );
+                    setKodeSampel(newCodes);
                   }}
                   className="rounded-3 shadow-sm"
                   required
                 />
+                <Form.Text className="text-muted">*Kombinasi Hematologi & Metabolit tidak dibatasi jumlah sampel</Form.Text>
               </Form.Group>
 
-              {/* --- KODE SAMPEL OTOMATIS (HM-SP-01) --- */}
               <Form.Group className="mb-4">
                 <Form.Label className="fw-semibold">Kode Sampel (Label Botol)</Form.Label>
-                {!jenisHewan && <div className="text-muted small mb-2">Pilih jenis hewan dulu.</div>}
+                {!jenisHewan && <div className="text-muted small mb-2">Pilih jenis hewan dulu untuk memunculkan kode otomatis.</div>}
 
                 {kodeSampel.map((kode, index) => (
                   <InputGroup key={index} className="mb-2 shadow-sm">
@@ -221,21 +276,35 @@ export default function HematologiDanMetabolit() {
                     />
                   </InputGroup>
                 ))}
+                <Form.Text className="text-muted">*Kode otomatis disesuaikan: HM-[Kode Hewan]-[Nomor] (Contoh: HM-SP-01)</Form.Text>
               </Form.Group>
 
               <Form.Group className="mb-4">
                 <Form.Label className="fw-semibold">Analisis (Hematologi & Metabolit)</Form.Label>
-
+                <div className="mb-3 p-2 bg-light rounded">
+                  <Form.Check 
+                    type="checkbox" 
+                    label={<strong>Pilih Semua</strong>}
+                    checked={isAllSelected}
+                    onChange={handleSelectAll}
+                  />
+                </div>
                 <div className="d-flex flex-column gap-2">
                   {analysisOptions.map((item, index) => (
-                    <Form.Check key={index} type="checkbox" label={item} className="text-secondary" onChange={() => handleCheckboxChange(item)} />
+                    <Form.Check 
+                      key={index} 
+                      type="checkbox" 
+                      label={item} 
+                      checked={analyses.includes(item)}
+                      onChange={() => handleCheckboxChange(item)} 
+                    />
                   ))}
                 </div>
               </Form.Group>
 
               <Form.Group className="mb-4">
                 <Form.Label className="fw-semibold">Tanggal Kirim</Form.Label>
-                <div className="position-relative w-100">
+                <div className="w-100">
                   <DatePicker selected={tanggalKirim} onChange={(date) => setTanggalKirim(date)} className="form-control rounded-3 shadow-sm pe-5 w-100" dateFormat="dd/MM/yyyy" placeholderText="Pilih tanggal pengiriman" required />
                 </div>
                 <Form.Text className="text-muted">*Tanggal otomatis terisi dari Kalender.</Form.Text>
@@ -261,9 +330,7 @@ export default function HematologiDanMetabolit() {
           </p>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="success" onClick={handleCloseSuccess}>
-            OK
-          </Button>
+          <Button variant="success" onClick={handleCloseSuccess}>OK</Button>
         </Modal.Footer>
       </Modal>
 

@@ -13,21 +13,21 @@ return new class extends Migration
     {
         Schema::create('quota_settings', function (Blueprint $table) {
             $table->id();
-            $table->date('tanggal');
+            $table->date('tanggal')->nullable();
             $table->enum('jenis_analisis', ['hematologi', 'metabolit', 'hematologi_metabolit']);
             $table->integer('kuota_maksimal')->default(15);
+            $table->boolean('is_strict')->default(true);
             $table->timestamps();
-            $table->unique(['tanggal', 'jenis_analisis']);
         });
+
         Schema::create('bookings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->string('kode_sampel')->unique();
-            $table->enum('jenis_analisis', ['Hematologi', 'Metabolit', 'Hematologi & Metabolit']);
+            $table->text('kode_sampel');
+            $table->enum('jenis_analisis', ['hematologi', 'metabolit', 'hematologi_metabolit']);
             $table->date('tanggal_kirim');
-            $table->enum('status', ['Menunggu Persetujuan', 'Disetujui', 'Ditolak', 'Selesai'])->default('Menunggu Persetujuan');
+            $table->enum('status', ['menunggu', 'disetujui', 'ditolak', 'proses', 'selesai', 'dibatalkan'])->default('menunggu');
             $table->text('alasan_penolakan')->nullable();
-
 
             $table->string('jenis_hewan');
             $table->string('jenis_hewan_lain')->nullable();
@@ -35,6 +35,9 @@ return new class extends Migration
             $table->string('umur');
             $table->string('status_fisiologis');
             $table->integer('jumlah_sampel');
+
+            $table->text('hasil_analisis')->nullable();
+            $table->boolean('is_paid')->default(0);
 
             $table->timestamps();
         });

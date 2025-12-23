@@ -15,6 +15,9 @@ class Booking extends Model
         'tanggal_kirim' => 'date',
     ];
 
+    // Ensure snake_case serialization for frontend
+    protected $with = [];
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -23,5 +26,20 @@ class Booking extends Model
     public function analysisItems()
     {
         return $this->hasMany(BookingAnalysisItem::class);
+    }
+
+    // Override toArray to ensure snake_case for relations
+    public function toArray()
+    {
+        $array = parent::toArray();
+
+        // Convert analysisItems to analysis_items if loaded
+        if (isset($array['analysis_items'])) {
+            // Already correct
+        } elseif ($this->relationLoaded('analysisItems')) {
+            $array['analysis_items'] = $this->analysisItems->toArray();
+        }
+
+        return $array;
     }
 }

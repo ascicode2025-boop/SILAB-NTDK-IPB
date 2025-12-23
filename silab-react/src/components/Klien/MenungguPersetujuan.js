@@ -4,10 +4,10 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import NavbarLogin from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
 import "../../css/MenungguPersetujuan.css";
-import { getUserBookings } from "../../services/BookingService";
+import { getUserBookings, cancelBooking } from "../../services/BookingService";
 import { useHistory } from "react-router-dom";
 import dayjs from "dayjs";
-import { Spin, message } from "antd";
+import { Spin, message, Modal } from "antd";
 
 const MenungguPersetujuan = () => {
   const history = useHistory();
@@ -27,13 +27,15 @@ const MenungguPersetujuan = () => {
           return;
         }
 
-        // FILTER: Hanya tampilkan status tertentu
-        // Sampel Diterima, Selesai, atau status akhir lainnya tidak akan muncul di sini
-        const filtered = bookings.filter((b) => 
-          b.status === "Menunggu Persetujuan" || 
-          b.status === "Disetujui" || 
-          b.status === "Ditolak"
-        );
+        // FILTER: Hanya tampilkan status tertentu (support lowercase dari backend)
+        // Status proses dan selesai tidak akan muncul di sini
+        const filtered = bookings.filter((b) => {
+          const status = (b.status || '').toLowerCase();
+          return status === "menunggu" || 
+                 status === "menunggu persetujuan" ||
+                 status === "disetujui" || 
+                 status === "ditolak";
+        });
 
         setBookingList(filtered);
       } catch (error) {
@@ -48,20 +50,61 @@ const MenungguPersetujuan = () => {
 
   const handleSelectBooking = (booking) => {
     setSelectedBooking(booking);
-    // Jika status "Disetujui", maka nyalakan Step 3
-    if (booking.status === "Disetujui") {
+    // Step berdasarkan status - cukup sampai step 3 (disetujui)
+    const status = (booking.status || '').toLowerCase();
+    if (status === "disetujui") {
       setCurrentStep(3);
     } else {
       setCurrentStep(2);
     }
   };
 
+  const handleCancelBooking = async (bookingId) => {
+    Modal.confirm({
+      title: 'Batalkan Pesanan',
+      content: 'Apakah Anda yakin ingin membatalkan pesanan ini?',
+      okText: 'Ya, Batalkan',
+      cancelText: 'Tidak',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          setLoading(true);
+          await cancelBooking(bookingId);
+          message.success('Pesanan berhasil dibatalkan');
+          
+          // Reload data
+          const response = await getUserBookings();
+          const bookings = response.data;
+          const filtered = bookings.filter((b) => {
+            const status = (b.status || '').toLowerCase();
+            return status === "menunggu" || 
+                   status === "menunggu persetujuan" ||
+                   status === "disetujui" || 
+                   status === "ditolak";
+          });
+          setBookingList(filtered);
+          setSelectedBooking(null);
+        } catch (error) {
+          console.error("Gagal membatalkan pesanan:", error);
+          message.error(error.message || "Gagal membatalkan pesanan");
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+  };
+
   const getStatusBadge = (status) => {
-    switch (status) {
-      case "Disetujui":
+    const lowerStatus = (status || '').toLowerCase();
+    switch (lowerStatus) {
+      case "proses":
+        return "bg-info text-white";
+      case "disetujui":
         return "bg-success";
-      case "Ditolak":
+      case "ditolak":
         return "bg-danger";
+      case "menunggu":
+      case "menunggu persetujuan":
       default:
         return "bg-warning text-dark";
     }
@@ -69,15 +112,31 @@ const MenungguPersetujuan = () => {
 
   const generateSampleCodes = (booking) => {
     if (!booking) return [];
-    const count = booking.jumlah_sampel;
-    const mainCode = booking.kode_sampel;
-    if (count <= 1) return [mainCode];
-
-    let codes = [];
-    for (let i = 1; i <= count; i++) {
-      codes.push(`${mainCode}-${i}`);
+    
+    // UPDATED: Parse kode_sampel dari JSON jika berbentuk string
+    try {
+      let codes = [];
+      
+      if (typeof booking.kode_sampel === 'string') {
+        // Coba parse sebagai JSON
+        try {
+          codes = JSON.parse(booking.kode_sampel);
+          if (Array.isArray(codes)) {
+            return codes;
+          }
+        } catch (e) {
+          // Jika bukan JSON, gunakan sebagai single code
+          codes = [booking.kode_sampel];
+        }
+      } else if (Array.isArray(booking.kode_sampel)) {
+        codes = booking.kode_sampel;
+      }
+      
+      return codes;
+    } catch (error) {
+      console.error('Error parsing kode_sampel:', error);
+      return ['Error loading codes'];
     }
-    return codes;
   };
 
   const getWALink = () => {
@@ -101,8 +160,9 @@ const MenungguPersetujuan = () => {
   const renderDetail = () => {
     if (!selectedBooking) return null;
     const sampleCodes = generateSampleCodes(selectedBooking);
-    const isRejected = selectedBooking.status === "Ditolak";
-    const isApproved = selectedBooking.status === "Disetujui";
+    const status = (selectedBooking.status || '').toLowerCase();
+    const isRejected = status === "ditolak";
+    const isApproved = status === "disetujui";
 
     return (
       <div className="fade-in">
@@ -124,7 +184,7 @@ const MenungguPersetujuan = () => {
 
           {/* Step 2 */}
           <div className="step">
-            <div className={`icon-wrapper active ${currentStep === 2 ? "pulse-active" : ""} big-step ${selectedBooking.status === "Menunggu Persetujuan" ? "rotate-icon" : ""}`}>
+            <div className={`icon-wrapper active ${currentStep === 2 ? "pulse-active" : ""} big-step ${status === "menunggu" || status === "menunggu persetujuan" ? "rotate-icon" : ""}`}>
               {isRejected ? <i className="bi bi-x-lg"></i> : <i className="bi bi-clock"></i>}
             </div>
             <p className={`label ${currentStep === 2 ? "active-text" : ""}`}>{isRejected ? "Ditolak" : "Verifikasi"}</p>
@@ -144,10 +204,10 @@ const MenungguPersetujuan = () => {
         {/* Kartu Status */}
         <div className="d-flex justify-content-center">
           <div
-            className={`info-card text-center shadow-sm ${isRejected ? "border-danger" : isApproved ? "border-success" : ""}`}
+            className={`info-card text-center shadow-sm ${isRejected ? "border-danger" : isApproved ? "border-success" : status === "proses" ? "border-info" : ""}`}
             style={{
               maxWidth: "600px",
-              borderTop: isRejected ? "5px solid #dc3545" : isApproved ? "5px solid #198754" : "5px solid #ffc107",
+              borderTop: isRejected ? "5px solid #dc3545" : isApproved ? "5px solid #198754" : status === "proses" ? "5px solid #0dcaf0" : "5px solid #ffc107",
               backgroundColor: "#fff",
             }}
           >
@@ -159,6 +219,16 @@ const MenungguPersetujuan = () => {
                 <h4 className="fw-bold text-danger mb-3">Pesanan Ditolak</h4>
                 <div className="alert alert-danger text-start">
                   <strong>Alasan:</strong> {selectedBooking.alasan_penolakan || "Hubungi Admin via WhatsApp."}
+                </div>
+              </>
+            ) : status === "proses" ? (
+              <>
+                <div className="mb-3 text-info">
+                  <i className="bi bi-graph-up-arrow" style={{ fontSize: "3.5rem" }}></i>
+                </div>
+                <h4 className="fw-bold text-info mb-3">Sedang Dianalisis</h4>
+                <div className="alert alert-info text-start">
+                  <i className="bi bi-info-circle me-2"></i> Sampel Anda sedang dalam proses analisis oleh teknisi laboratorium.
                 </div>
               </>
             ) : isApproved ? (
@@ -179,21 +249,42 @@ const MenungguPersetujuan = () => {
             )}
 
             <div className="text-start bg-light p-3 rounded mb-4 border">
-              <h6 className="fw-bold text-secondary mb-2">Daftar Label Sampel Anda:</h6>
-              <ul className="list-group list-group-flush small" style={{ maxHeight: "150px", overflowY: "auto" }}>
+              <h6 className="fw-bold text-secondary mb-3">
+                <i className="bi bi-tags-fill me-2 text-primary"></i>
+                Daftar Label Sampel ({sampleCodes.length} sampel)
+              </h6>
+              <div className="d-flex flex-wrap gap-2" style={{ maxHeight: "200px", overflowY: "auto" }}>
                 {sampleCodes.map((code, idx) => (
-                  <li key={idx} className="list-group-item bg-transparent py-1">
-                    <i className="bi bi-tag-fill me-2 text-primary"></i>
-                    <span className="fw-bold text-dark">{code}</span>
-                  </li>
+                  <span 
+                    key={idx} 
+                    className="badge bg-white text-dark border py-2 px-3"
+                    style={{ fontSize: '0.85rem', fontWeight: '500' }}
+                  >
+                    <i className="bi bi-tag-fill me-1 text-secondary"></i>
+                    {code}
+                  </span>
                 ))}
-              </ul>
+              </div>
             </div>
 
-            <a href={getWALink()} target="_blank" rel="noopener noreferrer" className="btn wa-btn text-white w-100">
+            <a href={getWALink()} target="_blank" rel="noopener noreferrer" className="btn wa-btn text-white w-100 mb-2">
               <i className="bi bi-whatsapp me-2"></i>
               {selectedBooking.status === "Menunggu Persetujuan" ? "Konfirmasi via WhatsApp" : "Hubungi Admin"}
             </a>
+            
+            {/* Cancel button - only for menunggu or disetujui status */}
+            {(() => {
+              const status = (selectedBooking.status || '').toLowerCase();
+              return (status === "menunggu" || status === "menunggu persetujuan" || status === "disetujui");
+            })() && (
+              <button 
+                onClick={() => handleCancelBooking(selectedBooking.id)} 
+                className="btn btn-danger w-100"
+              >
+                <i className="bi bi-x-circle me-2"></i>
+                Batalkan Pesanan
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -231,7 +322,14 @@ const MenungguPersetujuan = () => {
                   <div className="card shadow-sm border-0 h-100 hover-card" style={{ cursor: "pointer" }} onClick={() => handleSelectBooking(item)}>
                     <div className="card-body d-flex justify-content-between align-items-center">
                       <div>
-                        <h6 className="fw-bold mb-1 text-dark">{item.kode_sampel}</h6>
+                        <h6 className="fw-bold mb-1 text-dark">
+                          {generateSampleCodes(item)[0] || item.kode_sampel}
+                        </h6>
+                        {generateSampleCodes(item).length > 1 && (
+                          <small className="text-muted d-block mb-1">
+                            +{generateSampleCodes(item).length - 1} sampel lainnya
+                          </small>
+                        )}
                         <small className="text-muted d-block">
                           {dayjs(item.tanggal_kirim).format("DD MMM YYYY")} | {item.jenis_analisis}
                         </small>

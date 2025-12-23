@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Image, Nav, Dropdown } from "react-bootstrap";
+import { Image, Nav, Dropdown, Badge } from "react-bootstrap";
 import { useHistory, useLocation } from "react-router-dom";
-import { FaTachometerAlt, FaFileAlt, FaCalendarAlt, FaClipboardList, FaClock, FaFlask, FaCreditCard, FaHistory, FaBars, FaUserCircle } from "react-icons/fa";
+import { FaTachometerAlt, FaFileAlt, FaCalendarAlt, FaClipboardList, FaClock, FaFlask, FaCreditCard, FaHistory, FaBars, FaUserCircle, FaBell } from "react-icons/fa";
+import { getUnreadNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "../../services/NotificationService";
 import "@fontsource/poppins";
 
 
@@ -12,11 +13,53 @@ function NavbarLoginTeknisi({ children }) {
   const [activeMenu, setActiveMenu] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [notifCount, setNotifCount] = useState(0);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
     if (storedUser) setUser(storedUser);
   }, []);
+
+  // Fetch notifications dengan polling
+  const fetchNotifications = async () => {
+    try {
+      const response = await getUnreadNotifications();
+      setNotifications(response.data || []);
+      setNotifCount(response.count || 0);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleNotificationClick = async (notif) => {
+    try {
+      await markNotificationAsRead(notif.id);
+      fetchNotifications();
+      
+      if (notif.booking_id) {
+        history.push('/teknisi/dashboard/verifikasiSampel');
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+      fetchNotifications();
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
+  };
 
   const menus = [
   { key: "dashboard", label: "Dahboard", icon: <FaTachometerAlt /> },
@@ -67,18 +110,86 @@ function NavbarLoginTeknisi({ children }) {
           </div>
         </div>
 
-        <Dropdown align="end">
-          <Dropdown.Toggle variant="light" id="dropdown-user" className="d-flex align-items-center border-0 bg-transparent">
-            <FaUserCircle size={25} className="me-2 text-primary" />
-            <span className="fw-semibold d-none d-md-inline" style={{ fontSize: "0.9rem" }}>
-              {user?.name || "User"}
-            </span>
-          </Dropdown.Toggle>
-          <Dropdown.Menu>
-            <Dropdown.Item onClick={() => alert("Profil belum tersedia")}>Profil</Dropdown.Item>
-            <Dropdown.Item onClick={handleLogout}>Logout</Dropdown.Item>
-          </Dropdown.Menu>
-        </Dropdown>
+        <div className="d-flex align-items-center gap-3">
+          {/* Notification Bell */}
+          <Dropdown show={showNotifDropdown} onToggle={(isOpen) => setShowNotifDropdown(isOpen)} align="end">
+            <Dropdown.Toggle 
+              variant="light" 
+              className="border-0 bg-transparent position-relative p-2"
+              style={{ cursor: 'pointer' }}
+            >
+              <FaBell size={20} className="text-secondary" />
+              {notifCount > 0 && (
+                <Badge 
+                  bg="danger" 
+                  pill 
+                  style={{ 
+                    position: 'absolute', 
+                    top: '0', 
+                    right: '0', 
+                    fontSize: '0.65rem',
+                    minWidth: '18px',
+                    height: '18px'
+                  }}
+                >
+                  {notifCount}
+                </Badge>
+              )}
+            </Dropdown.Toggle>
+
+            <Dropdown.Menu style={{ maxHeight: '400px', overflowY: 'auto', minWidth: '300px' }}>
+              <div className="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                <strong>Notifikasi</strong>
+                {notifCount > 0 && (
+                  <button 
+                    className="btn btn-link btn-sm text-decoration-none p-0" 
+                    onClick={handleMarkAllAsRead}
+                  >
+                    Tandai Semua
+                  </button>
+                )}
+              </div>
+              
+              {notifications.length === 0 ? (
+                <div className="text-center text-muted py-4">
+                  <FaBell size={30} className="mb-2" />
+                  <div>Tidak ada notifikasi</div>
+                </div>
+              ) : (
+                notifications.map((notif) => (
+                  <Dropdown.Item 
+                    key={notif.id} 
+                    onClick={() => handleNotificationClick(notif)}
+                    className="py-2 px-3"
+                    style={{ whiteSpace: 'normal', borderBottom: '1px solid #f0f0f0' }}
+                  >
+                    <div>
+                      <strong className="d-block">{notif.title}</strong>
+                      <small className="text-muted">{notif.message}</small>
+                      <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                        {new Date(notif.created_at).toLocaleString('id-ID')}
+                      </div>
+                    </div>
+                  </Dropdown.Item>
+                ))
+              )}
+            </Dropdown.Menu>
+          </Dropdown>
+
+          {/* User Dropdown */}
+          <Dropdown align="end">
+            <Dropdown.Toggle variant="light" id="dropdown-user" className="d-flex align-items-center border-0 bg-transparent">
+              <FaUserCircle size={25} className="me-2 text-primary" />
+              <span className="fw-semibold d-none d-md-inline" style={{ fontSize: "0.9rem" }}>
+                {user?.name || "User"}
+              </span>
+            </Dropdown.Toggle>
+            <Dropdown.Menu>
+              <Dropdown.Item onClick={() => alert("Profil belum tersedia")}>Profil</Dropdown.Item>
+              <Dropdown.Item onClick={handleLogout}>Logout</Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
+        </div>
       </header>
 
       {/* Sidebar */}

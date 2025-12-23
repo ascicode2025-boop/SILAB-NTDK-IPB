@@ -14,6 +14,7 @@ const VerifikasiSampel = () => {
   const [dataBookings, setDataBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("semua");
 
   const [showPopup, setShowPopup] = useState(false);
   const [selectedSample, setSelectedSample] = useState(null);
@@ -22,7 +23,11 @@ const VerifikasiSampel = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailData, setDetailData] = useState(null);
 
-  const approvedData = dataBookings.filter((item) => item.status === "Disetujui");
+  // UPDATED: Filter untuk lowercase status
+  const approvedData = dataBookings.filter((item) => {
+    const status = (item.status || '').toLowerCase();
+    return status === "disetujui";
+  });
 
   // --- 1. AMBIL DATA ---
   const fetchData = async () => {
@@ -42,31 +47,50 @@ const VerifikasiSampel = () => {
     fetchData();
   }, []);
 
-  // --- 2. HELPER GENERATE KODE SAMPEL TURUNAN (LOGIKA BARU) ---
+  // --- 2. HELPER GENERATE KODE SAMPEL ---
   const generateSampleCodes = (booking) => {
     if (!booking) return [];
-    const count = booking.jumlah_sampel;
-    const mainCode = booking.kode_sampel;
-
-    // Jika cuma 1, tampilkan kode utama saja
-    if (count <= 1) return [mainCode];
-
-    // Jika banyak, buat array: Kode-1, Kode-2, dst
-    let codes = [];
-    for (let i = 1; i <= count; i++) {
-      codes.push(`${mainCode}-${i}`);
+    
+    // Parse JSON kode_sampel dari backend
+    try {
+      let codes = [];
+      
+      if (typeof booking.kode_sampel === 'string') {
+        try {
+          codes = JSON.parse(booking.kode_sampel);
+          if (Array.isArray(codes)) {
+            return codes;
+          }
+        } catch (e) {
+          codes = [booking.kode_sampel];
+        }
+      } else if (Array.isArray(booking.kode_sampel)) {
+        codes = booking.kode_sampel;
+      }
+      
+      return codes;
+    } catch (error) {
+      console.error('Error parsing kode_sampel:', error);
+      return [];
     }
-    return codes;
   };
 
-  // --- 3. FILTER PENCARIAN ---
+  // --- 3. FILTER PENCARIAN DAN STATUS ---
   const filteredData = dataBookings.filter((item) => {
     const query = search.toLowerCase();
-    const userName = item.user ? item.user.name.toLowerCase() : "";
+    const userName = item.user ? (item.user.full_name || item.user.name).toLowerCase() : "";
     const kode = item.kode_sampel.toLowerCase();
-    const status = item.status.toLowerCase();
+    const status = (item.status || '').toLowerCase();
     const analisis = item.jenis_analisis.toLowerCase();
 
+    // Filter berdasarkan status
+    if (statusFilter !== "semua") {
+      if (status !== statusFilter) {
+        return false;
+      }
+    }
+
+    // Filter berdasarkan pencarian
     return kode.includes(query) || userName.includes(query) || status.includes(query) || analisis.includes(query);
   });
 
@@ -85,8 +109,8 @@ const VerifikasiSampel = () => {
     if (!selectedSample) return;
     setIsProcessing(true);
     try {
-      await updateBookingStatus(selectedSample.id, "Disetujui");
-      message.success(`Sampel ${selectedSample.kode_sampel} berhasil disetujui!`);
+      await updateBookingStatus(selectedSample.id, { status: "disetujui" });
+      message.success(`Sampel ${generateSampleCodes(selectedSample)[0]} berhasil disetujui!`);
       setShowPopup(false);
       fetchData();
     } catch (error) {
@@ -105,7 +129,7 @@ const VerifikasiSampel = () => {
       state: {
         bookingId: row.id,
         kodeSampel: row.kode_sampel,
-        namaKlien: row.user ? row.user.name : "-",
+        namaKlien: row.user ? (row.user.full_name || row.user.name) : "-",
         nomorTelpon: noHp,
       },
     });
@@ -113,12 +137,18 @@ const VerifikasiSampel = () => {
 
   const handleSampelSampai = async (row) => {
     try {
-      await updateBookingStatus(row.id, "Sampel Diterima");
+      await updateBookingStatus(row.id, { status: "proses" });
       await fetchData(); // refresh data
 
-      message.success("Status diubah menjadi Sampel Diterima");
+      message.success("Sampel diterima! Status: Sedang Dianalisis");
 
-      history.push(`/teknisi/dashboard/inputNilaiAnalisis`);
+      // Redirect ke halaman input analisis dengan data booking
+      history.push({
+        pathname: "/teknisi/dashboard/inputNilaiAnalisis",
+        state: {
+          booking: row
+        }
+      });
     } catch (err) {
       console.error("ERROR UPDATE STATUS:", err.response?.data || err);
       message.error("Gagal mengubah status sampel");
@@ -128,30 +158,43 @@ const VerifikasiSampel = () => {
   return (
     <NavbarLoginTeknisi>
       <div className="font-poppins container py-5">
-        {/* Search Bar */}
-        <div className="mb-4 d-flex justify-content-center">
+        {/* Search Bar dan Filter */}
+        <div className="mb-4 d-flex justify-content-center align-items-center gap-3">
           <div className="input-group" style={{ maxWidth: "400px" }}>
             <input type="text" className="form-control rounded-start-pill" placeholder="Cari Kode / Nama..." value={search} onChange={(e) => setSearch(e.target.value)} />
             <span className="input-group-text rounded-end-pill bg-white">
               <i className="bi bi-search"></i>
             </span>
           </div>
+          
+          <select 
+            className="form-select" 
+            style={{ maxWidth: "200px" }}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="semua">Semua Status</option>
+            <option value="menunggu">Menunggu</option>
+            <option value="disetujui">Disetujui</option>
+            <option value="menunggu_verifikasi">Menunggu Verifikasi</option>
+            <option value="selesai">Selesai</option>
+          </select>
         </div>
 
         {/* Tabel Data */}
         <div className="table-responsive bg-white rounded-4 shadow p-3">
           <Spin spinning={loading} tip="Memuat data...">
-            <table className="table table-bordered align-middle text-center table-hover">
+            <table className="table table-bordered align-middle text-center table-hover" style={{ minWidth: '1000px' }}>
               <thead className="table-light">
                 <tr>
-                  <th>No</th>
-                  <th>Kode Sampel</th>
-                  <th>Nama Klien</th>
-                  <th style={{ width: "80px" }}>Jml</th>
-                  <th>Jenis Analisis</th>
-                  <th>Tanggal</th>
-                  <th>Status</th>
-                  <th>Aksi</th>
+                  <th style={{ width: '50px' }}>No</th>
+                  <th style={{ minWidth: '200px' }}>Kode Sampel</th>
+                  <th style={{ minWidth: '150px', maxWidth: '180px' }}>Nama Klien</th>
+                  <th style={{ width: '70px' }}>Jml</th>
+                  <th style={{ width: '150px' }}>Jenis Analisis</th>
+                  <th style={{ width: '100px' }}>Tanggal</th>
+                  <th style={{ width: '120px' }}>Status</th>
+                  <th style={{ width: '150px' }}>Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -159,22 +202,48 @@ const VerifikasiSampel = () => {
                   filteredData.map((row, index) => (
                     <tr key={row.id}>
                       <td>{index + 1}</td>
-                      <td className="fw-bold">{row.kode_sampel}</td>
-                      <td>{row.user ? row.user.name : "Guest"}</td>
+                      <td className="fw-bold" style={{ minWidth: '200px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                          <span style={{ whiteSpace: 'nowrap' }}>{generateSampleCodes(row)[0] || row.kode_sampel}</span>
+                          {generateSampleCodes(row).length > 1 && (
+                            <small className="text-muted" style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                              +{generateSampleCodes(row).length - 1} lainnya
+                            </small>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.user ? (row.user.full_name || row.user.name) : "Guest"}>
+                        {row.user ? (row.user.full_name || row.user.name) : "Guest"}
+                      </td>
                       <td>
-                        <span className="badge bg-light text-dark border">{row.jumlah_sampel}</span>
+                        <span className="badge bg-light text-dark border" style={{ fontSize: '0.85rem' }}>{row.jumlah_sampel}</span>
                       </td>
                       <td>{row.jenis_analisis}</td>
-                      <td>{dayjs(row.tanggal_kirim).format("DD MMM")}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{dayjs(row.tanggal_kirim).format("DD MMM")}</td>
                       <td>
-                        <span className={`badge ${row.status === "Menunggu Persetujuan" ? "bg-warning text-dark" : row.status === "Disetujui" ? "bg-success" : row.status === "Ditolak" ? "bg-danger" : "bg-secondary"}`}>{row.status}</span>
+                        <span className={`badge ${
+                          (row.status || '').toLowerCase() === "menunggu" ? "bg-warning text-dark" : 
+                          (row.status || '').toLowerCase() === "disetujui" ? "text-white" : 
+                          (row.status || '').toLowerCase() === "proses" ? "text-white" : 
+                          (row.status || '').toLowerCase() === "menunggu_verifikasi" ? "text-white" : 
+                          (row.status || '').toLowerCase() === "menunggu_pembayaran" ? "text-white" : 
+                          (row.status || '').toLowerCase() === "selesai" ? "bg-success" : 
+                          (row.status || '').toLowerCase() === "ditolak" ? "bg-danger" : 
+                          (row.status || '').toLowerCase() === "dibatalkan" ? "bg-secondary" : 
+                          "bg-secondary"
+                        }`} style={{
+                          ...(((row.status || '').toLowerCase() === "disetujui") && { backgroundColor: '#0d6efd' }),
+                          ...(((row.status || '').toLowerCase() === "proses") && { backgroundColor: '#6f42c1' }),
+                          ...(((row.status || '').toLowerCase() === "menunggu_verifikasi") && { backgroundColor: '#d63384' }),
+                          ...(((row.status || '').toLowerCase() === "menunggu_pembayaran") && { backgroundColor: '#fd7e14' })
+                        }}>{row.status}</span>
                       </td>
                       <td>
                         <div className="d-flex justify-content-center gap-2">
                           <button className="btn btn-info btn-sm text-white" onClick={() => handleDetail(row)} title="Detail">
                             <i className="bi bi-eye"></i>
                           </button>
-                          {row.status === "Menunggu Persetujuan" && (
+                          {(row.status || '').toLowerCase() === "menunggu" && (
                             <>
                               <button className="btn btn-success btn-sm" onClick={() => handleSetuju(row)}>
                                 <i className="bi bi-check-lg"></i>
@@ -226,8 +295,17 @@ const VerifikasiSampel = () => {
                   approvedData.map((row, index) => (
                     <tr key={row.id}>
                       <td>{index + 1}</td>
-                      <td className="fw-bold">{row.kode_sampel}</td>
-                      <td>{row.user ? row.user.name : "-"}</td>
+                      <td className="fw-bold">
+                        <div>
+                          {generateSampleCodes(row)[0] || row.kode_sampel}
+                          {generateSampleCodes(row).length > 1 && (
+                            <div>
+                              <small className="text-muted">+{generateSampleCodes(row).length - 1} lainnya</small>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td>{row.user ? (row.user.full_name || row.user.name) : "-"}</td>
                       <td>
                         <span className="badge bg-light text-dark border">{row.jumlah_sampel}</span>
                       </td>
@@ -276,11 +354,11 @@ const VerifikasiSampel = () => {
                       <td className="text-muted" width="120">
                         Nama Klien
                       </td>
-                      <td>: {detailData.user?.name}</td>
+                      <td>: {detailData.user?.full_name || detailData.user?.name}</td>
                     </tr>
                     <tr>
                       <td className="text-muted">Kode Batch</td>
-                      <td className="fw-bold text-dark">: {detailData.kode_sampel}</td>
+                      <td className="fw-bold text-dark">: {generateSampleCodes(detailData)[0] || detailData.kode_sampel}</td>
                     </tr>
                     <tr>
                       <td className="text-muted">Tgl Kirim</td>
@@ -289,7 +367,22 @@ const VerifikasiSampel = () => {
                     <tr>
                       <td className="text-muted">Status</td>
                       <td>
-                        : <span className={`badge ms-1 ${detailData.status === "Ditolak" ? "bg-danger" : "bg-warning text-dark"}`}>{detailData.status}</span>
+                        : <span className={`badge ms-1 ${
+                          (detailData.status || '').toLowerCase() === "menunggu" ? "bg-warning text-dark" : 
+                          (detailData.status || '').toLowerCase() === "disetujui" ? "text-white" : 
+                          (detailData.status || '').toLowerCase() === "proses" ? "text-white" : 
+                          (detailData.status || '').toLowerCase() === "menunggu_verifikasi" ? "text-white" : 
+                          (detailData.status || '').toLowerCase() === "menunggu_pembayaran" ? "text-white" : 
+                          (detailData.status || '').toLowerCase() === "selesai" ? "bg-success" : 
+                          (detailData.status || '').toLowerCase() === "ditolak" ? "bg-danger" : 
+                          (detailData.status || '').toLowerCase() === "dibatalkan" ? "bg-secondary" : 
+                          "bg-secondary"
+                        }`} style={{
+                          ...(((detailData.status || '').toLowerCase() === "disetujui") && { backgroundColor: '#0d6efd' }),
+                          ...(((detailData.status || '').toLowerCase() === "proses") && { backgroundColor: '#6f42c1' }),
+                          ...(((detailData.status || '').toLowerCase() === "menunggu_verifikasi") && { backgroundColor: '#d63384' }),
+                          ...(((detailData.status || '').toLowerCase() === "menunggu_pembayaran") && { backgroundColor: '#fd7e14' })
+                        }}>{detailData.status}</span>
                       </td>
                     </tr>
                   </tbody>
@@ -306,7 +399,9 @@ const VerifikasiSampel = () => {
                         Jenis Hewan
                       </td>
                       <td>
-                        : {detailData.jenis_hewan} {detailData.jenis_hewan_lain ? `(${detailData.jenis_hewan_lain})` : ""}
+                        : {detailData.jenis_hewan === "Lainnya" && detailData.jenis_hewan_lain 
+                            ? detailData.jenis_hewan_lain 
+                            : detailData.jenis_hewan}
                       </td>
                     </tr>
                     <tr>
@@ -390,7 +485,7 @@ const VerifikasiSampel = () => {
           <div className="popup-box">
             <h4 className="popup-title">Konfirmasi Persetujuan</h4>
             <p className="popup-text">
-              Setujui sampel <b>{selectedSample.kode_sampel}</b>? <br />
+              Setujui sampel <b>{generateSampleCodes(selectedSample)[0]}</b>? <br />
               Jumlah: <b>{selectedSample.jumlah_sampel} Sampel</b>
             </p>
             <div className="popup-buttons">

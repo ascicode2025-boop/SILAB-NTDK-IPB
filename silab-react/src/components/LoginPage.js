@@ -44,7 +44,6 @@ function LoginPage() {
       // POST ke Backend
       const response = await axios.post(`${API_URL}/login`, formData);
       
-      // --- PERBAIKAN LOGIKA TOKEN ---
       const { access_token, user } = response.data;
 
       // Validasi Token
@@ -56,16 +55,28 @@ function LoginPage() {
       console.log("User Role:", user.role);
 
       localStorage.setItem("token", access_token);
-
-     
-      setSession(access_token, user); 
-      
-     
+      localStorage.setItem("user", JSON.stringify(user)); // Simpan data user lengkap
       localStorage.setItem("role", user.role);
 
+      setSession(access_token, user); 
+      
       setLoading(false);
 
+      // ============================================================
+      // 🔥 LOGIKA PENGALIHAN (REDIRECT) PROFIL BELUM LENGKAP 🔥
+      // ============================================================
       
+      // Jika role adalah 'klien' DAN (Nama Lengkap kosong ATAU Institusi kosong)
+      if (user.role === 'klien' && (!user.full_name || !user.institusi)) {
+          alert("Halo! Karena Anda pengguna baru, silakan lengkapi Data Profil Anda terlebih dahulu.");
+          // Arahkan paksa ke halaman edit profil
+          history.push("/dashboard/ProfileAkunKlien/EditProfileKlien");
+          return; // Hentikan eksekusi agar tidak lanjut ke switch di bawah
+      }
+
+      // ============================================================
+
+      // Logika Redirect Normal (Jika profil sudah lengkap)
       switch (user.role) {
         case "teknisi":
           history.push("/teknisi/dashboard");

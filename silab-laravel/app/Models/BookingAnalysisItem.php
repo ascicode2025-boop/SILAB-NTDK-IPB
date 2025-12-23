@@ -13,6 +13,9 @@ class BookingAnalysisItem extends Model
     protected $fillable = [
         'booking_id',
         'nama_item',
+        'hasil',
+        'metode',
+        'nama_analisis',
     ];
 
     public function booking()

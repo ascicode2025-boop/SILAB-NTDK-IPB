@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useParams, useHistory } from "react-router-dom";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
 import FooterSetelahLogin from "../FooterSetelahLogin";
-import { getAllBookings, updateAnalysisResult } from "../../services/BookingService";
+import { getAllBookings, updateAnalysisResult, finalizeAnalysis } from "../../services/BookingService";
 import { Button, Spin, message, Card, Input, Typography, Divider, Tag, Space, Alert, Checkbox } from "antd";
-import { SaveOutlined, ExperimentOutlined, InfoCircleOutlined, UserOutlined, BarcodeOutlined, SettingOutlined } from "@ant-design/icons";
+import { SaveOutlined, ExperimentOutlined, UserOutlined, BarcodeOutlined, SettingOutlined, CheckCircleFilled } from "@ant-design/icons";
 import "@fontsource/poppins";
 
 const { Title, Text } = Typography;
@@ -18,8 +18,20 @@ function FormInputNilaiAnalisis() {
   const [groupedItems, setGroupedItems] = useState({});
   const [jenisBDP, setJenisBDP] = useState("unggas"); // unggas | ruminansia
   const [jenisDL, setJenisDL] = useState("unggas"); // unggas | ruminansia
+  const [lastSaved, setLastSaved] = useState(null); // Timestamp simpanan terakhir
 
-  const [resultUnit, setResultUnit] = useState("mg/dL");
+  // State untuk satuan per-item (independen)
+  const [resultUnits, setResultUnits] = useState({});
+  
+  // Helper untuk set satuan per item
+  const setResultUnitForItem = (itemName, unit) => {
+    setResultUnits(prev => ({ ...prev, [itemName]: unit }));
+  };
+  
+  // Helper untuk get satuan per item (default mg/dL)
+  const getResultUnitForItem = (itemName) => {
+    return resultUnits[itemName] || "mg/dL";
+  };
 
   // === 1. STATE KONSENTRASI STANDAR ===
   const [stdConc, setStdConc] = useState({
@@ -89,11 +101,14 @@ function FormInputNilaiAnalisis() {
   // === FETCH DATA ===
   useEffect(() => {
     fetchBooking();
-  }, []);
+  }, [id]); // Re-fetch ketika ID berubah
 
   const fetchBooking = async () => {
     try {
       setLoading(true);
+      // Reset form ke state kosong setiap kali fetch booking baru
+      setNilaiAnalisis({});
+      
       const data = await getAllBookings();
       const all = data?.data || [];
       const detail = all.find((b) => String(b.id) === String(id));
@@ -107,6 +122,7 @@ function FormInputNilaiAnalisis() {
           groups[nama].push(item);
         });
         setGroupedItems(groups);
+        // Parse existing result hanya jika ada data tersimpan
         parseExistingResult(detail);
       }
     } catch (error) {
@@ -120,9 +136,20 @@ function FormInputNilaiAnalisis() {
     if (!detail?.analysis_items) return;
 
     const parsed = {};
+    let hasData = false; // Track apakah ada data yang perlu dipopulate
+
+    console.log("=== PARSE EXISTING RESULT ===");
+    console.log("Booking ID:", detail.id);
+    console.log("Analysis items:", detail.analysis_items);
 
     detail.analysis_items.forEach((item) => {
-      if (!item.hasil) return;
+      // Skip jika hasil kosong atau hanya whitespace
+      if (!item.hasil || item.hasil.trim() === "") {
+        console.log(`Skipping ${item.nama_item} - no hasil`);
+        return;
+      }
+      
+      console.log(`Parsing ${item.nama_item}: "${item.hasil}"`);
 
       const parts = item.hasil.split(" | ");
 
@@ -137,10 +164,18 @@ function FormInputNilaiAnalisis() {
         // BDM & BDP
         // ===============================
         if (item.nama_item === "BDM" || item.nama_item === "BDP") {
-          // Ambil angka saja
-          const num = value.match(/[\d.]+/);
-          if (num) {
-            parsed[`${item.nama_item}-jumlah-${code}`] = num[0];
+          // Format baru: INPUT=10 HASIL=0.10 (unit)
+          const inputMatch = value.match(/INPUT=([\d.]+)/);
+          if (inputMatch) {
+            parsed[`${item.nama_item}-jumlah-${code}`] = inputMatch[1];
+            hasData = true;
+          } else {
+            // Fallback untuk format lama (ambil angka pertama)
+            const num = value.match(/[\d.]+/);
+            if (num) {
+              parsed[`${item.nama_item}-jumlah-${code}`] = num[0];
+              hasData = true;
+            }
           }
           return;
         }
@@ -162,6 +197,7 @@ function FormInputNilaiAnalisis() {
             const key = labelMap[m[1]];
             if (key) {
               parsed[`DL-${code}-${key}`] = m[2];
+              hasData = true;
             }
           }
           return;
@@ -171,18 +207,49 @@ function FormInputNilaiAnalisis() {
         // Kimia Klinik
         // ===============================
         if (stdConc[item.nama_item] !== undefined) {
-          parsed[`${item.nama_item}-spl-${code}`] = value;
+          // Format baru: STD=0.123 SPL=0.456 HASIL=78.9 mg/dL
+          const stdMatch = value.match(/STD=([\d.]+)/);
+          const splMatch = value.match(/SPL=([\d.]+)/);
+          
+          if (stdMatch && splMatch) {
+            parsed[`${item.nama_item}-std-${code}`] = stdMatch[1];
+            parsed[`${item.nama_item}-spl-${code}`] = splMatch[1];
+            hasData = true;
+          } else {
+            // Fallback untuk format lama (hanya hasil tanpa input)
+            // Simpan ke spl saja
+            const cleanValue = value.split(" ")[0];
+            parsed[`${item.nama_item}-spl-${code}`] = cleanValue;
+            hasData = true;
+          }
           return;
         }
 
         // ===============================
         // Hemoglobin / Hematokrit
         // ===============================
-        parsed[`${item.nama_item}-${code}`] = value;
+        // Format baru: INPUT=10 HASIL=10.0 G%
+        const inputMatch = value.match(/INPUT=([\d.]+)/);
+        if (inputMatch) {
+          parsed[`${item.nama_item}-${code}`] = inputMatch[1];
+          hasData = true;
+        } else {
+          // Fallback untuk format lama
+          const cleanValue = value.split(" ")[0];
+          parsed[`${item.nama_item}-${code}`] = cleanValue;
+          hasData = true;
+        }
       });
     });
 
-    setNilaiAnalisis(parsed);
+    // Hanya set state jika ada data yang valid
+    if (hasData) {
+      console.log("Setting nilaiAnalisis dengan data parsed:", parsed);
+      console.log("Total keys parsed:", Object.keys(parsed).length);
+      setNilaiAnalisis(parsed);
+    } else {
+      console.log("No data to populate - form will remain empty");
+    }
   };
 
   const handleInputChange = (key, value) => {
@@ -191,21 +258,246 @@ function FormInputNilaiAnalisis() {
 
   const generateSampleCodes = (booking) => {
     if (!booking) return [];
-    const count = booking.jumlah_sampel;
-    const main = booking.kode_sampel;
-    if (count <= 1) return [main];
-    let arr = [];
-    for (let i = 1; i <= count; i++) arr.push(`${main}-${i}`);
-    return arr;
+    
+    try {
+      let codes = [];
+      
+      if (typeof booking.kode_sampel === 'string') {
+        try {
+          codes = JSON.parse(booking.kode_sampel);
+          if (Array.isArray(codes)) {
+            return codes;
+          }
+        } catch (e) {
+          codes = [booking.kode_sampel];
+        }
+      } else if (Array.isArray(booking.kode_sampel)) {
+        codes = booking.kode_sampel;
+      }
+      
+      return codes;
+    } catch (error) {
+      console.error('Error parsing kode_sampel:', error);
+      return [];
+    }
   };
 
   const handleBack = async () => {
+    history.push("/teknisi/dashboard/inputNilaiAnalisis");
+  };
+
+  const handleResetForm = () => {
+    if (window.confirm('Reset semua input? Data yang belum disimpan akan hilang.')) {
+      setNilaiAnalisis({});
+      message.info('Form telah direset');
+    }
+  };
+
+  // === HELPER: BUILD PAYLOAD (hanya simpan yang terisi) ===
+  const buildItemsPayload = () => {
+    return booking.analysis_items.map((item) => {
+      const namaItem = item.nama_item;
+      const codes = generateSampleCodes(booking);
+      let hasilString = "";
+
+      // === 1. KIMIA KLINIK (METABOLIT) ===
+      if (stdConc[namaItem] !== undefined) {
+        const itemUnit = getResultUnitForItem(namaItem);
+        const results = codes
+          .map((code) => {
+            const valStd = nilaiAnalisis[`${namaItem}-std-${code}`] || "";
+            const valSpl = nilaiAnalisis[`${namaItem}-spl-${code}`] || "";
+            
+            // Skip jika tidak ada input sama sekali
+            if (!valStd && !valSpl) return null;
+            
+            const hasilMg = calculateResult(namaItem, valStd, valSpl);
+            const hasilFinal = hasilMg === "-" || hasilMg === "" 
+              ? hasilMg 
+              : itemUnit === "g/dL" 
+              ? (parseFloat(hasilMg) / 1000).toFixed(3) 
+              : hasilMg;
+            // Format: [CODE]: STD=valStd SPL=valSpl HASIL=hasilFinal unit
+            return `[${code}]: STD=${valStd} SPL=${valSpl} HASIL=${hasilFinal} ${itemUnit}`;
+          })
+          .filter(Boolean); // Hapus yang null
+        hasilString = results.join(" | ");
+      }
+      // === 2. BDM ===
+      else if (namaItem === "BDM") {
+        const results = codes
+          .map((code) => {
+            const rawVal = nilaiAnalisis[`BDM-jumlah-${code}`] || "";
+            
+            // Skip jika tidak ada input
+            if (!rawVal) return null;
+            
+            const akhr = ((parseFloat(rawVal) * 10000) / 1_000_000).toFixed(2);
+            // Format: [CODE]: INPUT=rawVal HASIL=akhr (unit)
+            return `[${code}]: INPUT=${rawVal} HASIL=${akhr} (10⁶/µL)`;
+          })
+          .filter(Boolean);
+        hasilString = results.join(" | ");
+      }
+      // === 3. BDP ===
+      else if (namaItem === "BDP") {
+        const results = codes
+          .map((code) => {
+            const rawVal = nilaiAnalisis[`BDP-jumlah-${code}`] || "";
+            
+            // Skip jika tidak ada input
+            if (!rawVal) return null;
+            
+            const factor = jenisBDP === "unggas" ? 125 : 50;
+            const akhr = ((parseFloat(rawVal) * factor) / 1000).toFixed(2);
+            // Format: [CODE]: INPUT=rawVal HASIL=akhr (unit)
+            return `[${code}]: INPUT=${rawVal} HASIL=${akhr} (10³/µL)`;
+          })
+          .filter(Boolean);
+        hasilString = results.join(" | ");
+      }
+      // === 4. DIFERENSIASI LEUKOSIT ===
+      else if (namaItem === "Diferensiasi Leukosit") {
+        const results = codes
+          .map((code) => {
+            const base = `DL-${code}`;
+            const v = {
+              Limfosit: nilaiAnalisis[`${base}-Limfosit`] || "",
+              Heterofil: nilaiAnalisis[`${base}-Heterofil`] || "",
+              Eosinofil: nilaiAnalisis[`${base}-Eosinofil`] || "",
+              Monosit: nilaiAnalisis[`${base}-Monosit`] || "",
+              Basofil: nilaiAnalisis[`${base}-Basofil`] || "",
+            };
+            
+            // Skip jika tidak ada input sama sekali
+            if (!v.Limfosit && !v.Heterofil && !v.Eosinofil && !v.Monosit && !v.Basofil) return null;
+            
+            const h = hitungDiferensiasi(v);
+            const jenis = jenisDL === "ruminansia" ? "Neutrofil" : "Heterofil";
+            return `[${code}]: Lim:${h.LimfositPersen}%, Het:${h.HeterofilPersen}%, Eos:${h.EosinofilPersen}%, Mon:${h.MonositPersen}%, Bas:${h.BasofilPersen}% (${jenis})`;
+          })
+          .filter(Boolean);
+        hasilString = results.join(" | ");
+      }
+      // === 5. HEMOGLOBIN / HEMATOKRIT ===
+      else if (namaItem === "Hemoglobin Darah" || namaItem === "Hematokrit") {
+        const key = namaItem.includes("Hemo") ? "Hemoglobin" : "Hematokrit";
+        const unit = namaItem.includes("Hemo") ? "G%" : "%";
+        const results = codes
+          .map((code) => {
+            const val = nilaiAnalisis[`${key}-${code}`] || "";
+            
+            // Skip jika tidak ada input
+            if (!val) return null;
+            
+            const hasil = calculateResult(key, val);
+            // Format: [CODE]: INPUT=val HASIL=hasil unit
+            return `[${code}]: INPUT=${val} HASIL=${hasil} ${unit}`;
+          })
+          .filter(Boolean);
+        hasilString = results.join(" | ");
+      }
+
+      return {
+        id: item.id,
+        hasil: hasilString,
+        metode: "Spectrophotometer",
+        nama_analisis: item.nama_analisis || booking.jenis_analisis,
+      };
+    });
+  };
+
+  const handleSimpan = async () => {
     try {
-      await saveDraft();
+      setLoading(true);
+
+      const itemsPayload = buildItemsPayload();
+      
+      console.log("=== SIMPAN DRAFT ===");
+      console.log("Items payload:", itemsPayload);
+      console.log("Jumlah items:", itemsPayload.length);
+      
+      // Hitung berapa banyak yang terisi
+      const filledItems = itemsPayload.filter(item => item.hasil && item.hasil.trim() !== "");
+      console.log("Items terisi:", filledItems.length);
+
+      const response = await updateAnalysisResult(booking.id, { items: itemsPayload });
+      
+      console.log("Response dari backend:", response);
+      
+      // Update timestamp simpanan terakhir
+      setLastSaved(new Date());
+      
+      message.success(`Draft berhasil disimpan! ${filledItems.length} item tersimpan.`);
+      
+      // Reload data untuk update UI dengan data terbaru dari backend
+      await fetchBooking();
     } catch (error) {
-      console.warn("Draft gagal disimpan, tetap kembali", error);
+      console.error("Gagal menyimpan:", error);
+      message.error("Terjadi kesalahan saat menyimpan data.");
     } finally {
-      history.push("/teknisi/dashboard/inputNilaiAnalisis");
+      setLoading(false);
+    }
+  };
+
+  const handleSelesaikan = async () => {
+    try {
+      setLoading(true);
+
+      // Cek apakah ada token
+      const token = localStorage.getItem('token');
+      if (!token) {
+        message.error("Sesi Anda telah berakhir. Silakan login kembali.");
+        setTimeout(() => {
+          history.push('/login');
+        }, 2000);
+        return;
+      }
+
+      // 1. Simpan data dulu sebelum finalize
+      const itemsPayload = buildItemsPayload();
+
+      console.log("=== SELESAIKAN ANALISIS ===");
+      console.log("Payload yang akan dikirim:", itemsPayload);
+      
+      // Validasi: pastikan ada data yang terisi
+      const filledItems = itemsPayload.filter(item => item.hasil && item.hasil.trim() !== "");
+      if (filledItems.length === 0) {
+        message.warning("Tidak ada data yang tersimpan. Silakan isi minimal satu sampel.");
+        return;
+      }
+      
+      console.log("Items terisi:", filledItems.length);
+
+      // Simpan data dulu
+      const saveResponse = await updateAnalysisResult(booking.id, { items: itemsPayload });
+      console.log("Save response:", saveResponse);
+      
+      // 2. Lalu finalize
+      await finalizeAnalysis(booking.id);
+      
+      message.success("Analisis selesai! Mengarahkan ke generate PDF...");
+      
+      // 3. Redirect ke halaman generate PDF dengan booking ID
+      history.push({
+        pathname: "/teknisi/dashboard/generatePdfAnalysis",
+        state: { booking: { id: booking.id } }
+      });
+    } catch (error) {
+      console.error("Gagal menyelesaikan:", error);
+      
+      // Handle 401 specifically
+      if (error?.status === 401 || error?.message?.includes('401')) {
+        message.error("Sesi Anda telah berakhir. Silakan login kembali.");
+        setTimeout(() => {
+          localStorage.clear();
+          history.push('/login');
+        }, 2000);
+      } else {
+        message.error("Terjadi kesalahan saat menyelesaikan analisis. Silakan coba lagi.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -219,31 +511,30 @@ function FormInputNilaiAnalisis() {
     );
   if (!booking) return null;
 
-  const saveDraft = async () => {
-    const itemsPayload = booking.analysis_items.map((dbItem) => ({
-      id: dbItem.id,
-      // Gunakan hasil yang sudah ada atau string kosong yang valid bagi backend
-      hasil: dbItem.hasil ? dbItem.hasil : "-",
-      metode: "Draft",
-    }));
-
-    try {
-      await updateAnalysisResult(booking.id, { items: itemsPayload });
-    } catch (error) {
-      console.error("Gagal simpan draft:", error.response?.data || error.message);
-    }
-  };
-
   return (
     <NavbarLoginTeknisi>
       <div style={{ backgroundColor: "#f0f2f5", minHeight: "100vh", paddingBottom: "50px", fontFamily: "'Poppins', sans-serif" }}>
         {/* Header Section */}
         <div className="bg-white border-bottom mb-4 p-4 shadow-sm">
           <div className="container">
-            <Title level={3} className="mb-1">
-              <ExperimentOutlined className="text-primary me-2" /> Input Hasil Analisis
-            </Title>
-            <Text type="secondary">Silakan masukkan data mentah laboratorium di bawah ini.</Text>
+            <div className="d-flex justify-content-between align-items-center">
+              <div>
+                <Title level={3} className="mb-1">
+                  <ExperimentOutlined className="text-primary me-2" /> Input Hasil Analisis
+                </Title>
+                <Text type="secondary">Silakan masukkan data mentah laboratorium di bawah ini.</Text>
+              </div>
+              {lastSaved && (
+                <div className="text-end">
+                  <Text type="secondary" style={{ fontSize: "12px", display: "block" }}>
+                    Terakhir disimpan:
+                  </Text>
+                  <Text strong style={{ color: "#52c41a" }}>
+                    {lastSaved.toLocaleTimeString("id-ID")}
+                  </Text>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -253,14 +544,17 @@ function FormInputNilaiAnalisis() {
             <div className="row">
               <div className="col-md-4 border-end">
                 <Space direction="vertical" size={0}>
-                  {" "}
-                  {/* Gunakan direction="vertical" tetap benar di antd v4/v5, tapi hapus small */}
                   <Text type="secondary" style={{ fontSize: "12px" }}>
-                    <BarcodeOutlined /> Kode Utama
+                    <BarcodeOutlined /> Kode Sampel
                   </Text>
-                  <Title level={4} className="m-0 text-primary">
-                    {booking.kode_sampel}
+                  <Title level={5} className="m-0 text-primary">
+                    {generateSampleCodes(booking)[0] || booking.kode_sampel}
                   </Title>
+                  {generateSampleCodes(booking).length > 1 && (
+                    <Text type="secondary" style={{ fontSize: "11px" }}>
+                      +{generateSampleCodes(booking).length - 1} kode lainnya
+                    </Text>
+                  )}
                 </Space>
               </div>
               <div className="col-md-4 border-end">
@@ -269,7 +563,7 @@ function FormInputNilaiAnalisis() {
                     <UserOutlined /> Nama Klien
                   </Text>
                   <Text strong className="d-block">
-                    {booking.user?.name}
+                    {booking.user?.full_name || booking.user?.nama_lengkap || booking.user?.name}
                   </Text>
                 </Space>
               </div>
@@ -318,11 +612,17 @@ function FormInputNilaiAnalisis() {
 
                     {/* === PILIHAN SATUAN === */}
                     <div className="d-flex gap-4 mb-3">
-                      <Checkbox checked={resultUnit === "mg/dL"} onChange={() => setResultUnit("mg/dL")}>
+                      <Checkbox 
+                        checked={getResultUnitForItem(item.nama_item) === "mg/dL"} 
+                        onChange={() => setResultUnitForItem(item.nama_item, "mg/dL")}
+                      >
                         Hasil (mg/dL)
                       </Checkbox>
 
-                      <Checkbox checked={resultUnit === "g/dL"} onChange={() => setResultUnit("g/dL")}>
+                      <Checkbox 
+                        checked={getResultUnitForItem(item.nama_item) === "g/dL"} 
+                        onChange={() => setResultUnitForItem(item.nama_item, "g/dL")}
+                      >
                         Hasil (g/dL)
                       </Checkbox>
                     </div>
@@ -334,7 +634,7 @@ function FormInputNilaiAnalisis() {
                             <th>Label Sampel</th>
                             <th className="text-center">Abs Standar</th>
                             <th className="text-center">Abs Sampel</th>
-                            <th className="text-center bg-light">Hasil ({resultUnit})</th>
+                            <th className="text-center bg-light">Hasil ({getResultUnitForItem(item.nama_item)})</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -343,8 +643,9 @@ function FormInputNilaiAnalisis() {
                             const valSpl = nilaiAnalisis[`${item.nama_item}-spl-${code}`] || "";
 
                             const hasilMg = calculateResult(item.nama_item, valStd, valSpl);
+                            const itemUnit = getResultUnitForItem(item.nama_item);
 
-                            const hasilFinal = hasilMg === "-" || hasilMg === "" ? hasilMg : resultUnit === "g/dL" ? (parseFloat(hasilMg) / 1000).toFixed(3) : hasilMg;
+                            const hasilFinal = hasilMg === "-" || hasilMg === "" ? hasilMg : itemUnit === "g/dL" ? (parseFloat(hasilMg) / 1000).toFixed(3) : hasilMg;
 
                             return (
                               <tr key={i}>
@@ -368,7 +669,7 @@ function FormInputNilaiAnalisis() {
                     </div>
                   </div>
                 )}
-
+                
                 {/* Case 2: Hematologi (BDM) */}
                 {item.nama_item === "BDM" && (
                   <div className="table-responsive">
@@ -491,13 +792,13 @@ function FormInputNilaiAnalisis() {
                           </tr>
                           <tr style={{ fontSize: "10px" }}>
                             <th>Limfosit</th>
-                            <th>{jenisDL === "unggas" ? "Neutrofil" : "Heterofil"}</th>
+                            <th>{jenisDL === "ruminansia" ? "Neutrofil" : "Heterofil"}</th>
                             <th>Eosinofil</th>
                             <th>Monosit</th>
                             <th>Basofil</th>
 
                             <th>Limfosit%</th>
-                            <th>{jenisDL === "unggas" ? "Neutrofil%" : "Heterofil%"}</th>
+                            <th>{jenisDL === "ruminansia" ? "Neutrofil%" : "Heterofil%"}</th>
                             <th>Eosinofil%</th>
                             <th>Monosit%</th>
                             <th>Basofil%</th>
@@ -597,34 +898,82 @@ function FormInputNilaiAnalisis() {
             ))}
 
           {/* Action Footer */}
-          <div className="d-flex justify-content-between align-items-center mt-5 p-4 bg-white shadow-sm" style={{ borderRadius: "12px" }}>
+          <div 
+            className="d-flex justify-content-between align-items-center mt-5 p-4 bg-white shadow-sm" 
+            style={{ 
+              borderRadius: "12px",
+              position: "sticky",
+              bottom: 0,
+              zIndex: 10,
+            }}
+          >
             <Button
               size="large"
               onClick={handleBack}
               style={{
-                minWidth: "180px",
-                height: "50px",
+                minWidth: "120px",
+                height: "48px",
                 borderRadius: "8px",
-                fontWeight: 600,
+                fontWeight: 500,
+                border: "1px solid #d9d9d9",
               }}
             >
               Kembali
             </Button>
 
-            <Button
-              type="primary"
-              size="large"
-              icon={<SaveOutlined />}
-              loading={loading}
-              style={{
-                minWidth: "250px",
-                height: "50px",
-                borderRadius: "8px",
-                fontWeight: 600,
-              }}
-            >
-              Simpan & Selesaikan Analisis
-            </Button>
+            <div className="d-flex" style={{ gap: '12px' }}>
+              <Button
+                type="default"
+                size="large"
+                icon={<SaveOutlined />}
+                loading={loading}
+                onClick={handleSimpan}
+                style={{
+                  minWidth: "160px",
+                  height: "48px",
+                  borderRadius: "8px",
+                  fontWeight: 500,
+                  borderColor: "#1890ff",
+                  color: "#1890ff",
+                }}
+              >
+                Simpan Draft
+              </Button>
+
+              <Button
+                danger
+                size="large"
+                loading={loading}
+                onClick={handleResetForm}
+                style={{
+                  minWidth: "140px",
+                  height: "48px",
+                  borderRadius: "8px",
+                  fontWeight: 500,
+                }}
+              >
+                Reset Form
+              </Button>
+
+              <Button
+                type="primary"
+                size="large"
+                icon={<CheckCircleFilled />}
+                loading={loading}
+                onClick={handleSelesaikan}
+                style={{
+                  minWidth: "200px",
+                  height: "48px",
+                  borderRadius: "8px",
+                  fontWeight: 500,
+                  background: "#52c41a",
+                  borderColor: "#52c41a",
+                  boxShadow: "0 2px 8px rgba(82, 196, 26, 0.2)",
+                }}
+              >
+                Selesaikan Analisis
+              </Button>
+            </div>
           </div>
         </div>
       </div>

@@ -10,9 +10,14 @@ export const getMonthlyQuota = async (month, year, jenisAnalisis) => {
       params: {
         month: month,
         year: year,
-        jenis_analisis: jenisAnalisis
+        jenis_analisis: jenisAnalisis,
+        _t: new Date().getTime() // Cache busting
       },
-      headers: getAuthHeader() 
+      headers: {
+        ...getAuthHeader(),
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
     });
     return response.data;
   } catch (error) {

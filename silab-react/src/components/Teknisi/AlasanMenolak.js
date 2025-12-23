@@ -68,7 +68,11 @@ export default function AlasanMenolak() {
   const handleConfirm = async () => {
     setIsProcessing(true);
     try {
-      await updateBookingStatus(bookingId, "Ditolak", alasan);
+      // Update status dengan lowercase dan kirim alasan
+      await updateBookingStatus(bookingId, {
+        status: "ditolak",
+        alasan_penolakan: alasan
+      });
       setShowConfirmModal(false);
       setShowSuccessModal(true); // Tampilkan modal sukses + Tombol WA
     } catch (error) {

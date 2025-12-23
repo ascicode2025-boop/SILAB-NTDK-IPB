@@ -40,6 +40,11 @@ export default function AturTanggalTeknisi() {
   const [modalContent, setModalContent] = useState("");
   const [modalIsError, setModalIsError] = useState(false);
 
+  // UPDATED: Helper untuk cek unlimited service
+  const isUnlimitedService = (serviceType) => {
+    return serviceType === "metabolit";
+  };
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -83,6 +88,15 @@ export default function AturTanggalTeknisi() {
     const kuotaNum = Number(kuota);
     if (kuotaNum < 0) return showModal("Gagal", "Kuota tidak boleh negatif.", true);
 
+    // UPDATED: Info khusus untuk metabolit
+    if (isUnlimitedService(formCategory) && kuotaNum > 0 && kuotaNum !== 999) {
+      showModal(
+        "Info", 
+        `Perhatian: Metabolit secara default unlimited (999). Anda mengatur quota ${kuotaNum}.\nIni hanya berlaku untuk menutup tanggal tertentu (kuota 0).`, 
+        false
+      );
+    }
+
     try {
       setLoading(true);
       await updateQuotaApi({
@@ -101,6 +115,11 @@ export default function AturTanggalTeknisi() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // UPDATED: Get default quota display
+  const getDefaultQuota = (serviceType) => {
+    return isUnlimitedService(serviceType) ? 999 : 30;
   };
 
   return (
@@ -158,21 +177,25 @@ export default function AturTanggalTeknisi() {
                     const dateStr = date.format("YYYY-MM-DD");
                     const dayData = quotaData.find(item => item.date === dateStr);
                     
+                    // UPDATED: Default quota dinamis
                     let isAvailable = true; 
-                    let displayQuota = 15;
-                    let maxQuota = 15;
+                    let displayQuota = getDefaultQuota(category);
+                    let maxQuota = getDefaultQuota(category);
+                    let isStrict = !isUnlimitedService(category);
 
                     if (dayData) {
                         isAvailable = dayData.is_available;
                         displayQuota = dayData.remaining_quota;
                         maxQuota = dayData.max_quota;
+                        isStrict = dayData.is_strict !== undefined ? dayData.is_strict : isStrict;
                     } else {
                         if (isStandardHoliday(date, category)) {
                             isAvailable = false; displayQuota = 0; maxQuota = 0;
                         }
                     }
-                    const isFull = isAvailable === false && displayQuota === 0 && maxQuota > 0; 
-                    const actuallyFull = displayQuota === 0 && maxQuota > 0;
+                    
+                    // UPDATED: Untuk unlimited service, tidak pernah full kecuali di-set 0
+                    const actuallyFull = displayQuota === 0 && maxQuota > 0 && isStrict;
 
                     const isCurrentMonth = date.isSame(viewDate, "month");
                     const isPast = date.isBefore(dayjs(), 'day');
@@ -209,7 +232,9 @@ export default function AturTanggalTeknisi() {
 
                                 {/* 3. JIKA TERSEDIA (HIJAU) */}
                                 {isAvailable && !actuallyFull && (
-                                    <div className="quota-badge">Sisa: {displayQuota}</div>
+                                    <div className="quota-badge">
+                                      {isUnlimitedService(category) ? "Tersedia" : `Sisa: ${displayQuota}`}
+                                    </div>
                                 )}
                             </>
                         )}
@@ -234,31 +259,65 @@ export default function AturTanggalTeknisi() {
 
           <div className="quota-container mt-5">
             <h2 className="text-center font-semibold text-lg mb-6">Atur Kuota Harian</h2>
+            
+            {/* UPDATED: Info Banner untuk Metabolit */}
+            {isUnlimitedService(formCategory) && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-blue-700">
+                  ℹ️ <strong>Metabolit</strong> tidak memiliki batasan quota (unlimited). 
+                  Anda hanya perlu mengatur tanggal ini jika ingin <strong>menutup/meliburkan</strong> (isi 0).
+                </p>
+              </div>
+            )}
+
             <div className="quota-header">
               <label>Pilih Tanggal</label>
               <DatePicker disabled={applyAll} value={selectedDate} disabledDate={(c)=>c&&c<dayjs().endOf('day').subtract(1,'day')} onChange={(d)=>{if(d){setSelectedDate(d);setViewDate(d);}}} format="DD/MM/YYYY" allowClear={false} className="quota-date-picker" />
             </div>
             <div className="quota-form mt-4">
               <label>Masukan Jumlah Kuota</label>
-              <input type="number" min="0" className="quota-input" placeholder="(0 = Libur/Penuh)" value={kuota} onChange={(e)=>setKuota(e.target.value)} />
-              <small className="text-gray-500 mb-2">Tips: Isi 0 untuk meliburkan/menutup tanggal.</small>
+              <input 
+                type="number" 
+                min="0" 
+                className="quota-input" 
+                placeholder={isUnlimitedService(formCategory) ? "(0 = Tutup/Libur)" : "(0 = Libur/Penuh)"} 
+                value={kuota} 
+                onChange={(e)=>setKuota(e.target.value)} 
+              />
+              <small className="text-gray-500 mb-2">
+                {isUnlimitedService(formCategory) 
+                  ? "Tips: Metabolit unlimited, isi 0 hanya untuk menutup tanggal tertentu." 
+                  : "Tips: Isi 0 untuk meliburkan/menutup tanggal."}
+              </small>
               <label>Jenis Analisis</label>
               <div className="select-wrapper">
                 <select className="custom-select" value={formCategory} onChange={(e)=>setFormCategory(e.target.value)}>
-                  <option value="metabolit">Metabolit</option>
-                  <option value="hematologi">Hematologi</option>
+                  <option value="metabolit">Metabolit (Unlimited)</option>
+                  <option value="hematologi">Hematologi (Limited)</option>
                 </select>
               </div>
               <div className="flex gap-2 items-center">
                 <input type="checkbox" checked={applyAll} onChange={()=>setApplyAll(!applyAll)} />
                 <span className="text-sm">Terapkan ke semua hari (Minggu ini)</span>
               </div>
-              <button className="quota-button" onClick={handleSaveKuota} disabled={loading}>{loading?"Menyimpan...":"Simpan Kuota"}</button>
+              <button className="quota-button" onClick={handleSaveKuota} disabled={loading}>
+                {loading ? "Menyimpan..." : "Simpan Kuota"}
+              </button>
             </div>
           </div>
         </div>
         <div className="w-full max-w-6xl mt-6"><FooterSetelahLogin /></div>
-        <Modal title={modalIsError ? "Terjadi Kesalahan" : "Berhasil"} open={modalOpen} onOk={()=>setModalOpen(false)} onCancel={()=>setModalOpen(false)} okText="OK" cancelButtonProps={{style:{display:"none"}}} centered><p style={{whiteSpace:"pre-wrap"}}>{modalContent}</p></Modal>
+        <Modal 
+          title={modalIsError ? "Terjadi Kesalahan" : modalTitle || "Berhasil"} 
+          open={modalOpen} 
+          onOk={()=>setModalOpen(false)} 
+          onCancel={()=>setModalOpen(false)} 
+          okText="OK" 
+          cancelButtonProps={{style:{display:"none"}}} 
+          centered
+        >
+          <p style={{whiteSpace:"pre-wrap"}}>{modalContent}</p>
+        </Modal>
       </ConfigProvider>
     </NavbarLoginTeknisi>
   );

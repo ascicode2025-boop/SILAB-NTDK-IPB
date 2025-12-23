@@ -3,6 +3,20 @@ import { getAuthHeader } from "./AuthService";
 
 const API_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
 
+// Add axios interceptor to handle 401 errors globally
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Token expired or invalid - redirect to login
+      console.error("Session expired. Redirecting to login...");
+      localStorage.clear();
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 // --- 1. BUAT BOOKING BARU (KLIEN) ---
 export const createBooking = async (bookingData) => {
   try {
@@ -62,9 +76,20 @@ export const getAllBookings = async () => {
 };
 
 // --- 4. UPDATE STATUS (SETUJU/TOLAK) ---
-export const updateBookingStatus = async (id, status, alasan = null) => {
+export const updateBookingStatus = async (id, statusOrPayload, alasan = null) => {
   try {
-    const payload = { status, alasan };
+    let payload;
+    
+    // Support both old (string) and new (object) usage
+    if (typeof statusOrPayload === 'object') {
+      payload = statusOrPayload;
+    } else {
+      payload = { status: statusOrPayload };
+      if (alasan) {
+        payload.alasan_penolakan = alasan;
+      }
+    }
+    
     const response = await axios.put(`${API_URL}/bookings/${id}/status`, payload, {
       headers: getAuthHeader()
     });
@@ -80,22 +105,105 @@ export const updateBookingStatus = async (id, status, alasan = null) => {
   }
 };
 
-// --- 5. UPDATE HASIL ANALISIS (BARU DITAMBAHKAN) ---
-// Fungsi ini dipanggil saat teknisi menekan tombol "Simpan Data & Selesai"
+// --- 5. UPDATE HASIL ANALISIS (SIMPAN DRAFT) ---
 export const updateAnalysisResult = async (id, data) => {
   try {
-    // Endpoint ini harus sesuai dengan route di Laravel: Route::put('/bookings/{id}/results', ...)
+    const headers = getAuthHeader();
+    console.log('Update analysis result - Headers:', headers);
+    console.log('Update analysis result - Data:', data);
+    
     const response = await axios.put(`${API_URL}/bookings/${id}/results`, data, {
-      headers: getAuthHeader()
+      headers: headers
     });
     return response.data;
   } catch (error) {
     console.error("Gagal menyimpan hasil analisis:", error);
     
     if (error.response) {
+        console.error("Error response:", error.response);
+        console.error("Error status:", error.response.status);
+        console.error("Error data:", error.response.data);
+        
+        // Jika 401, token mungkin expired
+        if (error.response.status === 401) {
+          console.error("Token expired atau tidak valid! User perlu login ulang.");
+        }
+        
         throw error.response.data;
     } else {
         throw new Error("Gagal menyimpan data analisis.");
+    }
+  }
+};
+
+// --- 6. FINALIZE ANALISIS (SELESAIKAN) ---
+export const finalizeAnalysis = async (id) => {
+  try {
+    const response = await axios.put(`${API_URL}/bookings/${id}/finalize`, {}, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Gagal menyelesaikan analisis:", error);
+    
+    if (error.response) {
+        throw error.response.data;
+    } else {
+        throw new Error("Gagal menyelesaikan analisis.");
+    }
+  }
+};
+
+// --- 7. KIRIM KE KOORDINATOR ---
+export const kirimKeKoordinator = async (id) => {
+  try {
+    const response = await axios.put(`${API_URL}/bookings/${id}/kirim-koordinator`, {}, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Gagal kirim ke koordinator:", error);
+    
+    if (error.response) {
+        throw error.response.data;
+    } else {
+        throw new Error("Gagal kirim hasil analisis ke koordinator.");
+    }
+  }
+};
+
+// --- 8. VERIFIKASI KOORDINATOR ---
+export const verifikasiKoordinator = async (id) => {
+  try {
+    const response = await axios.put(`${API_URL}/bookings/${id}/verifikasi`, {}, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Gagal verifikasi:", error);
+    
+    if (error.response) {
+        throw error.response.data;
+    } else {
+        throw new Error("Gagal verifikasi hasil analisis.");
+    }
+  }
+};
+
+// --- 9. BATALKAN PESANAN (KLIEN) ---
+export const cancelBooking = async (id) => {
+  try {
+    const response = await axios.put(`${API_URL}/bookings/${id}/cancel`, {}, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Gagal membatalkan pesanan:", error);
+    
+    if (error.response) {
+        throw error.response.data;
+    } else {
+        throw new Error("Gagal membatalkan pesanan.");
     }
   }
 };

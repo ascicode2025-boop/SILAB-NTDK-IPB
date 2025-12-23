@@ -15,12 +15,13 @@ export default function Hematologi() {
 
   const [analyses, setAnalyses] = useState([]);
   const [jumlahSampel, setJumlahSampel] = useState(1);
-  const [kodeSampel, setKodeSampel] = useState([""]);
+  const [kodeSampel, setKodeSampel] = useState(["01"]);
 
   const [jenisHewan, setJenisHewan] = useState("");
   const [jenisHewanLain, setJenisHewanLain] = useState("");
   const [jenisKelamin, setJenisKelamin] = useState("");
-  const [umur, setUmur] = useState("");
+  const [umurAngka, setUmurAngka] = useState("");
+  const [umurSatuan, setUmurSatuan] = useState("Tahun");
   const [statusFisiologis, setStatusFisiologis] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -28,15 +29,8 @@ export default function Hematologi() {
   const [showSuccess, setShowSuccess] = useState(false);
 
   const ANIMAL_CODES = {
-    Ayam: "AY",
-    Bebek: "BB",
-    Domba: "DB",
-    Ikan: "IK",
-    Kambing: "KB",
-    Kerbau: "KR",
-    Puyuh: "PY",
-    Sapi: "SP",
-    Lainnya: "XX",
+    Ayam: "AY", Bebek: "BB", Domba: "DB", Ikan: "IK", Kambing: "KB",
+    Kerbau: "KR", Puyuh: "PY", Sapi: "SP", Lainnya: "XX",
   };
 
   const getCurrentPrefix = () => {
@@ -57,6 +51,16 @@ export default function Hematologi() {
     setAnalyses((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
   };
 
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setAnalyses([...analysisOptions]);
+    } else {
+      setAnalyses([]);
+    }
+  };
+
+  const isAllSelected = analysisOptions.length > 0 && analyses.length === analysisOptions.length;
+
   const onSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -76,14 +80,13 @@ export default function Hematologi() {
         jenis_hewan: jenisHewan,
         jenis_hewan_lain: jenisHewanLain,
         jenis_kelamin: jenisKelamin,
-        umur: umur,
+        umur: `${umurAngka} ${umurSatuan}`,
         status_fisiologis: statusFisiologis,
         jumlah_sampel: jumlahSampel,
         analisis_items: analyses,
       };
 
       await createBooking(payload);
-
       setShowSuccess(true);
       localStorage.removeItem("selected_booking_date");
     } catch (err) {
@@ -109,6 +112,32 @@ export default function Hematologi() {
           </div>
 
           <Card.Body className="p-4">
+            <div className="mb-4">
+              <Button 
+                variant="light"
+                className="d-flex align-items-center gap-2 px-3 py-2 shadow-sm"
+                onClick={() => history.goBack()}
+                style={{
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s ease',
+                  backgroundColor: '#f8f9fa'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#e9ecef';
+                  e.currentTarget.style.transform = 'translateX(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f8f9fa';
+                  e.currentTarget.style.transform = 'translateX(0)';
+                }}
+              >
+                <i className="bi bi-arrow-left" style={{ fontSize: '1.1rem' }}></i>
+                <span>Kembali</span>
+              </Button>
+            </div>
+            
             {errorMsg && (
               <Alert variant="danger" onClose={() => setErrorMsg("")} dismissible>
                 {errorMsg}
@@ -121,9 +150,7 @@ export default function Hematologi() {
                 <Form.Select className="rounded-3 shadow-sm" value={jenisHewan} onChange={(e) => setJenisHewan(e.target.value)} required>
                   <option value="">Pilih...</option>
                   {Object.keys(ANIMAL_CODES).map((hewan) => (
-                    <option key={hewan} value={hewan}>
-                      {hewan}
-                    </option>
+                    <option key={hewan} value={hewan}>{hewan}</option>
                   ))}
                 </Form.Select>
               </Form.Group>
@@ -147,7 +174,33 @@ export default function Hematologi() {
 
               <Form.Group className="mb-4">
                 <Form.Label className="fw-semibold">Umur</Form.Label>
-                <Form.Control className="rounded-3 shadow-sm" value={umur} onChange={(e) => setUmur(e.target.value)} placeholder="Contoh: 2 Tahun" required />
+                <Row>
+                  <Col xs={6}>
+                    <Form.Control 
+                      type="number" 
+                      min="1"
+                      className="rounded-3 shadow-sm" 
+                      value={umurAngka} 
+                      onChange={(e) => setUmurAngka(e.target.value)} 
+                      placeholder="Masukkan angka" 
+                      required 
+                    />
+                  </Col>
+                  <Col xs={6}>
+                    <Form.Select 
+                      className="rounded-3 shadow-sm" 
+                      value={umurSatuan} 
+                      onChange={(e) => setUmurSatuan(e.target.value)}
+                      required
+                    >
+                      <option value="Hari">Hari</option>
+                      <option value="Minggu">Minggu</option>
+                      <option value="Bulan">Bulan</option>
+                      <option value="Tahun">Tahun</option>
+                    </Form.Select>
+                  </Col>
+                </Row>
+                <Form.Text className="text-muted">Contoh: 2 Tahun, 6 Bulan, 3 Minggu, atau 45 Hari</Form.Text>
               </Form.Group>
 
               <Form.Group className="mb-4">
@@ -162,40 +215,35 @@ export default function Hematologi() {
                 </Form.Select>
               </Form.Group>
 
+              {/* PERUBAHAN 2: Logic Auto Numbering */}
               <Form.Group className="mb-4">
                 <Form.Label className="fw-semibold">Jumlah Sampel</Form.Label>
                 <Form.Control
                   type="number"
                   min={1}
-                  max={15}
+                  max={9999}
                   value={jumlahSampel}
                   onChange={(e) => {
                     const val = e.target.value;
-
-                    // Jika input kosong, jangan isi 0
                     if (val === "") {
                       setJumlahSampel("");
                       setKodeSampel([]);
                       return;
                     }
-
                     const num = Number(val);
                     setJumlahSampel(num);
 
-                    let arr = [...kodeSampel];
-                    if (num > arr.length) {
-                      while (arr.length < num) arr.push("");
-                    } else {
-                      arr.length = num;
-                    }
-                    setKodeSampel(arr);
+                    // Generate Array ["01", "02", ...]
+                    const newCodes = Array.from({ length: num }, (_, i) => 
+                        String(i + 1).padStart(2, "0")
+                    );
+                    setKodeSampel(newCodes);
                   }}
                   className="rounded-3 shadow-sm"
                   required
                 />
               </Form.Group>
 
-              {/* KODE SAMPEL OTOMATIS */}
               <Form.Group className="mb-4">
                 <Form.Label className="fw-semibold">Kode Sampel (Label Botol)</Form.Label>
                 {!jenisHewan && <div className="text-muted small mb-2">pilih jenis hewan dulu untuk memunculkan kode otomatis.</div>}
@@ -221,9 +269,23 @@ export default function Hematologi() {
 
               <Form.Group className="mb-4">
                 <Form.Label className="fw-semibold">Analisis Hematologi</Form.Label>
+                <div className="mb-3 p-2 bg-light rounded">
+                  <Form.Check 
+                    type="checkbox" 
+                    label={<strong>Pilih Semua</strong>}
+                    checked={isAllSelected}
+                    onChange={handleSelectAll}
+                  />
+                </div>
                 <div className="d-flex flex-column gap-2">
                   {analysisOptions.map((item, index) => (
-                    <Form.Check key={index} type="checkbox" label={item} onChange={() => handleCheckboxChange(item)} />
+                    <Form.Check 
+                      key={index} 
+                      type="checkbox" 
+                      label={item} 
+                      checked={analyses.includes(item)}
+                      onChange={() => handleCheckboxChange(item)} 
+                    />
                   ))}
                 </div>
               </Form.Group>
@@ -250,15 +312,10 @@ export default function Hematologi() {
           <Modal.Title className="text-success fw-bold">Berhasil!</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <p className="text-center">
-            Pemesanan sampel <strong>Hematologi</strong> berhasil dibuat.
-          </p>
-          <p className="text-center text-muted small">Anda akan diarahkan ke halaman Menunggu Persetujuan.</p>
+          <p className="text-center">Pemesanan sampel <strong>Hematologi</strong> berhasil dibuat.</p>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="success" onClick={handleCloseSuccess}>
-            OK
-          </Button>
+          <Button variant="success" onClick={handleCloseSuccess}>OK</Button>
         </Modal.Footer>
       </Modal>
 

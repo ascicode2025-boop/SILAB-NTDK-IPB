@@ -9,18 +9,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Masukkan SEMUA status yang mungkin digunakan di aplikasi
+        // UPDATED: Gunakan lowercase untuk konsistensi dengan kode
         DB::statement("
             ALTER TABLE bookings
             MODIFY status ENUM(
-              'Menunggu Persetujuan',
-              'Disetujui',
-              'Sampel Diterima',
-              'Sedang Dianalisis',
-              'Sedang Diverifikasi',
-              'Selesai',
-              'Ditolak'
-            ) NOT NULL
+              'menunggu',
+              'disetujui',
+              'ditolak',
+              'proses',
+              'selesai',
+              'dibatalkan'
+            ) NOT NULL DEFAULT 'menunggu'
         ");
     }
 
@@ -29,11 +28,12 @@ return new class extends Migration
         DB::statement("
             ALTER TABLE bookings
             MODIFY status ENUM(
-              'Menunggu Persetujuan',
-              'Disetujui',
-              'Sampel Diterima',
-              'Ditolak'
-            ) NOT NULL
+              'menunggu',
+              'disetujui',
+              'ditolak',
+              'proses',
+              'selesai'
+            ) NOT NULL DEFAULT 'menunggu'
         ");
     }
 };

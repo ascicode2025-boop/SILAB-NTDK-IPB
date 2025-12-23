@@ -253,7 +253,6 @@ html.ant-modal-open {
 .calendar-cell-custom.selected.not-available::after,
 .calendar-cell-custom.selected.fully-booked::after,
 .calendar-cell-custom.selected.selected-red::after {
-  content: "TUTUP";
   color: #ffffff !important;
   display: block !important;
 }

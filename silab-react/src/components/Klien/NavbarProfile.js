@@ -13,6 +13,13 @@ function NavbarProfile({ user }) {
     history.push("/LandingPage");
   };
 
+  // Cek apakah avatar adalah link lengkap (http) atau path database
+  const avatarSrc = user?.avatar
+    ? (user.avatar.startsWith('http') || user.avatar.startsWith('blob') 
+        ? user.avatar 
+        : `http://localhost:8000/storage/${user.avatar}`)
+    : null;
+
   return (
     <header className="dashboard-header d-flex justify-content-between align-items-center px-3 py-2 shadow-sm bg-white flex-wrap">
       {/* Logo */}
@@ -31,9 +38,9 @@ function NavbarProfile({ user }) {
           id="dropdown-user"
           className="d-flex align-items-center border-0 bg-transparent"
         >
-          {user?.avatar ? (
+          {avatarSrc ? (
             <Image
-              src={user.avatar}
+              src={avatarSrc}
               roundedCircle
               width={25}
               height={25}
@@ -47,12 +54,13 @@ function NavbarProfile({ user }) {
             className="fw-semibold d-none d-md-inline"
             style={{ fontSize: "0.9rem" }}
           >
+            {/* [UBAH DISINI] Hanya menampilkan Username (user.name) */}
             {user?.name || "User"}
           </span>
         </Dropdown.Toggle>
 
         <Dropdown.Menu>
-          <Dropdown.Item onClick={() => history.push("/profile")}>
+          <Dropdown.Item onClick={() => history.push("/dashboard/ProfileAkunKlien")}>
             Profil
           </Dropdown.Item>
           <Dropdown.Item onClick={handleLogout}>

@@ -9,24 +9,42 @@ import { Spin, message } from "antd";
 import dayjs from "dayjs";
 
 /* ================== STATUS → STEP ================== */
-/* Logic Anda yang sudah benar dan akan otomatis sinkron */
+/* UPDATED: Gunakan lowercase status dari backend */
 const statusToStep = (status) => {
-  switch (status) {
-    case "Sampel Diterima": return 1;
-    case "Sedang Dianalisis": return 2; // Stepper akan otomatis ke sini
-    case "Sedang Diverifikasi": return 3;
-    case "Selesai": return 4;
-    default: return 0;
+  const lowerStatus = (status || '').toLowerCase();
+  switch (lowerStatus) {
+    case "proses": 
+    case "sedang dianalisis": 
+      return 2; // Step 2: Sedang Dianalisis
+    case "menunggu_verifikasi":
+    case "menunggu verifikasi":
+      return 3; // Step 3: Verifikasi (menunggu koordinator)
+    case "menunggu_pembayaran":
+    case "menunggu pembayaran":
+      return 4; // Step 4: Menunggu Pembayaran
+    case "selesai": 
+      return 5; // Step 5: Selesai
+    default: 
+      return 1; // Step 1: Sampel Diterima (default)
   }
 };
 
 const getStatusBadge = (status) => {
-  switch (status) {
-    case "Selesai": return "bg-success";
-    case "Sedang Dianalisis":
-    case "Sedang Diverifikasi": return "bg-primary";
-    case "Sampel Diterima": return "bg-warning text-dark";
-    default: return "bg-secondary";
+  const lowerStatus = (status || '').toLowerCase();
+  switch (lowerStatus) {
+    case "selesai": 
+      return "bg-success";
+    case "menunggu_pembayaran":
+    case "menunggu pembayaran":
+      return "bg-info";
+    case "menunggu_verifikasi":
+    case "menunggu verifikasi":
+      return "bg-warning";
+    case "proses":
+    case "sedang dianalisis": 
+      return "bg-primary";
+    default: 
+      return "bg-secondary";
   }
 };
 
@@ -36,14 +54,43 @@ const ProsesAnalisis = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // Helper function untuk parse kode_sampel JSON
+  const generateSampleCodes = (booking) => {
+    if (!booking) return [];
+    
+    try {
+      let codes = [];
+      
+      if (typeof booking.kode_sampel === 'string') {
+        try {
+          codes = JSON.parse(booking.kode_sampel);
+          if (Array.isArray(codes)) {
+            return codes;
+          }
+        } catch (e) {
+          codes = [booking.kode_sampel];
+        }
+      } else if (Array.isArray(booking.kode_sampel)) {
+        codes = booking.kode_sampel;
+      }
+      
+      return codes;
+    } catch (error) {
+      console.error('Error parsing kode_sampel:', error);
+      return [];
+    }
+  };
+
   useEffect(() => {
     const fetchBookings = async () => {
       try {
         const res = await getUserBookings();
         const bookings = res.data || [];
-        const filtered = bookings.filter((b) =>
-          ["Sampel Diterima", "Sedang Dianalisis", "Sedang Diverifikasi", "Selesai"].includes(b.status)
-        );
+        // UPDATED: Filter dengan lowercase status "proses", "menunggu_verifikasi", dan "selesai"
+        const filtered = bookings.filter((b) => {
+          const status = (b.status || '').toLowerCase();
+          return status === "proses" || status === "menunggu_verifikasi" || status === "selesai";
+        });
         setBookingList(filtered);
       } catch (err) {
         console.error(err);
@@ -71,7 +118,7 @@ const ProsesAnalisis = () => {
             >
               <div className="card-body d-flex justify-content-between align-items-center">
                 <div>
-                  <h6 className="fw-bold mb-1">{item.kode_sampel}</h6>
+                  <h6 className="fw-bold mb-1">{generateSampleCodes(item)[0] || item.kode_sampel}</h6>
                   <small className="text-muted d-block">
                     {dayjs(item.tanggal_kirim).format("DD MMM YYYY")} | {item.jenis_analisis}
                   </small>
@@ -115,7 +162,7 @@ const ProsesAnalisis = () => {
             <div className={`analisis-icon ${currentStep >= 2 ? "active" : ""} ${currentStep === 2 ? "pulse-active" : ""} big-step`}>
               <i className="bi bi-arrow-repeat" />
             </div>
-            <p className={`label ${currentStep === 2 ? "active-text" : ""}`}>Sedang Dianalisis</p>
+            <p className={`label ${currentStep >= 2 ? "active-text" : ""}`}>Sedang Dianalisis</p>
           </div>
 
           <div className={`analisis-line big-line ${currentStep >= 3 ? "filled" : ""}`} />
@@ -125,17 +172,27 @@ const ProsesAnalisis = () => {
             <div className={`analisis-icon ${currentStep >= 3 ? "active" : ""} ${currentStep === 3 ? "pulse-active" : ""} big-step`}>
               <i className="bi bi-file-earmark-check" />
             </div>
-            <p className={`label ${currentStep === 3 ? "active-text" : ""}`}>Verifikasi</p>
+            <p className={`label ${currentStep >= 3 ? "active-text" : ""}`}>Verifikasi</p>
           </div>
 
           <div className={`analisis-line big-line ${currentStep >= 4 ? "filled" : ""}`} />
 
-          {/* Step 4 */}
+          {/* Step 4 - Pembayaran */}
           <div className="analisis-step">
-            <div className={`analisis-icon ${currentStep === 4 ? "active pulse-active" : ""} big-step`}>
+            <div className={`analisis-icon ${currentStep >= 4 ? "active" : ""} ${currentStep === 4 ? "pulse-active" : ""} big-step`}>
+              <i className="bi bi-credit-card" />
+            </div>
+            <p className={`label ${currentStep >= 4 ? "active-text" : ""}`}>Pembayaran</p>
+          </div>
+
+          <div className={`analisis-line big-line ${currentStep >= 5 ? "filled" : ""}`} />
+
+          {/* Step 5 - Selesai */}
+          <div className="analisis-step">
+            <div className={`analisis-icon ${currentStep >= 5 ? "active" : ""} ${currentStep === 5 ? "pulse-active" : ""} big-step`}>
               <i className="bi bi-check2" />
             </div>
-            <p className={`label ${currentStep === 4 ? "active-text" : ""}`}>Selesai</p>
+            <p className={`label ${currentStep >= 5 ? "active-text" : ""}`}>Selesai</p>
           </div>
         </div>
 
@@ -145,12 +202,12 @@ const ProsesAnalisis = () => {
             className={`info-card text-center shadow-sm`}
             style={{
               maxWidth: "600px",
-              borderTop: currentStep === 4 ? "6px solid #198754" : "6px solid #8c6b60",
+              borderTop: currentStep === 2 ? "6px solid #198754" : "6px solid #8c6b60",
               backgroundColor: "#fff",
             }}
           >
-            <div className="mb-3" style={{ color: currentStep === 4 ? "#198754" : "#8c6b60" }}>
-              {currentStep === 4 ? (
+            <div className="mb-3" style={{ color: currentStep === 2 ? "#198754" : "#8c6b60" }}>
+              {currentStep === 2 ? (
                 <i className="bi bi-check-circle-fill" style={{ fontSize: "3.5rem" }} />
               ) : (
                 <i className="bi bi-gear-fill rotate-icon-slow" style={{ fontSize: "3.5rem", display: "inline-block" }} />
@@ -158,15 +215,44 @@ const ProsesAnalisis = () => {
             </div>
 
             <h4 className="fw-bold mb-3">
-              {currentStep === 4 ? "Analisis Selesai!" : "Sampel Dalam Proses"}
+              {currentStep === 5 ? "Analisis Selesai!" : currentStep === 4 ? "Menunggu Pembayaran" : "Sampel Dalam Proses"}
             </h4>
 
-            <div className={`alert ${currentStep === 4 ? "alert-success" : "alert-info"} text-start`}>
+            <div className={`alert ${currentStep === 5 ? "alert-success" : currentStep === 4 ? "alert-info" : currentStep === 3 ? "alert-warning" : "alert-info"} text-start`}>
               {currentStep === 1 && "Sampel Anda telah kami terima dan sedang dalam antrean analisis."}
               {currentStep === 2 && "Tim teknisi kami sedang melakukan pengujian laboratorium pada sampel Anda."}
-              {currentStep === 3 && "Hasil pengujian sedang divalidasi oleh manajer teknis kami."}
-              {currentStep === 4 && "Hasil analisis telah keluar. Anda dapat mengunduh atau melihat dokumen hasil."}
+              {currentStep === 3 && "Hasil analisis telah selesai dan sedang menunggu verifikasi dari Koordinator Lab."}
+              {currentStep === 4 && (
+                <div>
+                  <i className="bi bi-credit-card me-2"></i>
+                  Hasil analisis Anda sudah siap. Silakan lakukan pembayaran untuk mendapatkan hasil lengkap.
+                  <div className="mt-2">
+                    <strong>Biaya:</strong> Rp 50.000 per sampel
+                  </div>
+                </div>
+              )}
+              {currentStep === 5 && "Hasil analisis telah diverifikasi dan selesai. Anda dapat mengunduh dokumen hasil di bawah ini."}
             </div>
+
+            {currentStep === 5 && (
+              <button
+                className="btn btn-success w-100 mt-3"
+                onClick={() => message.info('Fitur download PDF akan segera hadir')}
+              >
+                <i className="bi bi-download me-2"></i>
+                Download Hasil Analisis (PDF)
+              </button>
+            )}
+
+            {currentStep === 4 && (
+              <button
+                className="btn btn-primary w-100 mt-3"
+                onClick={() => message.info('Fitur pembayaran akan segera hadir')}
+              >
+                <i className="bi bi-credit-card me-2"></i>
+                Lakukan Pembayaran
+              </button>
+            )}
 
             <button
               className="btn wa-btn text-white w-100 mt-3"
