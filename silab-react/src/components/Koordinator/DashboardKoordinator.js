@@ -15,7 +15,7 @@ const DashboardKoordinator = () => {
   const history = useHistory();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  // ⬇⬇⬇ INI NANTI DARI BACKEND / API (SEKARANG SAMA KAYAK KODE LAMA: DUMMY)
+  // INI NANTI DARI BACKEND / API (SEKARANG DUMMY)
   const totalSampelMasukHariIni = 10;
   const totalMenungguTTD = 5;
   const totalSampelSelesai = 3;
