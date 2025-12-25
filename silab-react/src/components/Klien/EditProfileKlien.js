@@ -1,0 +1,372 @@
+import React, { useEffect, useState } from "react";
+import "bootstrap/dist/css/bootstrap.min.css";
+import { Image, Spinner } from "react-bootstrap";
+import FooterSetelahLogin from "../FooterSetelahLogin";
+import NavbarProfile from "./NavbarProfile";
+import { FaUserCircle, FaCamera } from "react-icons/fa";
+import { useHistory } from "react-router-dom";
+import axios from "axios";
+import "@fontsource/poppins";
+
+function EditProfileKlien() {
+  const history = useHistory();
+  const token = localStorage.getItem("token");
+
+  // State Form
+  const [formData, setFormData] = useState({
+    name: "",      
+    full_name: "", 
+    email: "",
+    institusi: "",
+    nomor_telpon: "",
+    role: "",
+    bio: "",
+  });
+
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [previewAvatar, setPreviewAvatar] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [isFirstTime, setIsFirstTime] = useState(false);
+
+  // 1. LOAD DATA DARI DATABASE
+  useEffect(() => {
+    if (!token) {
+      history.push("/login");
+      return;
+    }
+
+    axios
+      .get("http://localhost:8000/api/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        const user = res.data.user;
+        
+        // Deteksi User Baru (Jika Nama Lengkap / Institusi masih kosong)
+        if (!user.full_name || !user.institusi) {
+            setIsFirstTime(true); 
+        } else {
+            setIsFirstTime(false);
+        }
+
+        // Isi form dengan data yang ada (Username & Email dari Register pasti masuk sini)
+        setFormData({
+          name: user.name || "",
+          full_name: user.full_name || "",
+          email: user.email || "",
+          institusi: user.institusi || "", // Akan kosong/default jika user baru
+          nomor_telpon: user.nomor_telpon || "",
+          role: user.role || "",
+          bio: user.bio || "",
+        });
+
+        if (user.avatar) {
+            setPreviewAvatar(`http://localhost:8000/storage/${user.avatar}`);
+        }
+      })
+      .catch((err) => {
+        console.error("Gagal ambil data:", err);
+      })
+      .finally(() => setLoading(false));
+  }, [history, token]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setAvatarFile(file);
+      setPreviewAvatar(URL.createObjectURL(file)); 
+    }
+  };
+
+  // 2. FUNGSI SIMPAN DENGAN VALIDASI WAJIB ISI
+  const handleSave = async () => {
+    
+    // --- [VALIDASI FRONTEND] ---
+    // Wajib isi semua KECUALI Bio dan Foto
+    if (!formData.full_name.trim()) {
+        alert("Nama Lengkap wajib diisi!");
+        return;
+    }
+    if (!formData.institusi || formData.institusi === "") {
+        alert("Silakan pilih Institusi!");
+        return;
+    }
+    if (!formData.nomor_telpon.trim()) {
+        alert("Nomor Telepon wajib diisi!");
+        return;
+    }
+    // ---------------------------
+
+    setSaving(true);
+    
+    const dataToSend = new FormData();
+    dataToSend.append("name", formData.name);
+    dataToSend.append("full_name", formData.full_name);
+    dataToSend.append("institusi", formData.institusi);
+    dataToSend.append("nomor_telpon", formData.nomor_telpon);
+    
+    // Bio dikirim apa adanya (boleh kosong string)
+    dataToSend.append("bio", formData.bio || "");
+
+    if (avatarFile) {
+        dataToSend.append("avatar", avatarFile);
+    }
+
+    try {
+      const response = await axios.post("http://localhost:8000/api/profile/update", dataToSend, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // Update LocalStorage agar NavbarLogin tahu data sudah lengkap
+      const updatedUser = response.data.user;
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      // --- LOGIKA REDIRECT ---
+      if (isFirstTime) {
+          alert("Selamat! Profil Anda sudah lengkap. Anda akan diarahkan ke Dashboard.");
+          history.push("/dashboard"); // User Baru -> Dashboard
+      } else {
+          alert("Profil berhasil diperbarui!");
+          history.push("/dashboard/ProfileAkunKlien"); // Edit Biasa -> Lihat Profil
+      }
+
+    } catch (error) {
+      console.error("Gagal update:", error.response);
+      const msg = error.response?.data?.message || "Terjadi kesalahan saat menyimpan.";
+      const validationErrors = error.response?.data?.errors;
+      
+      if(validationErrors) {
+          if(validationErrors.avatar) {
+              alert(`Gagal upload avatar: ${validationErrors.avatar[0]}\n\nPastikan file adalah gambar (JPG, PNG, GIF, BMP, WEBP, TIFF)`);
+          } else if(validationErrors.name) {
+              alert(`Gagal: ${validationErrors.name[0]}`);
+          } else if(validationErrors.full_name) {
+              alert(`Gagal: ${validationErrors.full_name[0]}`);
+          } else {
+              alert(`Gagal: ${msg}`);
+          }
+      } else {
+          alert(`Gagal: ${msg}`);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center mt-5" style={{height: '100vh', display:'flex', alignItems:'center', justifyContent:'center'}}>
+        <Spinner animation="border" variant="primary" />
+      </div>
+    );
+  }
+
+  const userForNavbar = {
+      name: formData.name, 
+      role: formData.role,
+      avatar: previewAvatar 
+  };
+
+  return (
+    <>
+      <NavbarProfile user={userForNavbar} />
+
+      <div className="container mt-5 mb-5 font-poppins">
+        <div className="row justify-content-center">
+          <div className="col-md-8">
+
+            {/* FOTO PROFIL (Opsional) */}
+            <div className="text-center mb-4">
+              <div className="position-relative d-inline-block">
+                {previewAvatar ? (
+                  <Image
+                    src={previewAvatar}
+                    roundedCircle
+                    width={150}
+                    height={150}
+                    className="shadow-sm border"
+                    style={{ objectFit: "cover" }}
+                  />
+                ) : (
+                  <FaUserCircle size={150} className="text-secondary" />
+                )}
+                
+                <label 
+                    htmlFor="avatarInput" 
+                    className="position-absolute bottom-0 end-0 bg-primary text-white p-2 rounded-circle shadow"
+                    style={{cursor: 'pointer'}}
+                >
+                    <FaCamera size={18} />
+                </label>
+              </div>
+
+              <div className="mt-3">
+                <h4 className="fw-bold mb-0">{formData.full_name || formData.name}</h4>
+                <p className="text-muted small">@{formData.name}</p>
+              </div>
+
+              <input
+                type="file"
+                accept="image/*"
+                id="avatarInput"
+                style={{ display: "none" }}
+                onChange={handleAvatarChange}
+              />
+            </div>
+
+            {/* FORM DATA */}
+            <div className="card shadow-sm border-0" style={{borderRadius: '15px'}}>
+              <div className="card-body p-4">
+
+                {/* USERNAME (Wajib, Unik) */}
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">
+                    Username <span className="text-danger">*</span> <small className="text-muted">(Unik)</small>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    name="name"
+                    value={formData.name} 
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                {/* NAMA LENGKAP (Wajib) */}
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">
+                    Nama Lengkap <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    name="full_name"
+                    value={formData.full_name} 
+                    onChange={handleChange}
+                    placeholder="Contoh: Aryanto Pratama, S.Kom"
+                    required
+                  />
+                </div>
+
+                {/* EMAIL (Read Only - Dari Register) */}
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">
+                    Email <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    className="form-control bg-light"
+                    name="email"
+                    value={formData.email}
+                    disabled
+                    style={{cursor: 'not-allowed'}}
+                  />
+                </div>
+
+                {/* INSTITUSI (Wajib) */}
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">
+                    Institusi <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    className="form-select"
+                    name="institusi"
+                    value={formData.institusi}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="" disabled>-- Pilih Jenis Institusi --</option>
+                    <optgroup label="Eksternal">
+                        <option value="Umum">Umum / Instansi Luar</option>
+                    </optgroup>
+                    <optgroup label="Internal IPB">
+                        <option value="Mahasiswa IPB">Mahasiswa IPB</option>
+                        <option value="Dosen IPB">Dosen IPB</option>
+                        <option value="Tendik IPB">Tendik IPB</option>
+                    </optgroup>
+                  </select>
+                </div>
+
+                {/* NO TELPON (Wajib) */}
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">
+                    Nomor Telepon <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    name="nomor_telpon"
+                    value={formData.nomor_telpon}
+                    onChange={handleChange}
+                    placeholder="Contoh: 08123456789"
+                    required
+                  />
+                </div>
+
+                {/* ROLE (Read Only) */}
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Role</label>
+                  <input
+                    type="text"
+                    className="form-control bg-light"
+                    name="role"
+                    value={formData.role ? formData.role.toUpperCase() : ""}
+                    disabled
+                  />
+                </div>
+
+                {/* BIO (Opsional - Tidak ada tanda bintang) */}
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Bio</label>
+                  <textarea
+                    className="form-control"
+                    name="bio"
+                    value={formData.bio}
+                    onChange={handleChange}
+                    rows={4}
+                    placeholder="Tulis bio singkat (opsional)..."
+                  />
+                </div>
+
+                <div className="d-flex gap-2 mt-4">
+                  <button 
+                    className="btn btn-primary px-4 fw-bold" 
+                    onClick={handleSave}
+                    disabled={saving}
+                  >
+                    {saving ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> : "Simpan Profil"}
+                  </button>
+                  {/* Tombol Batal disembunyikan jika User Baru agar mereka fokus mengisi */}
+                  {!isFirstTime && (
+                      <button
+                        className="btn btn-outline-secondary px-4 fw-bold"
+                        onClick={() => history.goBack()}
+                        disabled={saving}
+                      >
+                        Batal
+                      </button>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <FooterSetelahLogin />
+    </>
+  );
+}
+
+export default EditProfileKlien;

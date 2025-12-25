@@ -29,7 +29,7 @@ class SendOtpMail extends Mailable
     public function content()
     {
         return new Content(
-            view: 'emails.send_otp', // Ini adalah file blade yang akan kita buat
+            view: 'emails.send_otp',
         );
     }
 }
