@@ -432,6 +432,7 @@ export default function GeneratePdfAnalysis({ autoGenerate = true, filename = "h
     if (autoGenerate && payload && bookingData && viewMode === 'detail') buildPDF(false);
   }, [bookingData, viewMode]);
 
+// ...existing code...
   const handleKirimKeKoordinator = async () => {
     if (!bookingData) {
       message.error("Data booking tidak ditemukan!");
@@ -440,13 +441,29 @@ export default function GeneratePdfAnalysis({ autoGenerate = true, filename = "h
 
     try {
       setLoading(true);
-      
+
       // Panggil API untuk kirim ke koordinator
-      await kirimKeKoordinator(bookingData.id);
-      
+      const response = await kirimKeKoordinator(bookingData.id);
+
+      // Jika API mengembalikan booking yang sudah diupdate, gunakan itu.
+      if (response?.data) {
+        setBookingData(response.data);
+        setSelectedBooking(response.data);
+      } else {
+        // Kalau tidak, panggil ulang untuk mengambil data terbaru dari server
+        await fetchBookingData(bookingData.id);
+      }
+
       message.success("Hasil analisis berhasil dikirim ke Koordinator Lab!");
-      
-      // Redirect ke list view
+
+      // Pastikan mode tetap di detail dan perbarui preview PDF (payload berdasarkan bookingData terbaru)
+      setViewMode('detail');
+      // Biarkan state ter-set dulu, kemudian rebuild preview
+      setTimeout(() => {
+        if (autoGenerate && bookingData) buildPDF(false);
+      }, 500);
+
+      // Redirect ke list view setelah sebentar
       setTimeout(() => {
         handleBackToList();
       }, 1500);
@@ -457,6 +474,7 @@ export default function GeneratePdfAnalysis({ autoGenerate = true, filename = "h
       setLoading(false);
     }
   };
+// ...existing code...
 
   return (
     <NavbarLoginTeknisi>

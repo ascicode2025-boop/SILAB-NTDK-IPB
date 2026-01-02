@@ -4,7 +4,7 @@ import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { Link, useHistory } from "react-router-dom";
 import axios from "axios";
-import { setSession } from "../services/AuthService"; 
+import { setSession } from "../services/AuthService";
 import "../css/LoginPage.css";
 
 // URL API
@@ -13,13 +13,13 @@ const API_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api
 function LoginPage() {
   const history = useHistory();
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // State Form
   const [formData, setFormData] = useState({
-    name: "", 
+    name: "",
     password: "",
   });
-  
+
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -42,13 +42,17 @@ function LoginPage() {
 
     try {
       // POST ke Backend
-      const response = await axios.post(`${API_URL}/login`, formData);
-      
+      const response = await axios.post(`${API_URL}/login`, formData, {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
       const { access_token, user } = response.data;
 
       // Validasi Token
       if (!access_token) {
-          throw new Error("Token tidak diterima dari server.");
+        throw new Error("Token tidak diterima dari server.");
       }
 
       console.log("Login Berhasil! Token:", access_token);
@@ -58,20 +62,20 @@ function LoginPage() {
       localStorage.setItem("user", JSON.stringify(user)); // Simpan data user lengkap
       localStorage.setItem("role", user.role);
 
-      setSession(access_token, user); 
-      
+      setSession(access_token, user);
+
       setLoading(false);
 
       // ============================================================
       // 🔥 LOGIKA PENGALIHAN (REDIRECT) PROFIL BELUM LENGKAP 🔥
       // ============================================================
-      
+
       // Jika role adalah 'klien' DAN (Nama Lengkap kosong ATAU Institusi kosong)
-      if (user.role === 'klien' && (!user.full_name || !user.institusi)) {
-          alert("Halo! Karena Anda pengguna baru, silakan lengkapi Data Profil Anda terlebih dahulu.");
-          // Arahkan paksa ke halaman edit profil
-          history.push("/dashboard/ProfileAkunKlien/EditProfileKlien");
-          return; // Hentikan eksekusi agar tidak lanjut ke switch di bawah
+      if (user.role === "klien" && (!user.full_name || !user.institusi)) {
+        alert("Halo! Karena Anda pengguna baru, silakan lengkapi Data Profil Anda terlebih dahulu.");
+        // Arahkan paksa ke halaman edit profil
+        history.push("/dashboard/ProfileAkunKlien/EditProfileKlien");
+        return; // Hentikan eksekusi agar tidak lanjut ke switch di bawah
       }
 
       // ============================================================
@@ -88,17 +92,16 @@ function LoginPage() {
           history.push("/kepala/dashboard");
           break;
         case "klien":
-          history.push("/dashboard"); 
+          history.push("/dashboard");
           break;
         default:
           history.push("/dashboard");
           break;
       }
-
     } catch (err) {
       setLoading(false);
       console.error("Login Error:", err);
-      
+
       if (err.response) {
         if (err.response.status === 401) {
           setError("Username atau password salah.");
@@ -106,18 +109,14 @@ function LoginPage() {
           const validationErrors = err.response.data.errors;
           let errorMessage = "Data tidak valid. ";
           if (validationErrors) {
-             const errorFields = Object.keys(validationErrors);
-             errorMessage += errorFields
-               .map((field) => `${field}: ${validationErrors[field].join(", ")}`)
-               .join("; ");
+            const errorFields = Object.keys(validationErrors);
+            errorMessage += errorFields.map((field) => `${field}: ${validationErrors[field].join(", ")}`).join("; ");
           } else {
-             errorMessage += err.response.data.message || "Periksa input Anda.";
+            errorMessage += err.response.data.message || "Periksa input Anda.";
           }
           setError(errorMessage);
         } else {
-          setError(
-            `Error ${err.response.status}: ${err.response.data.message || "Terjadi kesalahan di server."}`
-          );
+          setError(`Error ${err.response.status}: ${err.response.data.message || "Terjadi kesalahan di server."}`);
         }
       } else if (err.request) {
         setError("Tidak dapat terhubung ke server. Periksa koneksi internet atau URL API.");
@@ -146,12 +145,7 @@ function LoginPage() {
             borderRadius: "12px",
           }}
         >
-          <img
-            src="/asset/gambarLogo.png"
-            alt="IPB University"
-            className="login-logo mb-4"
-            style={{ width: "200px", maxWidth: "80%" }}
-          />
+          <img src="/asset/gambarLogo.png" alt="IPB University" className="login-logo mb-4" style={{ width: "200px", maxWidth: "80%" }} />
 
           <h5 className="login-title fw-semibold mb-3" style={{ fontSize: "14px", color: "#8D6E63" }}>
             Sistem Informasi Laboratorium Nutrisi Ternak Daging dan Kerja
@@ -177,29 +171,13 @@ function LoginPage() {
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3 text-start">
               <Form.Label className="fw-medium">Username</Form.Label>
-              <Form.Control
-                type="text" 
-                placeholder="Masukkan Username"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                style={{ borderRadius: "8px", padding: "10px" }}
-              />
+              <Form.Control type="text" placeholder="Masukkan Username" name="name" value={formData.name} onChange={handleChange} required style={{ borderRadius: "8px", padding: "10px" }} />
             </Form.Group>
 
             <Form.Group className="mb-4 text-start">
               <Form.Label className="fw-medium">Password</Form.Label>
               <InputGroup>
-                <Form.Control
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Masukkan password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  style={{ borderRadius: "8px", padding: "10px" }}
-                />
+                <Form.Control type={showPassword ? "text" : "password"} placeholder="Masukkan password" name="password" value={formData.password} onChange={handleChange} required style={{ borderRadius: "8px", padding: "10px" }} />
                 <Button
                   variant="light"
                   type="button"

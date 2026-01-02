@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Image, Nav, Dropdown, Badge } from "react-bootstrap";
 import { useHistory, useLocation } from "react-router-dom";
-import { FaTachometerAlt, FaFileAlt, FaCalendarAlt, FaClipboardList, FaClock, FaFlask, FaCreditCard, FaHistory, FaBars, FaUserCircle, FaBell } from "react-icons/fa";
-import { getUnreadNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "../../services/NotificationService";
+import { FaTachometerAlt, FaFileAlt, FaCalendarAlt, FaClipboardList, FaClock, FaFlask, FaHistory, FaBars, FaUserCircle, FaBell } from "react-icons/fa";
+import { getUnreadNotifications, getAllNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "../../services/NotificationService";
 import "@fontsource/poppins";
-
 
 function NavbarLoginTeknisi({ children }) {
   const history = useHistory();
@@ -22,14 +21,19 @@ function NavbarLoginTeknisi({ children }) {
     if (storedUser) setUser(storedUser);
   }, []);
 
-  // Fetch notifications dengan polling
+  // Fetch notifications dengan polling (ambil semua untuk tetap menampilkan read)
   const fetchNotifications = async () => {
     try {
-      const response = await getUnreadNotifications();
-      setNotifications(response.data || []);
-      setNotifCount(response.count || 0);
+      const allResp = await getAllNotifications(1, 50);
+      const allData = allResp && allResp.data && allResp.data.data ? allResp.data.data : [];
+
+      const unreadResp = await getUnreadNotifications();
+      const unreadCount = unreadResp && unreadResp.count ? unreadResp.count : 0;
+
+      setNotifications(allData || []);
+      setNotifCount(unreadCount || 0);
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error("Error fetching notifications:", error);
     }
   };
 
@@ -42,13 +46,19 @@ function NavbarLoginTeknisi({ children }) {
   const handleNotificationClick = async (notif) => {
     try {
       await markNotificationAsRead(notif.id);
-      fetchNotifications();
-      
+
+      // Update local state so the notification remains visible but appears read
+      setNotifications((prev) => prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n)));
+      setNotifCount((c) => Math.max(0, c - 1));
+
+      // Background sync (optional)
+      fetchNotifications().catch((e) => console.error("Background fetch error:", e));
+
       if (notif.booking_id) {
-        history.push('/teknisi/dashboard/verifikasiSampel');
+        history.push("/teknisi/dashboard/verifikasiSampel");
       }
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error("Error marking notification as read:", error);
     }
   };
 
@@ -57,20 +67,21 @@ function NavbarLoginTeknisi({ children }) {
       await markAllNotificationsAsRead();
       fetchNotifications();
     } catch (error) {
-      console.error('Error marking all as read:', error);
+      console.error("Error marking all as read:", error);
     }
   };
 
   const menus = [
-  { key: "dashboard", label: "Dahboard", icon: <FaTachometerAlt /> },
-  { key: "aturTanggalTeknisi", label: "Atur Kouta Harian", icon: <FaFileAlt /> },
-  { key: "jadwalSampel", label: "Jadwal Penerimaan Sampel", icon: <FaCalendarAlt /> },
-  { key: "verifikasiSampel", label: "Verifikasi & Update Sampel", icon: <FaClipboardList /> },
-  { key: "inputNilaiAnalisis", label: "Input Analisis", icon: <FaClock /> },
-  { key: "generatePdfAnalysis", label: "Generate Laporan Hasil Analisis (PDF)", icon: <FaFlask /> },
-  { key: "riwayat", label: "Riwayat Analisis", icon: <FaHistory /> },
-];
+    { key: "dashboard", label: "Dashboard", icon: <FaTachometerAlt /> },
+    { key: "aturTanggalTeknisi", label: "Atur Kuota Harian", icon: <FaFileAlt /> },
+    { key: "jadwalSampel", label: "Jadwal Penerimaan Sampel", icon: <FaCalendarAlt /> },
+    { key: "verifikasiSampel", label: "Verifikasi & Update Sampel", icon: <FaClipboardList /> },
+    { key: "inputNilaiAnalisis", label: "Input Analisis", icon: <FaClock /> },
+    { key: "generatePdfAnalysis", label: "Generate Laporan Hasil Analisis (PDF)", icon: <FaFlask /> },
+    { key: "riwayat", label: "Riwayat Analisis", icon: <FaHistory /> },
+  ];
 
+  const avatarSrc = user?.avatar ? (user.avatar.startsWith("http") || user.avatar.startsWith("blob") ? user.avatar : `http://localhost:8000/storage/${user.avatar}`) : null;
 
   // sinkronkan activeMenu berdasarkan URL
   useEffect(() => {
@@ -96,40 +107,43 @@ function NavbarLoginTeknisi({ children }) {
   return (
     <div className="dashboard-layout" style={{ fontFamily: "Poppins, sans-serif" }}>
       {/* Header */}
-      <header className="dashboard-header d-flex justify-content-between align-items-center px-3 py-2 shadow-sm bg-white">
+      <header className="dashboard-header d-flex justify-content-between align-items-center px-4 py-2 shadow-sm bg-white border-bottom sticky-top">
+        {/* Bagian Kiri: Burger Menu & Logo */}
         <div className="d-flex align-items-center">
-          <button className="btn border-0 me-3 d-lg-none" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle sidebar">
-            <FaBars size={22} />
+          <button className="btn btn-light border-0 me-3 d-lg-none rounded-circle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle sidebar">
+            <FaBars size={20} className="text-secondary" />
           </button>
 
-          <div className="text-center d-flex flex-column align-items-start">
-            <Image src="/asset/gambarLogo.png" alt="IPB Logo" style={{ width: "140px", height: "auto", marginBottom: "-11px" }} />
-            <div className="text-muted subtitle-text" style={{ marginTop: "15px" }}>
-              Sistem Informasi Laboratorium Nutrisi Ternak Daging Dan Kerja
+          <div className="d-flex align-items-center gap-3">
+            <Image src="/asset/gambarLogo.png" alt="IPB Logo" style={{ width: "120px", height: "auto" }} />
+            <div className="vr d-none d-md-block mx-2 text-muted opacity-25" style={{ height: "30px" }}></div>
+            <div className="d-none d-md-flex flex-column justify-content-center">
+              <span className="fw-bold text-dark mb-0" style={{ fontSize: "0.85rem", lineHeight: "1.2" }}>
+                Sistem Informasi Laboratorium
+              </span>
+              <span className="text-muted" style={{ fontSize: "0.75rem" }}>
+                Nutrisi Ternak Daging Dan Kerja
+              </span>
             </div>
           </div>
         </div>
 
-        <div className="d-flex align-items-center gap-3">
-          {/* Notification Bell */}
+        {/* Bagian Kanan: Notifikasi & User */}
+        <div className="d-flex align-items-center gap-2">
+          {/* Notification Dropdown */}
           <Dropdown show={showNotifDropdown} onToggle={(isOpen) => setShowNotifDropdown(isOpen)} align="end">
-            <Dropdown.Toggle 
-              variant="light" 
-              className="border-0 bg-transparent position-relative p-2"
-              style={{ cursor: 'pointer' }}
-            >
-              <FaBell size={20} className="text-secondary" />
+            <Dropdown.Toggle variant="light" className="border-0 bg-transparent position-relative p-2 rounded-circle" style={{ width: "40px", height: "40px" }}>
+              <FaBell size={18} className="text-secondary" />
               {notifCount > 0 && (
-                <Badge 
-                  bg="danger" 
-                  pill 
-                  style={{ 
-                    position: 'absolute', 
-                    top: '0', 
-                    right: '0', 
-                    fontSize: '0.65rem',
-                    minWidth: '18px',
-                    height: '18px'
+                <Badge
+                  bg="danger"
+                  pill
+                  className="position-absolute border border-white"
+                  style={{
+                    top: "4px",
+                    right: "4px",
+                    fontSize: "0.6rem",
+                    padding: "3px 5px",
                   }}
                 >
                   {notifCount}
@@ -137,56 +151,66 @@ function NavbarLoginTeknisi({ children }) {
               )}
             </Dropdown.Toggle>
 
-            <Dropdown.Menu style={{ maxHeight: '400px', overflowY: 'auto', minWidth: '300px' }}>
-              <div className="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
-                <strong>Notifikasi</strong>
+            <Dropdown.Menu className="shadow-lg border-0 mt-2" style={{ width: "320px", borderRadius: "12px", overflow: "hidden" }}>
+              <div className="d-flex justify-content-between align-items-center px-3 py-3 bg-light">
+                <h6 className="mb-0 fw-bold">Notifikasi</h6>
                 {notifCount > 0 && (
-                  <button 
-                    className="btn btn-link btn-sm text-decoration-none p-0" 
-                    onClick={handleMarkAllAsRead}
-                  >
+                  <button className="btn btn-sm btn-link text-decoration-none p-0 fw-semibold" onClick={handleMarkAllAsRead}>
                     Tandai Semua
                   </button>
                 )}
               </div>
-              
-              {notifications.length === 0 ? (
-                <div className="text-center text-muted py-4">
-                  <FaBell size={30} className="mb-2" />
-                  <div>Tidak ada notifikasi</div>
-                </div>
-              ) : (
-                notifications.map((notif) => (
-                  <Dropdown.Item 
-                    key={notif.id} 
-                    onClick={() => handleNotificationClick(notif)}
-                    className="py-2 px-3"
-                    style={{ whiteSpace: 'normal', borderBottom: '1px solid #f0f0f0' }}
-                  >
-                    <div>
-                      <strong className="d-block">{notif.title}</strong>
-                      <small className="text-muted">{notif.message}</small>
-                      <div className="text-muted" style={{ fontSize: '0.75rem' }}>
-                        {new Date(notif.created_at).toLocaleString('id-ID')}
+
+              <div style={{ maxHeight: "350px", overflowY: "auto" }}>
+                {notifications.length === 0 ? (
+                  <div className="text-center text-muted py-5">
+                    <FaBell size={30} className="mb-2 opacity-25" />
+                    <p className="small mb-0">Tidak ada notifikasi baru</p>
+                  </div>
+                ) : (
+                  notifications.map((notif) => (
+                    <Dropdown.Item
+                      key={notif.id}
+                      onClick={() => handleNotificationClick(notif)}
+                      className="py-3 px-3 border-bottom"
+                      style={{
+                        whiteSpace: "normal",
+                        backgroundColor: notif.is_read ? "#ffffff" : "#f0f7ff",
+                      }}
+                    >
+                      <div className="d-flex flex-column gap-1">
+                        <div className={`small fw-bold ${notif.is_read ? "text-secondary" : "text-dark"}`}>{notif.title}</div>
+                        <div className="text-muted" style={{ fontSize: "0.8rem", lineHeight: "1.4" }}>
+                          {notif.message}
+                        </div>
+                        <div className="text-uppercase fw-medium" style={{ fontSize: "0.65rem", color: "#adb5bd" }}>
+                          {new Date(notif.created_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}
+                        </div>
                       </div>
-                    </div>
-                  </Dropdown.Item>
-                ))
-              )}
+                    </Dropdown.Item>
+                  ))
+                )}
+              </div>
             </Dropdown.Menu>
           </Dropdown>
 
-          {/* User Dropdown */}
+          {/* User Profile Dropdown */}
           <Dropdown align="end">
-            <Dropdown.Toggle variant="light" id="dropdown-user" className="d-flex align-items-center border-0 bg-transparent">
-              <FaUserCircle size={25} className="me-2 text-primary" />
-              <span className="fw-semibold d-none d-md-inline" style={{ fontSize: "0.9rem" }}>
+            <Dropdown.Toggle variant="light" className="d-flex align-items-center border-0 bg-light rounded-pill px-3 py-1 gap-2" style={{ transition: "0.3s" }}>
+              {avatarSrc ? <Image src={avatarSrc} roundedCircle width={28} height={28} style={{ objectFit: "cover" }} /> : <FaUserCircle size={24} className="text-primary" />}
+              <span className="fw-semibold d-none d-md-inline" style={{ fontSize: "0.85rem" }}>
                 {user?.name || "User"}
               </span>
             </Dropdown.Toggle>
-            <Dropdown.Menu>
-              <Dropdown.Item onClick={() => alert("Profil belum tersedia")}>Profil</Dropdown.Item>
-              <Dropdown.Item onClick={handleLogout}>Logout</Dropdown.Item>
+
+            <Dropdown.Menu className="shadow-lg border-0 mt-2" style={{ borderRadius: "10px" }}>
+              <Dropdown.Item className="py-2" onClick={() => history.push("/dashboard/ProfileAkunKlien")}>
+                <i className="bi bi-person me-2"></i> Profil Akun
+              </Dropdown.Item>
+              <hr className="dropdown-divider opacity-50" />
+              <Dropdown.Item className="py-2 text-danger" onClick={handleLogout}>
+                <i className="bi bi-box-arrow-right me-2"></i> Logout
+              </Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown>
         </div>
@@ -244,7 +268,21 @@ function NavbarLoginTeknisi({ children }) {
         .page-title-bar { background-color: #a6867b; color: #fff; font-weight: 500; font-size: 1.25rem; letter-spacing: 0.5px; box-shadow: 0 -4px 8px rgba(0,0,0,0.25) inset; border-bottom-left-radius: 30px; border-bottom-right-radius:30px; }
         .sidebar-overlay { position: fixed; top: 70px; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 1050; }
         .subtitle-text { font-size: 0.8rem; white-space: normal; }
+        @keyframes bellRing {
+            0% { transform: rotate(0); }
+            15% { transform: rotate(10deg); }
+            30% { transform: rotate(-10deg); }
+            45% { transform: rotate(6deg); }
+            60% { transform: rotate(-6deg); }
+            75% { transform: rotate(3deg); }
+            100% { transform: rotate(0); }
+          }
 
+          .bell-animate {
+            animation: bellRing 1.2s ease-in-out infinite;
+            transform-origin: top center;
+          }
+            
         @media (min-width: 992px) {
           .dashboard-sidebar { transform: translateX(0); }
           .dashboard-content { margin-left: 240px; margin-top: 70px; }

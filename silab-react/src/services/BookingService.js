@@ -8,7 +8,15 @@ axios.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Token expired or invalid - redirect to login
+      // If the failing request is an auth endpoint (login/register/etc.),
+      // don't force a redirect to /login — that causes the login page to
+      // reload when the login request itself returns 401.
+      const reqUrl = (error.config && (error.config.url || '')) || '';
+      if (reqUrl.includes('/login') || reqUrl.includes('/register') || reqUrl.includes('/send-otp') || reqUrl.includes('/reset-password')) {
+        return Promise.reject(error);
+      }
+
+      // Token expired or invalid - redirect to login for other requests
       console.error("Session expired. Redirecting to login...");
       localStorage.clear();
       window.location.href = '/login';

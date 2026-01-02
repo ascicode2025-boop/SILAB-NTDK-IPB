@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Image, Nav, Dropdown, Badge } from "react-bootstrap";
 import { useHistory, useLocation } from "react-router-dom";
 import { FaTachometerAlt, FaFileAlt, FaCalendarAlt, FaClipboardList, FaClock, FaFlask, FaCreditCard, FaHistory, FaBars, FaUserCircle, FaBell } from "react-icons/fa";
-import { getUnreadNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "../../services/NotificationService";
+import { getUnreadNotifications, getAllNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "../../services/NotificationService";
 import "@fontsource/poppins";
 
 function NavbarLogin({ children }) {
@@ -20,18 +20,26 @@ function NavbarLogin({ children }) {
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
     if (storedUser) {
-        setUser(storedUser);
+      setUser(storedUser);
     }
   }, []);
 
   // 2. Fetch notifications dengan polling
   const fetchNotifications = async () => {
     try {
-      const response = await getUnreadNotifications();
-      setNotifications(response.data || []);
-      setNotifCount(response.count || 0);
+      // Ambil semua notifikasi (untuk menampilkan read + unread)
+      const allResp = await getAllNotifications(1, 50);
+      // allResp.data adalah paginator dari backend; array notifikasinya ada di allResp.data.data
+      const allData = allResp && allResp.data && allResp.data.data ? allResp.data.data : [];
+
+      // Ambil jumlah unread untuk badge
+      const unreadResp = await getUnreadNotifications();
+      const unreadCount = unreadResp && unreadResp.count ? unreadResp.count : 0;
+
+      setNotifications(allData || []);
+      setNotifCount(unreadCount);
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error("Error fetching notifications:", error);
     }
   };
 
@@ -44,14 +52,20 @@ function NavbarLogin({ children }) {
   const handleNotificationClick = async (notif) => {
     try {
       await markNotificationAsRead(notif.id);
-      fetchNotifications(); // Refresh
-      
+
+      // Update local state immediately so the message remains visible
+      setNotifications((prev) => prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n)));
+      setNotifCount((c) => Math.max(0, c - 1));
+
+      // Optionally refresh in background but don't rely on it for immediate UI
+      fetchNotifications().catch((e) => console.error("Background fetch error:", e));
+
       // Navigate to relevant page
       if (notif.booking_id) {
-        history.push('/dashboard/prosesAnalisis');
+        history.push("/dashboard/prosesAnalisis");
       }
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error("Error marking notification as read:", error);
     }
   };
 
@@ -60,7 +74,7 @@ function NavbarLogin({ children }) {
       await markAllNotificationsAsRead();
       fetchNotifications();
     } catch (error) {
-      console.error('Error marking all as read:', error);
+      console.error("Error marking all as read:", error);
     }
   };
 
@@ -69,32 +83,32 @@ function NavbarLogin({ children }) {
   // ============================================================
   useEffect(() => {
     const checkProfileCompletion = () => {
-        const storedUser = JSON.parse(localStorage.getItem("user"));
-        
-        if (storedUser) {
-            // Cek apakah data wajib sudah terisi?
-            // Kita anggap belum lengkap jika full_name atau institusi masih kosong/null
-            const isProfileIncomplete = !storedUser.full_name || !storedUser.institusi;
+      const storedUser = JSON.parse(localStorage.getItem("user"));
 
-            // Halaman yang BOLEH diakses walau profil belum lengkap
-            // (Hanya halaman Edit Profil yang diizinkan)
-            // Sesuaikan string ini dengan URL Route di App.js Anda untuk Edit Profil
-            const editProfilePath = "ProfileAkunKlien/EditProfileKlien"; 
-            
-            // Cek apakah user sedang berada di halaman edit profil?
-            const isCurrentlyOnEditPage = location.pathname.includes(editProfilePath);
+      if (storedUser) {
+        // Cek apakah data wajib sudah terisi?
+        // Kita anggap belum lengkap jika full_name atau institusi masih kosong/null
+        const isProfileIncomplete = !storedUser.full_name || !storedUser.institusi;
 
-            // LOGIKA UTAMA:
-            // Jika Profil Belum Lengkap DAN User BUKAN di halaman edit profil
-            if (isProfileIncomplete && !isCurrentlyOnEditPage) {
-                // Paksa pindah ke halaman Edit Profil
-                // Pastikan path ini sesuai dengan Route Anda
-                history.replace("/dashboard/ProfileAkunKlien/EditProfileKlien"); 
-                
-                // Opsional: Tampilkan alert sekali saja (bisa pakai toastr/swal agar lebih bagus)
-                // alert("Mohon lengkapi Nama Lengkap dan Institusi Anda terlebih dahulu.");
-            }
+        // Halaman yang BOLEH diakses walau profil belum lengkap
+        // (Hanya halaman Edit Profil yang diizinkan)
+        // Sesuaikan string ini dengan URL Route di App.js Anda untuk Edit Profil
+        const editProfilePath = "ProfileAkunKlien/EditProfileKlien";
+
+        // Cek apakah user sedang berada di halaman edit profil?
+        const isCurrentlyOnEditPage = location.pathname.includes(editProfilePath);
+
+        // LOGIKA UTAMA:
+        // Jika Profil Belum Lengkap DAN User BUKAN di halaman edit profil
+        if (isProfileIncomplete && !isCurrentlyOnEditPage) {
+          // Paksa pindah ke halaman Edit Profil
+          // Pastikan path ini sesuai dengan Route Anda
+          history.replace("/dashboard/ProfileAkunKlien/EditProfileKlien");
+
+          // Opsional: Tampilkan alert sekali saja (bisa pakai toastr/swal agar lebih bagus)
+          // alert("Mohon lengkapi Nama Lengkap dan Institusi Anda terlebih dahulu.");
         }
+      }
     };
 
     // Jalankan pengecekan setiap kali URL berubah
@@ -102,16 +116,16 @@ function NavbarLogin({ children }) {
   }, [location.pathname, history]);
   // ============================================================
 
-
   const menus = [
-    { key: "dashboard", label: "Beranda", icon: <FaTachometerAlt /> },
+    { key: "dashboard", label: "Dashboard", icon: <FaTachometerAlt /> },
+    { key: "daftarAnalisisLogin", label: "Daftar Harga Analisis", icon: <FaClipboardList /> },
     { key: "panduanSampelKlien", label: "SOP Analisis Lab", icon: <FaFileAlt /> },
     { key: "bookingCalenderKlien", label: "Kalender Pemesanan", icon: <FaCalendarAlt /> },
     { key: "pemesananSampelKlien", label: "Pemesanan Sampel", icon: <FaClipboardList /> },
     { key: "menungguPersetujuan", label: "Menunggu Persetujuan", icon: <FaClock /> },
     { key: "prosesAnalisis", label: "Proses Sampel", icon: <FaFlask /> },
-    { key: "pembayaran", label: "Pembayaran & Invoice", icon: <FaCreditCard /> },
-    { key: "riwayat", label: "Riwayat", icon: <FaHistory /> },
+    { key: "pembayaranKlien", label: "Pembayaran & Invoice", icon: <FaCreditCard /> },
+    { key: "riwayatAnalisisKlien", label: "Riwayat", icon: <FaHistory /> },
   ];
 
   // sinkronkan activeMenu berdasarkan URL
@@ -133,49 +147,48 @@ function NavbarLogin({ children }) {
     history.push("/LandingPage");
   };
 
-  const avatarSrc = user?.avatar
-  ? (user.avatar.startsWith('http') || user.avatar.startsWith('blob') 
-      ? user.avatar 
-      : `http://localhost:8000/storage/${user.avatar}`)
-  : null;
+  const avatarSrc = user?.avatar ? (user.avatar.startsWith("http") || user.avatar.startsWith("blob") ? user.avatar : `http://localhost:8000/storage/${user.avatar}`) : null;
 
   return (
     <div className="dashboard-layout" style={{ fontFamily: "Poppins, sans-serif" }}>
       {/* Header */}
-      <header className="dashboard-header d-flex justify-content-between align-items-center px-3 py-2 shadow-sm bg-white">
+      <header className="dashboard-header d-flex justify-content-between align-items-center px-4 py-2 shadow-sm bg-white border-bottom sticky-top">
+        {/* Bagian Kiri: Burger Menu & Logo */}
         <div className="d-flex align-items-center">
-          <button className="btn border-0 me-3 d-lg-none" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle sidebar">
-            <FaBars size={22} />
+          <button className="btn btn-light border-0 me-3 d-lg-none rounded-circle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle sidebar">
+            <FaBars size={20} className="text-secondary" />
           </button>
 
-          <div className="text-center d-flex flex-column align-items-start">
-            <Image src="/asset/gambarLogo.png" alt="IPB Logo" style={{ width: "140px", height: "auto", marginBottom: "-11px" }} />
-            <div className="text-muted subtitle-text" style={{ marginTop: "15px" }}>
-              Sistem Informasi Laboratorium Nutrisi Ternak Daging Dan Kerja
+          <div className="d-flex align-items-center gap-3">
+            <Image src="/asset/gambarLogo.png" alt="IPB Logo" style={{ width: "120px", height: "auto" }} />
+            <div className="vr d-none d-md-block mx-2 text-muted opacity-25" style={{ height: "30px" }}></div>
+            <div className="d-none d-md-flex flex-column justify-content-center">
+              <span className="fw-bold text-dark mb-0" style={{ fontSize: "0.85rem", lineHeight: "1.2" }}>
+                Sistem Informasi Laboratorium
+              </span>
+              <span className="text-muted" style={{ fontSize: "0.75rem" }}>
+                Nutrisi Ternak Daging Dan Kerja
+              </span>
             </div>
           </div>
         </div>
 
-        <div className="d-flex align-items-center gap-3">
-          {/* Notification Bell */}
+        {/* Bagian Kanan: Notifikasi & User */}
+        <div className="d-flex align-items-center gap-2">
+          {/* Notification Dropdown */}
           <Dropdown show={showNotifDropdown} onToggle={(isOpen) => setShowNotifDropdown(isOpen)} align="end">
-            <Dropdown.Toggle 
-              variant="light" 
-              className="border-0 bg-transparent position-relative p-2"
-              style={{ cursor: 'pointer' }}
-            >
-              <FaBell size={20} className="text-secondary" />
+            <Dropdown.Toggle variant="light" className="border-0 bg-transparent position-relative p-2 rounded-circle" style={{ width: "40px", height: "40px" }}>
+              <FaBell size={18} className="text-secondary" />
               {notifCount > 0 && (
-                <Badge 
-                  bg="danger" 
-                  pill 
-                  style={{ 
-                    position: 'absolute', 
-                    top: '0', 
-                    right: '0', 
-                    fontSize: '0.65rem',
-                    minWidth: '18px',
-                    height: '18px'
+                <Badge
+                  bg="danger"
+                  pill
+                  className="position-absolute border border-white"
+                  style={{
+                    top: "4px",
+                    right: "4px",
+                    fontSize: "0.6rem",
+                    padding: "3px 5px",
                   }}
                 >
                   {notifCount}
@@ -183,68 +196,66 @@ function NavbarLogin({ children }) {
               )}
             </Dropdown.Toggle>
 
-            <Dropdown.Menu style={{ maxHeight: '400px', overflowY: 'auto', minWidth: '300px' }}>
-              <div className="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
-                <strong>Notifikasi</strong>
+            <Dropdown.Menu className="shadow-lg border-0 mt-2" style={{ width: "320px", borderRadius: "12px", overflow: "hidden" }}>
+              <div className="d-flex justify-content-between align-items-center px-3 py-3 bg-light">
+                <h6 className="mb-0 fw-bold">Notifikasi</h6>
                 {notifCount > 0 && (
-                  <button 
-                    className="btn btn-link btn-sm text-decoration-none p-0" 
-                    onClick={handleMarkAllAsRead}
-                  >
+                  <button className="btn btn-sm btn-link text-decoration-none p-0 fw-semibold" onClick={handleMarkAllAsRead}>
                     Tandai Semua
                   </button>
                 )}
               </div>
-              
-              {notifications.length === 0 ? (
-                <div className="text-center text-muted py-4">
-                  <FaBell size={30} className="mb-2" />
-                  <div>Tidak ada notifikasi</div>
-                </div>
-              ) : (
-                notifications.map((notif) => (
-                  <Dropdown.Item 
-                    key={notif.id} 
-                    onClick={() => handleNotificationClick(notif)}
-                    className="py-2 px-3"
-                    style={{ whiteSpace: 'normal', borderBottom: '1px solid #f0f0f0' }}
-                  >
-                    <div>
-                      <strong className="d-block">{notif.title}</strong>
-                      <small className="text-muted">{notif.message}</small>
-                      <div className="text-muted" style={{ fontSize: '0.75rem' }}>
-                        {new Date(notif.created_at).toLocaleString('id-ID')}
+
+              <div style={{ maxHeight: "350px", overflowY: "auto" }}>
+                {notifications.length === 0 ? (
+                  <div className="text-center text-muted py-5">
+                    <FaBell size={30} className="mb-2 opacity-25" />
+                    <p className="small mb-0">Tidak ada notifikasi baru</p>
+                  </div>
+                ) : (
+                  notifications.map((notif) => (
+                    <Dropdown.Item
+                      key={notif.id}
+                      onClick={() => handleNotificationClick(notif)}
+                      className="py-3 px-3 border-bottom"
+                      style={{
+                        whiteSpace: "normal",
+                        backgroundColor: notif.is_read ? "#ffffff" : "#f0f7ff",
+                      }}
+                    >
+                      <div className="d-flex flex-column gap-1">
+                        <div className={`small fw-bold ${notif.is_read ? "text-secondary" : "text-dark"}`}>{notif.title}</div>
+                        <div className="text-muted" style={{ fontSize: "0.8rem", lineHeight: "1.4" }}>
+                          {notif.message}
+                        </div>
+                        <div className="text-uppercase fw-medium" style={{ fontSize: "0.65rem", color: "#adb5bd" }}>
+                          {new Date(notif.created_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}
+                        </div>
                       </div>
-                    </div>
-                  </Dropdown.Item>
-                ))
-              )}
+                    </Dropdown.Item>
+                  ))
+                )}
+              </div>
             </Dropdown.Menu>
           </Dropdown>
 
-          {/* User Dropdown */}
+          {/* User Profile Dropdown */}
           <Dropdown align="end">
-            <Dropdown.Toggle variant="light" id="dropdown-user" className="d-flex align-items-center border-0 bg-transparent">
-              {avatarSrc ? (
-                  <Image 
-                      src={avatarSrc} 
-                      roundedCircle 
-                      width={25} 
-                      height={25} 
-                      style={{ objectFit: "cover" }} 
-                      className="me-2" 
-                  />
-              ) : (
-                  <FaUserCircle size={25} className="me-2 text-primary" />
-              )}
-              
-              <span className="fw-semibold d-none d-md-inline" style={{ fontSize: "0.9rem" }}>
+            <Dropdown.Toggle variant="light" className="d-flex align-items-center border-0 bg-light rounded-pill px-3 py-1 gap-2" style={{ transition: "0.3s" }}>
+              {avatarSrc ? <Image src={avatarSrc} roundedCircle width={28} height={28} style={{ objectFit: "cover" }} /> : <FaUserCircle size={24} className="text-primary" />}
+              <span className="fw-semibold d-none d-md-inline" style={{ fontSize: "0.85rem" }}>
                 {user?.name || "User"}
               </span>
             </Dropdown.Toggle>
-            <Dropdown.Menu>
-              <Dropdown.Item onClick={() => history.push("/dashboard/ProfileAkunKlien")}>Profil</Dropdown.Item>
-              <Dropdown.Item onClick={handleLogout}>Logout</Dropdown.Item>
+
+            <Dropdown.Menu className="shadow-lg border-0 mt-2" style={{ borderRadius: "10px" }}>
+              <Dropdown.Item className="py-2" onClick={() => history.push("/dashboard/ProfileAkunKlien")}>
+                <i className="bi bi-person me-2"></i> Profil Akun
+              </Dropdown.Item>
+              <hr className="dropdown-divider opacity-50" />
+              <Dropdown.Item className="py-2 text-danger" onClick={handleLogout}>
+                <i className="bi bi-box-arrow-right me-2"></i> Logout
+              </Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown>
         </div>

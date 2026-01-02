@@ -1,24 +1,56 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Card, Button } from "react-bootstrap";
-import {
-  FaFlask,
-  FaClipboardCheck,
-  FaCheckCircle,
-  FaBell
-} from "react-icons/fa";
+import { FaFlask, FaClipboardCheck, FaCheckCircle, FaBell } from "react-icons/fa";
 import { useHistory } from "react-router-dom";
 import NavbarLoginKoordinator from "./NavbarLoginKoordinator";
 import "@fontsource/poppins";
-import Footer from "./Footer";
+import FooterSetelahLogin from "../FooterSetelahLogin";
+import { getAllBookings } from "../../services/BookingService";
 
 const DashboardKoordinator = () => {
   const history = useHistory();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   // INI NANTI DARI BACKEND / API (SEKARANG DUMMY)
-  const totalSampelMasukHariIni = 10;
-  const totalMenungguTTD = 5;
-  const totalSampelSelesai = 3;
+  const [totalSampelMasukHariIni, setTotalSampelMasukHariIni] = useState(0);
+  const [totalMenungguTTD, setTotalMenungguTTD] = useState(0);
+  const [totalSampelSelesai, setTotalSampelSelesai] = useState(0);
+  const [loadingMetrics, setLoadingMetrics] = useState(false);
+
+  const fetchMetrics = async () => {
+    try {
+      setLoadingMetrics(true);
+      const res = await getAllBookings();
+      const all = res?.data || [];
+
+      const today = new Date();
+      const isSameDay = (dStr) => {
+        if (!dStr) return false;
+        const d = new Date(dStr);
+        return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+      };
+
+      const masukHariIni = all.filter((b) => isSameDay(b.tanggal_booking || b.created_at)).length;
+
+      // Hitung menunggu TTD: terima kedua status umum yang mungkin dipakai
+      const menungguTTD = all.filter((b) => b.status === "menunggu_ttd" || b.status === "menunggu_verifikasi").length;
+
+      // Hitung selesai / sudah ditandatangani
+      const selesai = all.filter((b) => b.status === "selesai" || b.status === "ditandatangani").length;
+
+      setTotalSampelMasukHariIni(masukHariIni);
+      setTotalMenungguTTD(menungguTTD);
+      setTotalSampelSelesai(selesai);
+    } catch (err) {
+      console.error("Gagal mengambil metrik:", err);
+    } finally {
+      setLoadingMetrics(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMetrics();
+  }, []);
 
   return (
     <NavbarLoginKoordinator>
@@ -32,10 +64,7 @@ const DashboardKoordinator = () => {
       >
         <Container fluid>
           {/* HEADER */}
-          <div
-            className="p-4 mb-4 shadow-sm"
-            style={{ backgroundColor: "#fff", borderRadius: 24 }}
-          >
+          <div className="p-4 mb-4 shadow-sm" style={{ backgroundColor: "#fff", borderRadius: 24 }}>
             <h4 className="fw-semibold mb-1" style={{ color: "#4e342e" }}>
               Selamat Datang, {user.name || "Koordinator"} 👋
             </h4>
@@ -52,12 +81,8 @@ const DashboardKoordinator = () => {
                   <div className="d-flex align-items-center">
                     <FaFlask size={30} className="me-3" color="#6d4c41" />
                     <div>
-                      <Card.Title className="mb-0">
-                        {totalSampelMasukHariIni} Sampel Masuk
-                      </Card.Title>
-                      <Card.Text style={{ color: "#8d6e63" }}>
-                        Sampel diterima hari ini
-                      </Card.Text>
+                      <Card.Title className="mb-0">{totalSampelMasukHariIni} Sampel Masuk</Card.Title>
+                      <Card.Text style={{ color: "#8d6e63" }}>Sampel diterima hari ini</Card.Text>
                     </div>
                   </div>
                   <Button
@@ -81,12 +106,8 @@ const DashboardKoordinator = () => {
                   <div className="d-flex align-items-center">
                     <FaClipboardCheck size={30} className="me-3" color="#6d4c41" />
                     <div>
-                      <Card.Title className="mb-0">
-                        {totalMenungguTTD} Menunggu TTD
-                      </Card.Title>
-                      <Card.Text style={{ color: "#8d6e63" }}>
-                        Hasil belum ditandatangani
-                      </Card.Text>
+                      <Card.Title className="mb-0">{loadingMetrics ? "..." : totalMenungguTTD} Menunggu TTD</Card.Title>
+                      <Card.Text style={{ color: "#8d6e63" }}>Hasil belum ditandatangani</Card.Text>
                     </div>
                   </div>
                   <Button
@@ -96,6 +117,7 @@ const DashboardKoordinator = () => {
                       border: "none",
                       borderRadius: 18,
                     }}
+                    onClick={() => history.push("/koordinator/dashboard/verifikasiSampelKoordinator")}
                   >
                     Proses Sekarang
                   </Button>
@@ -110,12 +132,8 @@ const DashboardKoordinator = () => {
                   <div className="d-flex align-items-center">
                     <FaCheckCircle size={30} className="me-3" color="#6d4c41" />
                     <div>
-                      <Card.Title className="mb-0">
-                        {totalSampelSelesai} Sampel Selesai
-                      </Card.Title>
-                      <Card.Text style={{ color: "#8d6e63" }}>
-                        Analisis telah selesai
-                      </Card.Text>
+                      <Card.Title className="mb-0">{totalSampelSelesai} Sampel Selesai</Card.Title>
+                      <Card.Text style={{ color: "#8d6e63" }}>Analisis telah selesai</Card.Text>
                     </div>
                   </div>
                   <Button
@@ -155,12 +173,8 @@ const DashboardKoordinator = () => {
                       <FaBell size={26} color="#6d4c41" />
                     </div>
                     <div className="ms-3">
-                      <h6 className="fw-semibold mb-1">
-                        Sampel Baru Dikirim Hari Ini
-                      </h6>
-                      <small style={{ color: "#5d4037" }}>
-                        Perlu verifikasi hasil analisis
-                      </small>
+                      <h6 className="fw-semibold mb-1">Sampel Baru Dikirim Hari Ini</h6>
+                      <small style={{ color: "#5d4037" }}>Perlu verifikasi hasil analisis</small>
                     </div>
                   </div>
 
@@ -181,6 +195,7 @@ const DashboardKoordinator = () => {
           </Row>
         </Container>
       </div>
+      <FooterSetelahLogin />
     </NavbarLoginKoordinator>
   );
 };

@@ -350,7 +350,8 @@ class BookingController extends Controller
 
     public function updateStatus(Request $request, $id)
     {
-        $request->validate(['status' => 'required|in:disetujui,ditolak,proses,selesai']);
+        // Accept all known statuses used in the application to avoid validation errors
+        $request->validate(['status' => 'required|in:menunggu,disetujui,ditolak,proses,selesai,dibatalkan,menunggu_verifikasi,menunggu_ttd,menunggu_sign,ditandatangani,menunggu_verifikasi_kepala,menunggu_pembayaran']);
         $booking = Booking::findOrFail($id);
         $oldStatus = $booking->status;
         $booking->status = $request->status;
@@ -485,16 +486,16 @@ class BookingController extends Controller
     {
         $booking = Booking::with('analysisItems', 'user')->findOrFail($id);
 
-        // Ubah status menjadi selesai setelah diverifikasi
-        $booking->status = 'selesai';
+        // Ubah status menjadi menunggu pembayaran setelah diverifikasi
+        $booking->status = 'menunggu_pembayaran';
         $booking->save();
 
-        // Notifikasi ke klien bahwa hasil sudah diverifikasi dan dapat didownload
+        // Notifikasi ke klien bahwa hasil sudah diverifikasi dan menunggu pembayaran
         Notification::create([
             'user_id' => $booking->user_id,
             'type' => 'hasil_terverifikasi',
-            'title' => 'Hasil Terverifikasi',
-            'message' => 'Hasil analisis Anda telah diverifikasi dan dapat didownload.',
+            'title' => 'Hasil Terverifikasi - Menunggu Pembayaran',
+            'message' => 'Hasil analisis Anda telah diverifikasi dan menunggu pembayaran untuk proses selanjutnya.',
             'booking_id' => $booking->id
         ]);
 

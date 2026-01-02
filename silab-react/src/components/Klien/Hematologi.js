@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Form, Card, Row, Col, Button, Alert, Modal, InputGroup } from "react-bootstrap";
+import { Form, Card, Row, Col, Button, Alert, Modal, InputGroup, Container } from "react-bootstrap";
 import DatePicker from "react-datepicker";
 import NavbarLogin from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
 import "react-datepicker/dist/react-datepicker.css";
 import { createBooking } from "../../services/BookingService";
-import "../../css/Hematologi.css";
 import dayjs from "dayjs";
 import { useHistory } from "react-router-dom";
 
@@ -29,15 +28,22 @@ export default function Hematologi() {
   const [showSuccess, setShowSuccess] = useState(false);
 
   const ANIMAL_CODES = {
-    Ayam: "AY", Bebek: "BB", Domba: "DB", Ikan: "IK", Kambing: "KB",
-    Kerbau: "KR", Puyuh: "PY", Sapi: "SP", Lainnya: "XX",
+    Ayam: "AY",
+    Bebek: "BB",
+    Domba: "DB",
+    Ikan: "IK",
+    Kambing: "KB",
+    Kerbau: "KR",
+    Puyuh: "PY",
+    Sapi: "SP",
+    Lainnya: "XX",
   };
 
   const getCurrentPrefix = () => {
     if (jenisHewan === "Lainnya") {
       return jenisHewanLain ? jenisHewanLain.substring(0, 2).toUpperCase() : "XX";
     }
-    return ANIMAL_CODES[jenisHewan] || "";
+    return ANIMAL_CODES[jenisHewan] || "??";
   };
 
   useEffect(() => {
@@ -52,11 +58,7 @@ export default function Hematologi() {
   };
 
   const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setAnalyses([...analysisOptions]);
-    } else {
-      setAnalyses([]);
-    }
+    setAnalyses(e.target.checked ? [...analysisOptions] : []);
   };
 
   const isAllSelected = analysisOptions.length > 0 && analyses.length === analysisOptions.length;
@@ -90,7 +92,6 @@ export default function Hematologi() {
       setShowSuccess(true);
       localStorage.removeItem("selected_booking_date");
     } catch (err) {
-      console.error("Error Booking:", err);
       setErrorMsg(err.message || "Gagal mengirim data.");
       window.scrollTo(0, 0);
     } finally {
@@ -103,220 +104,197 @@ export default function Hematologi() {
     history.push("/dashboard/menungguPersetujuan");
   };
 
+  const cardHeaderStyle = {
+    background: "linear-gradient(135deg, #5c3d35 0%, #45352f 100%)",
+    padding: "2rem 1rem",
+    borderBottom: "none",
+  };
+
+  const labelStyle = {
+    fontSize: "0.9rem",
+    color: "#555",
+    marginBottom: "0.5rem",
+    display: "block",
+  };
+
   return (
     <NavbarLogin>
-      <div className="min-vh-100 d-flex justify-content-center align-items-start py-5 px-3" style={{ background: "#eceae8" }}>
-        <Card className="shadow-lg rounded-4" style={{ width: "700px", border: "none", overflow: "hidden" }}>
-          <div className="text-center text-white py-3" style={{ background: "#45352F", fontSize: "1.5rem", fontWeight: "600", letterSpacing: "1px" }}>
-            Hematologi
-          </div>
-
-          <Card.Body className="p-4">
-            <div className="mb-4">
-              <Button 
-                variant="light"
-                className="d-flex align-items-center gap-2 px-3 py-2 shadow-sm"
-                onClick={() => history.goBack()}
-                style={{
-                  border: '1px solid #dee2e6',
-                  borderRadius: '8px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                  backgroundColor: '#f8f9fa'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#e9ecef';
-                  e.currentTarget.style.transform = 'translateX(-2px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f8f9fa';
-                  e.currentTarget.style.transform = 'translateX(0)';
-                }}
-              >
-                <i className="bi bi-arrow-left" style={{ fontSize: '1.1rem' }}></i>
-                <span>Kembali</span>
-              </Button>
+      <div className="min-vh-100 py-5" style={{ background: "#f4f1ee", color: "#333" }}>
+        <Container className="d-flex justify-content-center">
+          <Card className="border-0 shadow-lg" style={{ maxWidth: "800px", width: "100%", borderRadius: "15px" }}>
+            {/* Header */}
+            <div className="text-center text-white rounded-top" style={cardHeaderStyle}>
+              <h2 className="mb-1 fw-bold">Hematologi</h2>
+              <p className="mb-0 opacity-75 small">Lengkapi detail sampel dan jenis analisis Anda</p>
             </div>
-            
-            {errorMsg && (
-              <Alert variant="danger" onClose={() => setErrorMsg("")} dismissible>
-                {errorMsg}
-              </Alert>
-            )}
 
-            <Form onSubmit={onSubmit}>
-              <Form.Group className="mb-4">
-                <Form.Label className="fw-semibold">Jenis Hewan</Form.Label>
-                <Form.Select className="rounded-3 shadow-sm" value={jenisHewan} onChange={(e) => setJenisHewan(e.target.value)} required>
-                  <option value="">Pilih...</option>
-                  {Object.keys(ANIMAL_CODES).map((hewan) => (
-                    <option key={hewan} value={hewan}>{hewan}</option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-
-              {jenisHewan === "Lainnya" && (
-                <Form.Group className="mb-4">
-                  <Form.Label className="fw-semibold">Jenis Hewan Lain</Form.Label>
-                  <Form.Control className="rounded-3 shadow-sm" value={jenisHewanLain} onChange={(e) => setJenisHewanLain(e.target.value)} placeholder="Sebutkan jenis hewan..." required />
-                </Form.Group>
+            <Card.Body className="p-4 p-md-5">
+              {errorMsg && (
+                <Alert variant="danger" className="border-0 shadow-sm" dismissible onClose={() => setErrorMsg("")}>
+                  {errorMsg}
+                </Alert>
               )}
 
-              <Form.Group className="mb-4">
-                <Form.Label className="fw-semibold">Jenis Kelamin</Form.Label>
-                <Form.Select className="rounded-3 shadow-sm" value={jenisKelamin} onChange={(e) => setJenisKelamin(e.target.value)} required>
-                  <option value="">Pilih...</option>
-                  <option>Jantan</option>
-                  <option>Betina</option>
-                  <option>Campuran</option>
-                </Form.Select>
-              </Form.Group>
+              <Form onSubmit={onSubmit}>
+                {/* Informasi Hewan */}
+                <div className="mb-5">
+                  <h5 className="mb-4 pb-2 border-bottom fw-bold text-secondary">
+                    <i className="bi bi-info-circle me-2"></i>Informasi Hewan
+                  </h5>
 
-              <Form.Group className="mb-4">
-                <Form.Label className="fw-semibold">Umur</Form.Label>
-                <Row>
-                  <Col xs={6}>
-                    <Form.Control 
-                      type="number" 
-                      min="1"
-                      className="rounded-3 shadow-sm" 
-                      value={umurAngka} 
-                      onChange={(e) => setUmurAngka(e.target.value)} 
-                      placeholder="Masukkan angka" 
-                      required 
-                    />
-                  </Col>
-                  <Col xs={6}>
-                    <Form.Select 
-                      className="rounded-3 shadow-sm" 
-                      value={umurSatuan} 
-                      onChange={(e) => setUmurSatuan(e.target.value)}
-                      required
-                    >
-                      <option value="Hari">Hari</option>
-                      <option value="Minggu">Minggu</option>
-                      <option value="Bulan">Bulan</option>
-                      <option value="Tahun">Tahun</option>
-                    </Form.Select>
-                  </Col>
-                </Row>
-                <Form.Text className="text-muted">Contoh: 2 Tahun, 6 Bulan, 3 Minggu, atau 45 Hari</Form.Text>
-              </Form.Group>
+                  <Row className="g-4">
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label style={labelStyle} className="fw-bold">Jenis Hewan</Form.Label>
+                        <Form.Select className="py-2 px-3 shadow-sm border-0 bg-light" value={jenisHewan} onChange={(e) => setJenisHewan(e.target.value)} required>
+                          <option value="">Pilih Hewan...</option>
+                          {Object.keys(ANIMAL_CODES).map((h) => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
 
-              <Form.Group className="mb-4">
-                <Form.Label className="fw-semibold">Status Fisiologis</Form.Label>
-                <Form.Select className="rounded-3 shadow-sm" value={statusFisiologis} onChange={(e) => setStatusFisiologis(e.target.value)} required>
-                  <option value="">Pilih...</option>
-                  <option>Bunting/Hamil</option>
-                  <option>Tidak Bunting/Tidak Hamil</option>
-                  <option>Laktasi</option>
-                  <option>Dara</option>
-                  <option>Pejantan</option>
-                </Form.Select>
-              </Form.Group>
+                    {jenisHewan === "Lainnya" && (
+                      <Col md={6}>
+                        <Form.Group>
+                          <Form.Label style={labelStyle} className="fw-bold">Sebutkan Jenis Hewan</Form.Label>
+                          <Form.Control className="py-2 px-3 shadow-sm border-0 bg-light" value={jenisHewanLain} onChange={(e) => setJenisHewanLain(e.target.value)} required />
+                        </Form.Group>
+                      </Col>
+                    )}
 
-              {/* PERUBAHAN 2: Logic Auto Numbering */}
-              <Form.Group className="mb-4">
-                <Form.Label className="fw-semibold">Jumlah Sampel</Form.Label>
-                <Form.Control
-                  type="number"
-                  min={1}
-                  max={9999}
-                  value={jumlahSampel}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === "") {
-                      setJumlahSampel("");
-                      setKodeSampel([]);
-                      return;
-                    }
-                    const num = Number(val);
-                    setJumlahSampel(num);
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label style={labelStyle} className="fw-bold">Jenis Kelamin</Form.Label>
+                        <Form.Select className="py-2 px-3 shadow-sm border-0 bg-light" value={jenisKelamin} onChange={(e) => setJenisKelamin(e.target.value)} required>
+                          <option value="">Pilih...</option>
+                          <option>Jantan</option>
+                          <option>Betina</option>
+                          <option>Campuran</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
 
-                    // Generate Array ["01", "02", ...]
-                    const newCodes = Array.from({ length: num }, (_, i) => 
-                        String(i + 1).padStart(2, "0")
-                    );
-                    setKodeSampel(newCodes);
-                  }}
-                  className="rounded-3 shadow-sm"
-                  required
-                />
-              </Form.Group>
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label style={labelStyle} className="fw-bold">Umur</Form.Label>
+                        <InputGroup className="shadow-sm">
+                          <Form.Control type="number" min="1" className="border-0 bg-light" value={umurAngka} onChange={(e) => setUmurAngka(e.target.value)} required />
+                          <Form.Select className="border-0 bg-light" style={{ maxWidth: 120 }} value={umurSatuan} onChange={(e) => setUmurSatuan(e.target.value)}>
+                            <option>Hari</option>
+                            <option>Minggu</option>
+                            <option>Bulan</option>
+                            <option>Tahun</option>
+                          </Form.Select>
+                        </InputGroup>
+                      </Form.Group>
+                    </Col>
 
-              <Form.Group className="mb-4">
-                <Form.Label className="fw-semibold">Kode Sampel (Label Botol)</Form.Label>
-                {!jenisHewan && <div className="text-muted small mb-2">pilih jenis hewan dulu untuk memunculkan kode otomatis.</div>}
+                    <Col md={6}>
+                      <Form.Group>
+                        <Form.Label style={labelStyle} className="fw-bold">Status Fisiologis</Form.Label>
+                        <Form.Select className="py-2 px-3 shadow-sm border-0 bg-light" value={statusFisiologis} onChange={(e) => setStatusFisiologis(e.target.value)} required>
+                          <option value="">Pilih Status...</option>
+                          <option>Bunting/Hamil</option>
+                          <option>Tidak Bunting/Tidak Hamil</option>
+                          <option>Laktasi</option>
+                          <option>Dara</option>
+                          <option>Pejantan</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                </div>
 
-                {kodeSampel.map((kode, index) => (
-                  <InputGroup key={index} className="mb-2 shadow-sm">
-                    <InputGroup.Text style={{ backgroundColor: "#e9ecef", fontWeight: "bold", color: "#555" }}>{getCurrentPrefix()}-</InputGroup.Text>
+                {/* Detail Sampel */}
+                <div className="mb-5 p-4 rounded-4" style={{ background: "#fdfcfb", border: "1px dashed #ddd" }}>
+                  <h5 className="mb-4 fw-bold text-secondary">
+                    <i className="bi bi-vial me-2"></i>Detail Sampel
+                  </h5>
+
+                  <Form.Group className="mb-4">
+                    <Form.Label style={labelStyle} className="fw-bold">Jumlah Sampel</Form.Label>
                     <Form.Control
-                      placeholder={`Nomor Sampel ${index + 1} (Contoh: 01)`}
-                      value={kode}
+                      type="number"
+                      min={1}
+                      className="py-2 shadow-sm border-0 bg-light w-50"
+                      value={jumlahSampel}
                       onChange={(e) => {
-                        const arr = [...kodeSampel];
-                        arr[index] = e.target.value;
-                        setKodeSampel(arr);
+                        const num = Number(e.target.value || 0);
+                        setJumlahSampel(num);
+                        setKodeSampel(Array.from({ length: num }, (_, i) => String(i + 1).padStart(2, "0")));
                       }}
-                      className="rounded-3 shadow-sm"
                       required
                     />
-                  </InputGroup>
-                ))}
-                <Form.Text className="text-muted">*Kode otomatis disesuaikan dengan jenis hewan (Contoh: Sapi = SP-01)</Form.Text>
-              </Form.Group>
+                  </Form.Group>
 
-              <Form.Group className="mb-4">
-                <Form.Label className="fw-semibold">Analisis Hematologi</Form.Label>
-                <div className="mb-3 p-2 bg-light rounded">
-                  <Form.Check 
-                    type="checkbox" 
-                    label={<strong>Pilih Semua</strong>}
-                    checked={isAllSelected}
-                    onChange={handleSelectAll}
+                  <Row>
+                    {kodeSampel.map((kode, i) => (
+                      <Col md={6} key={i} className="mb-2">
+                        <InputGroup size="sm" className="shadow-sm">
+                          <InputGroup.Text className="bg-secondary text-white border-0">{getCurrentPrefix()}-</InputGroup.Text>
+                          <Form.Control value={kode} onChange={(e) => {
+                            const arr = [...kodeSampel];
+                            arr[i] = e.target.value;
+                            setKodeSampel(arr);
+                          }} required />
+                        </InputGroup>
+                      </Col>
+                    ))}
+                  </Row>
+                </div>
+
+                {/* Jenis Analisis */}
+                <div className="mb-5">
+                  <h5 className="mb-3 fw-bold text-secondary">
+                    <i className="bi bi-list-check me-2"></i>Pilih Jenis Analisis
+                  </h5>
+                  <div className="p-3 bg-light rounded-3 shadow-sm">
+                    <Form.Check type="checkbox" label={<strong>Pilih Semua</strong>} checked={isAllSelected} onChange={handleSelectAll} className="mb-3 pb-2 border-bottom" />
+                    <Row>
+                      {analysisOptions.map((item, i) => (
+                        <Col md={6} key={i}>
+                          <Form.Check type="checkbox" label={item} checked={analyses.includes(item)} onChange={() => handleCheckboxChange(item)} />
+                        </Col>
+                      ))}
+                    </Row>
+                  </div>
+                </div>
+
+                {/* Tanggal Kirim */}
+                <Form.Group className="mb-5">
+                  <Form.Label style={labelStyle} className="fw-bold">Tanggal Kirim Sampel</Form.Label>
+                  <DatePicker
+                    selected={tanggalKirim}
+                    onChange={setTanggalKirim}
+                    wrapperClassName="w-100"
+                    className="form-control py-2 px-3 shadow-sm border-0 bg-light"
+                    dateFormat="dd MMMM yyyy"
+                    required
                   />
-                </div>
-                <div className="d-flex flex-column gap-2">
-                  {analysisOptions.map((item, index) => (
-                    <Form.Check 
-                      key={index} 
-                      type="checkbox" 
-                      label={item} 
-                      checked={analyses.includes(item)}
-                      onChange={() => handleCheckboxChange(item)} 
-                    />
-                  ))}
-                </div>
-              </Form.Group>
+                </Form.Group>
 
-              <Form.Group className="mb-4">
-                <Form.Label className="fw-semibold">Tanggal Kirim</Form.Label>
-                <div className="w-100">
-                  <DatePicker selected={tanggalKirim} onChange={(date) => setTanggalKirim(date)} className="form-control rounded-3 shadow-sm tanggal-kirim-input" dateFormat="dd/MM/yyyy" placeholderText="Pilih tanggal pengiriman" required />
+                <div className="d-flex justify-content-between gap-3">
+                  <Button variant="outline-secondary" onClick={() => history.goBack()}>
+                    <i className="bi bi-chevron-left me-2"></i>Kembali
+                  </Button>
+                  <Button type="submit" disabled={loading} style={{ background: "#5c3d35" }}>
+                    {loading ? "Mengirim..." : "Kirim Permohonan"}
+                  </Button>
                 </div>
-              </Form.Group>
-
-              <div className="text-center mt-4">
-                <Button type="submit" disabled={loading} className="px-5 py-2 rounded-3 text-white" style={{ background: "#5c3d35", border: "none", fontSize: "1rem", fontWeight: "500" }}>
-                  {loading ? "Mengirim..." : "Kirim"}
-                </Button>
-              </div>
-            </Form>
-          </Card.Body>
-        </Card>
+              </Form>
+            </Card.Body>
+          </Card>
+        </Container>
       </div>
 
-      <Modal show={showSuccess} onHide={handleCloseSuccess} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="text-success fw-bold">Berhasil!</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p className="text-center">Pemesanan sampel <strong>Hematologi</strong> berhasil dibuat.</p>
+      <Modal show={showSuccess} onHide={handleCloseSuccess} centered backdrop="static">
+        <Modal.Body className="text-center p-5">
+          <i className="bi bi-check-circle-fill text-success" style={{ fontSize: "4rem" }} />
+          <h3 className="fw-bold mt-3">Pemesanan Berhasil!</h3>
+          <Button className="mt-3" onClick={handleCloseSuccess}>Lihat Status Pesanan</Button>
         </Modal.Body>
-        <Modal.Footer>
-          <Button variant="success" onClick={handleCloseSuccess}>OK</Button>
-        </Modal.Footer>
       </Modal>
 
       <FooterSetelahLogin />

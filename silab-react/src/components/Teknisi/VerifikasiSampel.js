@@ -23,13 +23,11 @@ const VerifikasiSampel = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailData, setDetailData] = useState(null);
 
-  // UPDATED: Filter untuk lowercase status
   const approvedData = dataBookings.filter((item) => {
-    const status = (item.status || '').toLowerCase();
+    const status = (item.status || "").toLowerCase();
     return status === "disetujui";
   });
 
-  // --- 1. AMBIL DATA ---
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -47,54 +45,49 @@ const VerifikasiSampel = () => {
     fetchData();
   }, []);
 
-  // --- 2. HELPER GENERATE KODE SAMPEL ---
   const generateSampleCodes = (booking) => {
     if (!booking) return [];
-    
-    // Parse JSON kode_sampel dari backend
     try {
       let codes = [];
-      
-      if (typeof booking.kode_sampel === 'string') {
+      if (typeof booking.kode_sampel === "string") {
         try {
           codes = JSON.parse(booking.kode_sampel);
-          if (Array.isArray(codes)) {
-            return codes;
-          }
+          if (Array.isArray(codes)) return codes;
         } catch (e) {
           codes = [booking.kode_sampel];
         }
       } else if (Array.isArray(booking.kode_sampel)) {
         codes = booking.kode_sampel;
       }
-      
       return codes;
     } catch (error) {
-      console.error('Error parsing kode_sampel:', error);
       return [];
     }
   };
 
-  // --- 3. FILTER PENCARIAN DAN STATUS ---
+  const formatStatus = (status) => {
+    const st = (status || "").toLowerCase();
+    if (st === "menunggu") return "Menunggu Persetujuan";
+    if (st === "menunggu persetujuan") return "Menunggu Persetujuan";
+    if (st === "menunggu_pembayaran" || st === "menunggu pembayaran" || st === "menunggu-pembayaran") return "Menunggu Pembayaran";
+    if (st === "disetujui") return "Disetujui";
+    if (st === "proses") return "Proses";
+    if (st === "selesai") return "Selesai";
+    if (st === "ditolak") return "Ditolak";
+    return status || "-";
+  };
+
   const filteredData = dataBookings.filter((item) => {
     const query = search.toLowerCase();
     const userName = item.user ? (item.user.full_name || item.user.name).toLowerCase() : "";
-    const kode = item.kode_sampel.toLowerCase();
-    const status = (item.status || '').toLowerCase();
-    const analisis = item.jenis_analisis.toLowerCase();
+    const kode = (item.kode_sampel || "").toLowerCase();
+    const status = (item.status || "").toLowerCase();
+    const analisis = (item.jenis_analisis || "").toLowerCase();
 
-    // Filter berdasarkan status
-    if (statusFilter !== "semua") {
-      if (status !== statusFilter) {
-        return false;
-      }
-    }
-
-    // Filter berdasarkan pencarian
+    if (statusFilter !== "semua" && status !== statusFilter) return false;
     return kode.includes(query) || userName.includes(query) || status.includes(query) || analisis.includes(query);
   });
 
-  // --- 4. AKSI TOMBOL ---
   const handleDetail = (row) => {
     setDetailData(row);
     setShowDetailModal(true);
@@ -121,15 +114,13 @@ const VerifikasiSampel = () => {
   };
 
   const handleTolak = (row) => {
-    // Ambil No HP dari tabel users (sesuai database Anda: nomor_telpon)
     const noHp = row.user ? row.user.nomor_telpon : "";
-
     history.push({
       pathname: "/teknisi/dashboard/verifikasiSampel/alasanMenolak",
       state: {
         bookingId: row.id,
         kodeSampel: row.kode_sampel,
-        namaKlien: row.user ? (row.user.full_name || row.user.name) : "-",
+        namaKlien: row.user ? row.user.full_name || row.user.name : "-",
         nomorTelpon: noHp,
       },
     });
@@ -138,19 +129,13 @@ const VerifikasiSampel = () => {
   const handleSampelSampai = async (row) => {
     try {
       await updateBookingStatus(row.id, { status: "proses" });
-      await fetchData(); // refresh data
-
+      await fetchData();
       message.success("Sampel diterima! Status: Sedang Dianalisis");
-
-      // Redirect ke halaman input analisis dengan data booking
       history.push({
         pathname: "/teknisi/dashboard/inputNilaiAnalisis",
-        state: {
-          booking: row
-        }
+        state: { booking: row },
       });
     } catch (err) {
-      console.error("ERROR UPDATE STATUS:", err.response?.data || err);
       message.error("Gagal mengubah status sampel");
     }
   };
@@ -159,321 +144,250 @@ const VerifikasiSampel = () => {
     <NavbarLoginTeknisi>
       <div className="font-poppins container py-5">
         {/* Search Bar dan Filter */}
-        <div className="mb-4 d-flex justify-content-center align-items-center gap-3">
-          <div className="input-group" style={{ maxWidth: "400px" }}>
-            <input type="text" className="form-control rounded-start-pill" placeholder="Cari Kode / Nama..." value={search} onChange={(e) => setSearch(e.target.value)} />
-            <span className="input-group-text rounded-end-pill bg-white">
-              <i className="bi bi-search"></i>
-            </span>
+        <div className="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <h4 className="fw-bold mb-0 text-dark">Daftar Verifikasi Sampel</h4>
+          <div className="d-flex gap-2">
+            <div className="input-group shadow-sm" style={{ maxWidth: "300px" }}>
+              <span className="input-group-text bg-white border-end-0">
+                <i className="bi bi-search text-muted"></i>
+              </span>
+              <input type="text" className="form-control border-start-0 ps-0" placeholder="Cari..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+
+            <select className="form-select shadow-sm" style={{ maxWidth: "180px" }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="semua">Semua Status</option>
+              <option value="menunggu">Menunggu Persetujuan</option>
+              <option value="disetujui">Disetujui</option>
+              <option value="proses">Proses</option>
+              <option value="selesai">Selesai</option>
+            </select>
           </div>
-          
-          <select 
-            className="form-select" 
-            style={{ maxWidth: "200px" }}
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="semua">Semua Status</option>
-            <option value="menunggu">Menunggu</option>
-            <option value="disetujui">Disetujui</option>
-            <option value="menunggu_verifikasi">Menunggu Verifikasi</option>
-            <option value="selesai">Selesai</option>
-          </select>
         </div>
 
-        {/* Tabel Data */}
-        <div className="table-responsive bg-white rounded-4 shadow p-3">
-          <Spin spinning={loading} tip="Memuat data...">
-            <table className="table table-bordered align-middle text-center table-hover" style={{ minWidth: '1000px' }}>
-              <thead className="table-light">
-                <tr>
-                  <th style={{ width: '50px' }}>No</th>
-                  <th style={{ minWidth: '200px' }}>Kode Sampel</th>
-                  <th style={{ minWidth: '150px', maxWidth: '180px' }}>Nama Klien</th>
-                  <th style={{ width: '70px' }}>Jml</th>
-                  <th style={{ width: '150px' }}>Jenis Analisis</th>
-                  <th style={{ width: '100px' }}>Tanggal</th>
-                  <th style={{ width: '120px' }}>Status</th>
-                  <th style={{ width: '150px' }}>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredData.length > 0 ? (
-                  filteredData.map((row, index) => (
-                    <tr key={row.id}>
-                      <td>{index + 1}</td>
-                      <td className="fw-bold" style={{ minWidth: '200px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                          <span style={{ whiteSpace: 'nowrap' }}>{generateSampleCodes(row)[0] || row.kode_sampel}</span>
+        {/* Tabel Data Utama */}
+        <div className="card border-0 shadow-sm rounded-4 overflow-hidden mb-5">
+          <div className="table-responsive">
+            <Spin spinning={loading} tip="Memuat data...">
+              <table className="table table-hover align-middle mb-0">
+                <thead className="bg-dark text-white">
+                  <tr>
+                    <th className="ps-4 py-3 text-uppercase small fw-bold" style={{ width: "60px" }}>
+                      No
+                    </th>
+                    <th className="py-3 text-uppercase small fw-bold">Kode Sampel</th>
+                    <th className="py-3 text-uppercase small fw-bold">Klien</th>
+                    <th className="py-3 text-uppercase small fw-bold text-center">Jml</th>
+                    <th className="py-3 text-uppercase small fw-bold">Jenis Analisis</th>
+                    <th className="py-3 text-uppercase small fw-bold text-center">Tanggal</th>
+                    <th className="py-3 text-uppercase small fw-bold text-center">Status</th>
+                    <th className="py-3 text-uppercase small fw-bold text-center pe-4">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredData.length > 0 ? (
+                    filteredData.map((row, index) => (
+                      <tr key={row.id}>
+                        <td className="ps-4 text-muted">{index + 1}</td>
+                        <td>
+                          <div className="fw-bold text-dark mb-0">{generateSampleCodes(row)[0] || row.kode_sampel}</div>
                           {generateSampleCodes(row).length > 1 && (
-                            <small className="text-muted" style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
-                              +{generateSampleCodes(row).length - 1} lainnya
-                            </small>
+                            <div className="text-muted" style={{ fontSize: "11px" }}>
+                              +{generateSampleCodes(row).length - 1} sampel lainnya
+                            </div>
                           )}
-                        </div>
-                      </td>
-                      <td style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.user ? (row.user.full_name || row.user.name) : "Guest"}>
-                        {row.user ? (row.user.full_name || row.user.name) : "Guest"}
-                      </td>
-                      <td>
-                        <span className="badge bg-light text-dark border" style={{ fontSize: '0.85rem' }}>{row.jumlah_sampel}</span>
-                      </td>
-                      <td>{row.jenis_analisis}</td>
-                      <td style={{ whiteSpace: 'nowrap' }}>{dayjs(row.tanggal_kirim).format("DD MMM")}</td>
-                      <td>
-                        <span className={`badge ${
-                          (row.status || '').toLowerCase() === "menunggu" ? "bg-warning text-dark" : 
-                          (row.status || '').toLowerCase() === "disetujui" ? "text-white" : 
-                          (row.status || '').toLowerCase() === "proses" ? "text-white" : 
-                          (row.status || '').toLowerCase() === "menunggu_verifikasi" ? "text-white" : 
-                          (row.status || '').toLowerCase() === "menunggu_pembayaran" ? "text-white" : 
-                          (row.status || '').toLowerCase() === "selesai" ? "bg-success" : 
-                          (row.status || '').toLowerCase() === "ditolak" ? "bg-danger" : 
-                          (row.status || '').toLowerCase() === "dibatalkan" ? "bg-secondary" : 
-                          "bg-secondary"
-                        }`} style={{
-                          ...(((row.status || '').toLowerCase() === "disetujui") && { backgroundColor: '#0d6efd' }),
-                          ...(((row.status || '').toLowerCase() === "proses") && { backgroundColor: '#6f42c1' }),
-                          ...(((row.status || '').toLowerCase() === "menunggu_verifikasi") && { backgroundColor: '#d63384' }),
-                          ...(((row.status || '').toLowerCase() === "menunggu_pembayaran") && { backgroundColor: '#fd7e14' })
-                        }}>{row.status}</span>
-                      </td>
-                      <td>
-                        <div className="d-flex justify-content-center gap-2">
-                          <button className="btn btn-info btn-sm text-white" onClick={() => handleDetail(row)} title="Detail">
-                            <i className="bi bi-eye"></i>
-                          </button>
-                          {(row.status || '').toLowerCase() === "menunggu" && (
-                            <>
-                              <button className="btn btn-success btn-sm" onClick={() => handleSetuju(row)}>
-                                <i className="bi bi-check-lg"></i>
-                              </button>
-                              <button className="btn btn-danger btn-sm" onClick={() => handleTolak(row)}>
-                                <i className="bi bi-x-lg"></i>
-                              </button>
-                            </>
-                          )}
-                        </div>
+                        </td>
+                        <td>
+                          <div className="text-dark fw-medium">{row.user ? row.user.full_name || row.user.name : "Guest"}</div>
+                        </td>
+                        <td className="text-center">
+                          <span className="badge rounded-pill bg-light text-dark border px-3">{row.jumlah_sampel}</span>
+                        </td>
+                        <td>
+                          <span className="text-muted small">{row.jenis_analisis}</span>
+                        </td>
+                        <td className="text-center text-secondary small">{dayjs(row.tanggal_kirim).format("DD/MM/YY")}</td>
+                        <td className="text-center">
+                          <span
+                            className={`badge rounded-pill px-3 py-2 fw-normal ${
+                              (row.status || "").toLowerCase() === "menunggu"
+                                ? "bg-warning text-dark"
+                                : (row.status || "").toLowerCase() === "disetujui"
+                                ? "bg-primary text-white"
+                                : (row.status || "").toLowerCase() === "proses"
+                                ? "bg-info text-white"
+                                : (row.status || "").toLowerCase() === "selesai"
+                                ? "bg-success text-white"
+                                : "bg-secondary text-white"
+                            }`}
+                          >
+                            {formatStatus(row.status)}
+                          </span>
+                        </td>
+                        <td className="text-center pe-4">
+                          <div className="d-flex justify-content-center gap-2">
+                            <button className="btn btn-outline-secondary btn-sm rounded-3 shadow-sm" onClick={() => handleDetail(row)}>
+                              <i className="bi bi-eye"></i>
+                            </button>
+                            {(row.status || "").toLowerCase() === "menunggu" && (
+                              <>
+                                <button className="btn btn-success btn-sm rounded-3 shadow-sm" onClick={() => handleSetuju(row)}>
+                                  <i className="bi bi-check-lg"></i>
+                                </button>
+                                <button className="btn btn-danger btn-sm rounded-3 shadow-sm" onClick={() => handleTolak(row)}>
+                                  <i className="bi bi-x-lg"></i>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="8" className="text-center py-5 text-muted">
+                        <i className="bi bi-inbox fs-2 d-block mb-2"></i>
+                        Tidak ada data pesanan ditemukan.
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="8" className="text-center py-4 text-muted">
-                      Tidak ada data.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </Spin>
+                  )}
+                </tbody>
+              </table>
+            </Spin>
+          </div>
         </div>
 
         {/* ================= TABEL SAMPEL DISETUJUI ================= */}
         <div className="mt-5">
-          <h5 className="fw-bold text-success mb-3">
-            <i className="bi bi-check-circle-fill me-2"></i>
-            Sampel yang Telah Disetujui
-          </h5>
+          <div className="d-flex align-items-center mb-3">
+            <div className="bg-success rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style={{ width: "32px", height: "32px" }}>
+              <i className="bi bi-check2 text-white"></i>
+            </div>
+            <h5 className="fw-bold mb-0 text-dark">Siap Diterima (Approved)</h5>
+          </div>
 
-          <div className="table-responsive bg-white rounded-4 shadow p-3">
-            <table className="table table-bordered align-middle text-center table-hover">
-              <thead className="table-success">
-                <tr>
-                  <th>No</th>
-                  <th>Kode Sampel</th>
-                  <th>Nama Klien</th>
-                  <th>Jumlah</th>
-                  <th>Jenis Analisis</th>
-                  <th>Tanggal</th>
-                  <th>Status</th>
-                  <th>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {approvedData.length > 0 ? (
-                  approvedData.map((row, index) => (
-                    <tr key={row.id}>
-                      <td>{index + 1}</td>
-                      <td className="fw-bold">
-                        <div>
-                          {generateSampleCodes(row)[0] || row.kode_sampel}
-                          {generateSampleCodes(row).length > 1 && (
-                            <div>
-                              <small className="text-muted">+{generateSampleCodes(row).length - 1} lainnya</small>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td>{row.user ? (row.user.full_name || row.user.name) : "-"}</td>
-                      <td>
-                        <span className="badge bg-light text-dark border">{row.jumlah_sampel}</span>
-                      </td>
-                      <td>{row.jenis_analisis}</td>
-                      <td>{dayjs(row.tanggal_kirim).format("DD MMM YYYY")}</td>
-                      <td>
-                        <span className="badge bg-success">Disetujui</span>
-                      </td>
-                      <td>
-                        <button className="btn btn-primary btn-sm px-3" onClick={() => handleSampelSampai(row)}>
-                          <i className="bi bi-box-arrow-in-down me-1"></i>
-                          Sampel diterima
-                        </button>
+          <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead style={{ backgroundColor: "#f8f9fa" }}>
+                  <tr>
+                    <th className="ps-4 py-3 text-muted small fw-bold" style={{ width: "60px" }}>
+                      No
+                    </th>
+                    <th className="py-3 text-muted small fw-bold">Kode Sampel</th>
+                    <th className="py-3 text-muted small fw-bold">Klien</th>
+                    <th className="py-3 text-muted small fw-bold text-center">Jumlah</th>
+                    <th className="py-3 text-muted small fw-bold">Analisis</th>
+                    <th className="py-3 text-muted small fw-bold text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {approvedData.length > 0 ? (
+                    approvedData.map((row, index) => (
+                      <tr key={row.id}>
+                        <td className="ps-4 text-muted">{index + 1}</td>
+                        <td className="fw-bold text-dark">{generateSampleCodes(row)[0] || row.kode_sampel}</td>
+                        <td>{row.user ? row.user.full_name || row.user.name : "-"}</td>
+                        <td className="text-center">
+                          <span className="badge bg-light text-dark border">{row.jumlah_sampel}</span>
+                        </td>
+                        <td>
+                          <small className="text-muted">{row.jenis_analisis}</small>
+                        </td>
+                        <td className="text-center pe-4">
+                          <button className="btn btn-primary btn-sm rounded-pill px-4 shadow-sm" onClick={() => handleSampelSampai(row)}>
+                            <i className="bi bi-box-seam me-2"></i>
+                            Konfirmasi Terima
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6" className="text-center py-4 text-muted small italic">
+                        Belum ada sampel yang menunggu penerimaan fisik.
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="8" className="text-muted py-4">
-                      Belum ada sampel yang disetujui.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* --- MODAL DETAIL (POPUP INFO LENGKAP) --- */}
-      <Modal show={showDetailModal} onHide={() => setShowDetailModal(false)} size="lg" centered style={{ marginTop: "3.1rem", marginLeft: "2rem" }}>
-        <Modal.Header closeButton className="bg-light">
-          <Modal.Title className="fw-bold text-dark">
-            <i className="bi bi-file-earmark-text me-2"></i> Detail Pesanan
-          </Modal.Title>
+      {/* --- MODAL DETAIL --- */}
+      <Modal show={showDetailModal} onHide={() => setShowDetailModal(false)} size="lg" centered>
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fw-bold">Detail Booking</Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-4">
           {detailData && (
             <div className="row g-4">
-              {/* Kiri: Info Klien */}
-              <div className="col-md-6 border-end">
-                <h6 className="fw-bold text-primary mb-3">Informasi Klien</h6>
-                <table className="table table-sm table-borderless">
-                  <tbody>
-                    <tr>
-                      <td className="text-muted" width="120">
-                        Nama Klien
-                      </td>
-                      <td>: {detailData.user?.full_name || detailData.user?.name}</td>
-                    </tr>
-                    <tr>
-                      <td className="text-muted">Kode Batch</td>
-                      <td className="fw-bold text-dark">: {generateSampleCodes(detailData)[0] || detailData.kode_sampel}</td>
-                    </tr>
-                    <tr>
-                      <td className="text-muted">Tgl Kirim</td>
-                      <td>: {dayjs(detailData.tanggal_kirim).format("DD MMMM YYYY")}</td>
-                    </tr>
-                    <tr>
-                      <td className="text-muted">Status</td>
-                      <td>
-                        : <span className={`badge ms-1 ${
-                          (detailData.status || '').toLowerCase() === "menunggu" ? "bg-warning text-dark" : 
-                          (detailData.status || '').toLowerCase() === "disetujui" ? "text-white" : 
-                          (detailData.status || '').toLowerCase() === "proses" ? "text-white" : 
-                          (detailData.status || '').toLowerCase() === "menunggu_verifikasi" ? "text-white" : 
-                          (detailData.status || '').toLowerCase() === "menunggu_pembayaran" ? "text-white" : 
-                          (detailData.status || '').toLowerCase() === "selesai" ? "bg-success" : 
-                          (detailData.status || '').toLowerCase() === "ditolak" ? "bg-danger" : 
-                          (detailData.status || '').toLowerCase() === "dibatalkan" ? "bg-secondary" : 
-                          "bg-secondary"
-                        }`} style={{
-                          ...(((detailData.status || '').toLowerCase() === "disetujui") && { backgroundColor: '#0d6efd' }),
-                          ...(((detailData.status || '').toLowerCase() === "proses") && { backgroundColor: '#6f42c1' }),
-                          ...(((detailData.status || '').toLowerCase() === "menunggu_verifikasi") && { backgroundColor: '#d63384' }),
-                          ...(((detailData.status || '').toLowerCase() === "menunggu_pembayaran") && { backgroundColor: '#fd7e14' })
-                        }}>{detailData.status}</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Kanan: Detail Sampel */}
               <div className="col-md-6">
-                <h6 className="fw-bold text-primary mb-3">Detail Sampel</h6>
-                <table className="table table-sm table-borderless">
-                  <tbody>
-                    <tr>
-                      <td className="text-muted" width="120">
-                        Jenis Hewan
-                      </td>
-                      <td>
-                        : {detailData.jenis_hewan === "Lainnya" && detailData.jenis_hewan_lain 
-                            ? detailData.jenis_hewan_lain 
-                            : detailData.jenis_hewan}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="text-muted">Kelamin</td>
-                      <td>: {detailData.jenis_kelamin}</td>
-                    </tr>
-                    <tr>
-                      <td className="text-muted">Umur</td>
-                      <td>: {detailData.umur}</td>
-                    </tr>
-                    <tr>
-                      <td className="text-muted">Fisiologis</td>
-                      <td>: {detailData.status_fisiologis}</td>
-                    </tr>
-                    <tr>
-                      <td className="text-muted">Jumlah</td>
-                      <td className="fw-bold fs-5 text-success">
-                        : {detailData.jumlah_sampel} <small className="fs-6 text-muted fw-normal">Sampel</small>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                <p className="text-muted small text-uppercase fw-bold mb-2">Informasi Klien</p>
+                <div className="d-flex flex-column gap-2">
+                  <div className="d-flex justify-content-between border-bottom pb-1">
+                    <span className="text-secondary">Nama</span>
+                    <span className="fw-medium">{detailData.user?.full_name || detailData.user?.name}</span>
+                  </div>
+                  <div className="d-flex justify-content-between border-bottom pb-1">
+                    <span className="text-secondary">Kode Batch</span>
+                    <span className="fw-bold">{generateSampleCodes(detailData)[0] || detailData.kode_sampel}</span>
+                  </div>
+                  <div className="d-flex justify-content-between border-bottom pb-1">
+                    <span className="text-secondary">Tgl Kirim</span>
+                    <span>{dayjs(detailData.tanggal_kirim).format("DD MMM YYYY")}</span>
+                  </div>
+                </div>
               </div>
-
-              <div className="col-12">
-                <hr className="my-0" />
-              </div>
-
-              {/* --- BAGIAN BARU: DAFTAR KODE SAMPEL --- */}
-              <div className="col-12">
-                <h6 className="fw-bold text-primary mb-2">Daftar Label Sampel</h6>
-                <div className="bg-light p-3 rounded border" style={{ maxHeight: "150px", overflowY: "auto" }}>
-                  <div className="d-flex flex-wrap gap-2">
-                    {generateSampleCodes(detailData).map((code, idx) => (
-                      <span key={idx} className="badge bg-white text-dark border py-2 px-3">
-                        <i className="bi bi-tag-fill me-2 text-secondary"></i>
-                        {code}
-                      </span>
-                    ))}
+              <div className="col-md-6">
+                <p className="text-muted small text-uppercase fw-bold mb-2">Spesifikasi Sampel</p>
+                <div className="d-flex flex-column gap-2">
+                  <div className="d-flex justify-content-between border-bottom pb-1">
+                    <span className="text-secondary">Jenis Hewan</span>
+                    <span>{detailData.jenis_hewan === "Lainnya" ? detailData.jenis_hewan_lain : detailData.jenis_hewan}</span>
+                  </div>
+                  <div className="d-flex justify-content-between border-bottom pb-1">
+                    <span className="text-secondary">Jumlah</span>
+                    <span className="fw-bold text-success">{detailData.jumlah_sampel} Unit</span>
+                  </div>
+                  <div className="d-flex justify-content-between border-bottom pb-1">
+                    <span className="text-secondary">Status</span>
+                    <span className="badge bg-info">{formatStatus(detailData.status)}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Bawah: Parameter Uji */}
-              <div className="col-12 mt-2">
-                <h6 className="fw-bold text-primary">Parameter Uji ({detailData.jenis_analisis})</h6>
-                <div className="d-flex flex-wrap gap-2 mt-2">
-                  {detailData.analysis_items && detailData.analysis_items.length > 0 ? (
+              <div className="col-12">
+                <p className="text-muted small text-uppercase fw-bold mb-2">Daftar Label</p>
+                <div className="d-flex flex-wrap gap-2">
+                  {generateSampleCodes(detailData).map((code, idx) => (
+                    <span key={idx} className="badge bg-light text-dark border fw-normal">
+                      {code}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="col-12">
+                <p className="text-muted small text-uppercase fw-bold mb-2">Parameter Analisis</p>
+                <div className="d-flex flex-wrap gap-2">
+                  {detailData.analysis_items?.length > 0 ? (
                     detailData.analysis_items.map((item, idx) => (
-                      <span key={idx} className="badge bg-secondary px-3 py-2 rounded-pill">
+                      <span key={idx} className="badge border text-secondary rounded-pill px-3">
                         {item.nama_item}
                       </span>
                     ))
                   ) : (
-                    <span className="text-muted fst-italic">Full Package</span>
+                    <span className="text-muted fst-italic">Full Package ({detailData.jenis_analisis})</span>
                   )}
                 </div>
               </div>
-
-              {/* Alasan Penolakan */}
-              {detailData.alasan_penolakan && (
-                <div className="col-12">
-                  <div className="alert alert-danger mt-2">
-                    <strong>Alasan Ditolak:</strong> {detailData.alasan_penolakan}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </Modal.Body>
-        <Modal.Footer>
-          <button className="btn btn-secondary px-4" onClick={() => setShowDetailModal(false)}>
+        <Modal.Footer className="border-0">
+          <button className="btn btn-light px-4 rounded-3" onClick={() => setShowDetailModal(false)}>
             Tutup
           </button>
         </Modal.Footer>
@@ -482,17 +396,20 @@ const VerifikasiSampel = () => {
       {/* --- MODAL KONFIRMASI SETUJU --- */}
       {showPopup && selectedSample && (
         <div className="popup-overlay">
-          <div className="popup-box">
-            <h4 className="popup-title">Konfirmasi Persetujuan</h4>
-            <p className="popup-text">
+          <div className="popup-box border-0 shadow-lg">
+            <div className="mb-3 text-success">
+              <i className="bi bi-question-circle fs-1"></i>
+            </div>
+            <h4 className="fw-bold">Konfirmasi</h4>
+            <p className="text-muted">
               Setujui sampel <b>{generateSampleCodes(selectedSample)[0]}</b>? <br />
-              Jumlah: <b>{selectedSample.jumlah_sampel} Sampel</b>
+              Klien: <b>{selectedSample.user?.full_name || selectedSample.user?.name}</b>
             </p>
-            <div className="popup-buttons">
-              <button className="popup-btn-yes" onClick={confirmSetuju} disabled={isProcessing}>
+            <div className="d-flex justify-content-center gap-2 mt-4">
+              <button className="btn btn-success px-4 rounded-3" onClick={confirmSetuju} disabled={isProcessing}>
                 {isProcessing ? "Memproses..." : "Ya, Setujui"}
               </button>
-              <button className="popup-btn-no" onClick={() => setShowPopup(false)} disabled={isProcessing}>
+              <button className="btn btn-light px-4 rounded-3" onClick={() => setShowPopup(false)} disabled={isProcessing}>
                 Batal
               </button>
             </div>
@@ -501,20 +418,17 @@ const VerifikasiSampel = () => {
       )}
 
       <style>{`
-        .popup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.45); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-        .popup-box { width: 420px; background: #ffffff; padding: 25px; border-radius: 20px; box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2); animation: popupShow 0.25s ease-out; text-align: center; }
-        .popup-title { font-size: 20px; font-weight: 600; color: #4b3a34; margin-bottom: 12px; }
-        .popup-text { font-size: 15px; color: #4b3a34; margin-bottom: 20px; line-height: 1.5; }
-        .popup-buttons { display: flex; justify-content: center; gap: 12px; }
-        .popup-btn-yes { padding: 8px 18px; background: #6c9a3b; color: white; border: none; border-radius: 12px; font-size: 14px; transition: 0.2s; }
-        .popup-btn-yes:hover { background: #5a832f; }
-        .popup-btn-no { padding: 8px 18px; background: #c75050; color: white; border: none; border-radius: 12px; font-size: 14px; transition: 0.2s; }
-        .popup-btn-no:hover { background: #aa3f3f; }
-
-        html, body { height: 100%;} 
-        #root { min-height: 100%; display: flex; flex-direction: column;}
-        .page-wrapper { flex: 1; display: flex; flex-direction: column;}
-        @keyframes popupShow { from { opacity: 0; transform: scale(0.93); } to { opacity: 1; transform: scale(1); } }
+        .table thead th { vertical-align: middle; border: none; }
+        .table tbody td { border-bottom: 1px solid #f2f2f2; }
+        .table-hover tbody tr:hover { background-color: #fbfbfb; transition: 0.2s; }
+        .card { border: none; }
+        .badge { font-weight: 500; letter-spacing: 0.3px; }
+        
+        .popup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); display: flex; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(2px); }
+        .popup-box { width: 380px; background: white; padding: 30px; border-radius: 24px; text-align: center; }
+        
+        @keyframes popupShow { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .popup-box { animation: popupShow 0.3s ease-out; }
       `}</style>
 
       <FooterSetelahLogin />

@@ -11,28 +11,42 @@ import dayjs from "dayjs";
 /* ================== STATUS → STEP ================== */
 /* UPDATED: Gunakan lowercase status dari backend */
 const statusToStep = (status) => {
-  const lowerStatus = (status || '').toLowerCase();
+  const lowerStatus = (status || "").toLowerCase();
   switch (lowerStatus) {
-    case "proses": 
-    case "sedang dianalisis": 
-      return 2; // Step 2: Sedang Dianalisis
+    case "proses":
+    case "sedang_dianalisis":
+    case "sedang dianalisis":
+      return 2;
     case "menunggu_verifikasi":
     case "menunggu verifikasi":
-      return 3; // Step 3: Verifikasi (menunggu koordinator)
+      return 3;
     case "menunggu_pembayaran":
     case "menunggu pembayaran":
-      return 4; // Step 4: Menunggu Pembayaran
-    case "selesai": 
-      return 5; // Step 5: Selesai
-    default: 
-      return 1; // Step 1: Sampel Diterima (default)
+      return 4;
+    case "selesai":
+      return 5;
+    default:
+      return 1;
   }
 };
 
+const formatStatus = (status) => {
+  if (!status) return "";
+  const lowerStatus = status.toLowerCase();
+
+  // Custom mapping untuk status proses
+  if (lowerStatus === "proses" || lowerStatus === "sedang_dianalisis") {
+    return "Sedang Dianalisis";
+  }
+
+  // Menghapus underscore dan capitalize untuk status lainnya
+  return status.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+};
+
 const getStatusBadge = (status) => {
-  const lowerStatus = (status || '').toLowerCase();
+  const lowerStatus = (status || "").toLowerCase();
   switch (lowerStatus) {
-    case "selesai": 
+    case "selesai":
       return "bg-success";
     case "menunggu_pembayaran":
     case "menunggu pembayaran":
@@ -41,9 +55,9 @@ const getStatusBadge = (status) => {
     case "menunggu verifikasi":
       return "bg-warning";
     case "proses":
-    case "sedang dianalisis": 
+    case "sedang dianalisis":
       return "bg-primary";
-    default: 
+    default:
       return "bg-secondary";
   }
 };
@@ -57,11 +71,11 @@ const ProsesAnalisis = () => {
   // Helper function untuk parse kode_sampel JSON
   const generateSampleCodes = (booking) => {
     if (!booking) return [];
-    
+
     try {
       let codes = [];
-      
-      if (typeof booking.kode_sampel === 'string') {
+
+      if (typeof booking.kode_sampel === "string") {
         try {
           codes = JSON.parse(booking.kode_sampel);
           if (Array.isArray(codes)) {
@@ -73,10 +87,10 @@ const ProsesAnalisis = () => {
       } else if (Array.isArray(booking.kode_sampel)) {
         codes = booking.kode_sampel;
       }
-      
+
       return codes;
     } catch (error) {
-      console.error('Error parsing kode_sampel:', error);
+      console.error("Error parsing kode_sampel:", error);
       return [];
     }
   };
@@ -86,10 +100,10 @@ const ProsesAnalisis = () => {
       try {
         const res = await getUserBookings();
         const bookings = res.data || [];
-        // UPDATED: Filter dengan lowercase status "proses", "menunggu_verifikasi", dan "selesai"
+        // UPDATED: Filter agar menampilkan booking yang masih berproses termasuk pembayaran
         const filtered = bookings.filter((b) => {
-          const status = (b.status || '').toLowerCase();
-          return status === "proses" || status === "menunggu_verifikasi" || status === "selesai";
+          const status = (b.status || "").toLowerCase();
+          return status === "proses" || status === "menunggu_verifikasi" || status === "menunggu_pembayaran" || status === "selesai";
         });
         setBookingList(filtered);
       } catch (err) {
@@ -103,35 +117,68 @@ const ProsesAnalisis = () => {
   }, []);
 
   const renderList = () => (
-    <div className="container" style={{ maxWidth: "800px", marginTop: "-5rem" }}>
-      <h4 className="fw-bold mb-4 text-center text-secondary">Daftar Proses Analisis</h4>
+    <div className="container" style={{ maxWidth: "800px", marginTop: "-3rem" }}>
+      <div className="text-center mb-4">
+        <h4 className="fw-bold text-dark">Daftar Proses Analisis</h4>
+        <p className="text-muted small">Pantau perkembangan analisis sampel laboratorium Anda</p>
+      </div>
+
       <div className="row g-3">
-        {bookingList.map((item) => (
-          <div key={item.id} className="col-12">
-            <div
-              className="card shadow-sm border-0 hover-card"
-              style={{ cursor: "pointer" }}
-              onClick={() => {
-                setSelectedBooking(item);
-                setCurrentStep(statusToStep(item.status));
-              }}
-            >
-              <div className="card-body d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="fw-bold mb-1">{generateSampleCodes(item)[0] || item.kode_sampel}</h6>
-                  <small className="text-muted d-block">
-                    {dayjs(item.tanggal_kirim).format("DD MMM YYYY")} | {item.jenis_analisis}
-                  </small>
-                </div>
-                <div className="text-end">
-                  <span className={`badge ${getStatusBadge(item.status)} px-3 py-2 rounded-pill`}>
-                    {item.status}
-                  </span>
+        {bookingList.map((item) => {
+          const sampleCodes = generateSampleCodes(item);
+          return (
+            <div key={item.id} className="col-12">
+              <div
+                className="card border-0 shadow-sm transition-all hover-card-modern"
+                style={{
+                  cursor: "pointer",
+                  borderRadius: "12px",
+                  borderLeft: `5px solid ${item.status.toLowerCase() === "proses" ? "#0dcaf0" : "#0d6efd"}`,
+                }}
+                onClick={() => {
+                  setSelectedBooking(item);
+                  setCurrentStep(statusToStep(item.status));
+                }}
+              >
+                <div className="card-body p-3">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div className="d-flex align-items-center">
+                      {/* Ikon Botol Sampel */}
+                      <div className="bg-light rounded-3 p-2 me-3 d-none d-sm-block">
+                        <i className="bi bi-flask text-primary" style={{ fontSize: "1.2rem" }}></i>
+                      </div>
+
+                      <div>
+                        <h6 className="fw-bold mb-1 text-dark">
+                          {sampleCodes[0] || item.kode_sampel}
+                          {sampleCodes.length > 1 && (
+                            <span className="ms-2 badge bg-info-subtle text-info fw-normal" style={{ fontSize: "0.7rem" }}>
+                              +{sampleCodes.length - 1} sampel
+                            </span>
+                          )}
+                        </h6>
+                        <div className="text-muted small">
+                          <i className="bi bi-calendar-event me-1"></i> {dayjs(item.tanggal_kirim).format("DD MMM YYYY")}
+                          <span className="mx-2">|</span>
+                          <i className="bi bi-gear me-1"></i> {item.jenis_analisis}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-end">
+                      <span className={`badge ${getStatusBadge(item.status)} px-3 py-2 rounded-pill shadow-sm`} style={{ fontSize: "0.75rem" }}>
+                        {formatStatus(item.status)}
+                      </span>
+                      <div className="text-primary mt-1 d-none d-md-block" style={{ fontSize: "0.7rem", fontWeight: "600" }}>
+                        Lihat Progress <i className="bi bi-chevron-right small"></i>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -140,7 +187,7 @@ const ProsesAnalisis = () => {
     if (!selectedBooking) return null;
 
     return (
-      <div className="fade-in" style={{marginTop: "-6rem"}}>
+      <div className="fade-in" style={{ marginTop: "-6rem" }}>
         <button className="btn btn-outline-secondary btn-sm mb-4" onClick={() => setSelectedBooking(null)}>
           <i className="bi bi-arrow-left me-2" /> Kembali ke Daftar
         </button>
@@ -207,16 +254,10 @@ const ProsesAnalisis = () => {
             }}
           >
             <div className="mb-3" style={{ color: currentStep === 2 ? "#198754" : "#8c6b60" }}>
-              {currentStep === 2 ? (
-                <i className="bi bi-check-circle-fill" style={{ fontSize: "3.5rem" }} />
-              ) : (
-                <i className="bi bi-gear-fill rotate-icon-slow" style={{ fontSize: "3.5rem", display: "inline-block" }} />
-              )}
+              {currentStep === 2 ? <i className="bi bi-check-circle-fill" style={{ fontSize: "3.5rem" }} /> : <i className="bi bi-gear-fill rotate-icon-slow" style={{ fontSize: "3.5rem", display: "inline-block" }} />}
             </div>
 
-            <h4 className="fw-bold mb-3">
-              {currentStep === 5 ? "Analisis Selesai!" : currentStep === 4 ? "Menunggu Pembayaran" : "Sampel Dalam Proses"}
-            </h4>
+            <h4 className="fw-bold mb-3">{currentStep === 5 ? "Analisis Selesai!" : currentStep === 4 ? "Menunggu Pembayaran" : "Sampel Dalam Proses"}</h4>
 
             <div className={`alert ${currentStep === 5 ? "alert-success" : currentStep === 4 ? "alert-info" : currentStep === 3 ? "alert-warning" : "alert-info"} text-start`}>
               {currentStep === 1 && "Sampel Anda telah kami terima dan sedang dalam antrean analisis."}
@@ -235,20 +276,14 @@ const ProsesAnalisis = () => {
             </div>
 
             {currentStep === 5 && (
-              <button
-                className="btn btn-success w-100 mt-3"
-                onClick={() => message.info('Fitur download PDF akan segera hadir')}
-              >
+              <button className="btn btn-success w-100 mt-3" onClick={() => message.info("Fitur download PDF akan segera hadir")}>
                 <i className="bi bi-download me-2"></i>
                 Download Hasil Analisis (PDF)
               </button>
             )}
 
             {currentStep === 4 && (
-              <button
-                className="btn btn-primary w-100 mt-3"
-                onClick={() => message.info('Fitur pembayaran akan segera hadir')}
-              >
+              <button className="btn btn-primary w-100 mt-3" onClick={() => message.info("Fitur pembayaran akan segera hadir")}>
                 <i className="bi bi-credit-card me-2"></i>
                 Lakukan Pembayaran
               </button>
@@ -257,9 +292,9 @@ const ProsesAnalisis = () => {
             <button
               className="btn wa-btn text-white w-100 mt-3"
               disabled={currentStep !== 4}
-              style={{ 
+              style={{
                 backgroundColor: currentStep === 4 ? "#8c6b60" : "#d5c8c3",
-                cursor: currentStep === 4 ? "pointer" : "not-allowed" 
+                cursor: currentStep === 4 ? "pointer" : "not-allowed",
               }}
               onClick={() => (window.location.href = "/hasil-analisis")}
             >

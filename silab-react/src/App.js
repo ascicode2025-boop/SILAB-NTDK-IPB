@@ -25,6 +25,9 @@ import MenungguPersetujuan from "./components/Klien/MenungguPersetujuan";
 import ProsesAnalisis from "./components/Klien/ProsesAnalisis";
 import ProfileAkunKlien from "./components/Klien/ProfileAkunKlien";
 import EditProfileKlien from "./components/Klien/EditProfileKlien";
+import DaftarAnalisisLogin from "./components/Klien/DaftarAnalisisLogin";
+import PembayaranKlien from "./components/Klien/PembayaranKlien";
+import RiwayatAnalisisKlien from "./components/Klien/RiwayatAnalisisKlien";
 
 // --- IMPORT FITUR DASHBOARD TEKNISI ---
 import DashboardTeknisi from "./components/Teknisi/DashboardTeknisi";
@@ -36,9 +39,20 @@ import InputNilaiAnalisis from "./components/Teknisi/InputNilaiAnalisis";
 import FormInputNilaiAnalisis from "./components/Teknisi/FormInputNilaiAnalisis";
 import GeneratePdfAnalysis from "./components/Teknisi/GeneratePdfAnalysis";
 
-// --- IMPORT FITUR DASHBOARD LAINNYA ---
+// --- IMPORT FITUR DASHBOARD Koordinator ---
 import DashboardKoordinator from "./components/Koordinator/DashboardKoordinator";
+import VerifikasiSampelKoordinator from "./components/Koordinator/VerifikasiSampelKoordinator";
+import LihatHasilPdfKoordinator from "./components/Koordinator/LihatHasilPdfKoordinator";
+import TandaTanganKoordinator from "./components/Koordinator/TandaTanganKoordinator"; 
+import ManajemenPembayaran from "./components/Koordinator/ManajemenPembayaran";
+import LaporanKoordinator from "./components/Koordinator/LaporanKoordinator";
+import ManajemenAkun from "./components/Koordinator/ManajemenRole";
+
+// --- IMPORT FITUR DASHBOARD Kepala ---
+import LaporanKepala from "./components/Kepala/LaporanKepala";
 import DashboardKepala from "./components/Kepala/DashboardKepala";
+import VerifikasiKepala from "./components/Kepala/VerifikasiKepala";
+import LihatHasilPdfKepala from "./components/Kepala/LihatHasilPdfKepala";
 
 // ====================================================================
 // 1. Layout dengan Navbar (Untuk Landing Page - PUBLIK)
@@ -75,9 +89,18 @@ function AppLayoutWithoutNavbar() {
       {/* --- DASHBOARD INTERNAL (WAJIB LOGIN + CEK ROLE) --- */}
 
       {/* 1. Koordinator (Hanya role 'koordinator' yang boleh masuk) */}
+      <PrivateRoute path="/koordinator/dashboard/manajemenAkun" component={ManajemenAkun} allowedRoles={["koordinator"]} />
+      <PrivateRoute path="/koordinator/dashboard/laporanKoordinator" component={LaporanKoordinator} allowedRoles={["koordinator"]} />
+      <PrivateRoute path="/koordinator/dashboard/tandaTanganKoordinator" component={TandaTanganKoordinator} allowedRoles={["koordinator"]} />
+      <PrivateRoute path="/koordinator/dashboard/manajemenPembayaran" component={ManajemenPembayaran} allowedRoles={["koordinator"]} />
+      <PrivateRoute path="/koordinator/dashboard/verifikasiSampelKoordinator/lihatHasilPdfKoordinator/:id" component={LihatHasilPdfKoordinator} allowedRoles={["koordinator"]} />
+      <PrivateRoute path="/koordinator/dashboard/verifikasiSampelKoordinator" component={VerifikasiSampelKoordinator} allowedRoles={["koordinator"]} />
       <PrivateRoute path="/koordinator/dashboard" component={DashboardKoordinator} allowedRoles={["koordinator"]} />
 
       {/* 2. Kepala (Hanya role 'kepala' yang boleh masuk) */}
+      <PrivateRoute path="/kepala/dashboard/laporanKepala" component={LaporanKepala} allowedRoles={["kepala"]} />
+      <PrivateRoute path="/kepala/dashboard/verifikasiKepala" component={VerifikasiKepala} allowedRoles={["kepala"]} />
+      <PrivateRoute path="/kepala/dashboard/verifikasiKepala/lihatHasilPdfKepala/:id" component={LihatHasilPdfKepala} allowedRoles={["kepala"]} />
       <PrivateRoute path="/kepala/dashboard" component={DashboardKepala} allowedRoles={["kepala"]} />
 
       {/* 3. Teknisi (Hanya role 'teknisi' yang boleh masuk) */}
@@ -93,6 +116,8 @@ function AppLayoutWithoutNavbar() {
       {/* 4. Klien / Umum (Hanya role 'klien' yang boleh masuk) */}
       {/* Saya tambahkan pembatasan 'klien' agar teknisi tidak salah masuk ke sini */}
 
+      <PrivateRoute path="/dashboard/riwayatAnalisisKlien" component={RiwayatAnalisisKlien} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/pembayaranKlien" component={PembayaranKlien} allowedRoles={["klien"]} />
       <PrivateRoute path="/dashboard/prosesAnalisis" component={ProsesAnalisis} allowedRoles={["klien"]} />
       <PrivateRoute path="/dashboard/menungguPersetujuan" component={MenungguPersetujuan} allowedRoles={["klien"]} />
       <PrivateRoute path="/dashboard/pemesananSampelKlien/hematologiDanMetabolit" component={HematologiDanMetabolit} allowedRoles={["klien"]} />
@@ -101,6 +126,7 @@ function AppLayoutWithoutNavbar() {
       <PrivateRoute path="/dashboard/pemesananSampelKlien" component={PemesananSampelKlien} allowedRoles={["klien"]} />
 
       <PrivateRoute path="/dashboard/panduanSampelKlien" component={PanduanSampelKlien} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/daftarAnalisisLogin" component={DaftarAnalisisLogin} allowedRoles={["klien"]} />
       <PrivateRoute path="/dashboard/bookingCalenderKlien" component={BookingCalenderKlien} allowedRoles={["klien"]} />
       <PrivateRoute path="/dashboard/ProfileAkunKlien/EditProfileKlien" component={EditProfileKlien} allowedRoles={["klien"]} />
       <PrivateRoute path="/dashboard/ProfileAkunKlien" component={ProfileAkunKlien} allowedRoles={["klien"]} />
