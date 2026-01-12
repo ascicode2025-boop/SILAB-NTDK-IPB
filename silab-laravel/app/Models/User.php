@@ -29,6 +29,10 @@ class User extends Authenticatable
         'password',
         'institusi',
         'nomor_telpon',
+        // Allow API mass-assignment for role/status/login_count
+        'role',
+        'status',
+        'login_count',
 
     ];
 
@@ -53,5 +57,10 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function achievements()
+    {
+        return $this->belongsToMany(\App\Models\Achievement::class, 'user_achievements');
     }
 }

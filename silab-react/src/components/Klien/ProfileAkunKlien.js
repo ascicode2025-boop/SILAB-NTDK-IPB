@@ -70,6 +70,12 @@ function ProfileAkunKlien() {
     );
   }
 
+  // Redirect jika user tidak ditemukan
+  if (!user) {
+    history.push("/login");
+    return null;
+  }
+
   const avatarUrl = user.avatar
     ? `http://localhost:8000/storage/${user.avatar}`
     : null;

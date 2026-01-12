@@ -53,12 +53,24 @@ const DashboardTeknisi = () => {
     }
   };
 
-  // Statistik Calculation
+  // Statistik Calculation - hitung berdasarkan status yang relevan untuk teknisi
   const stats = {
     total: dataBookings.length,
-    proses: dataBookings.filter(i => i.status.toLowerCase() === "proses").length,
-    menunggu: dataBookings.filter(i => i.status.toLowerCase() === "menunggu").length,
-    selesai: dataBookings.filter(i => i.status.toLowerCase() === "selesai").length,
+    // Proses: sampel yang sedang dikerjakan teknisi
+    proses: dataBookings.filter(i => {
+      const s = (i.status || '').toLowerCase();
+      return s === "proses" || s === "draft" || s === "selesai_di_analisis";
+    }).length,
+    // Menunggu: sampel yang menunggu diproses (disetujui tapi belum dikerjakan)
+    menunggu: dataBookings.filter(i => {
+      const s = (i.status || '').toLowerCase();
+      return s === "menunggu" || s === "disetujui";
+    }).length,
+    // Selesai: sampel yang sudah selesai dianalisis dan dikirim ke koordinator/kepala/selesai
+    selesai: dataBookings.filter(i => {
+      const s = (i.status || '').toLowerCase();
+      return s === "selesai" || s === "menunggu_verifikasi" || s === "menunggu_verifikasi_kepala" || s === "menunggu_pembayaran" || s === "lunas";
+    }).length,
   };
 
   const filteredData = dataBookings.filter((item) => {
@@ -83,19 +95,13 @@ const DashboardTeknisi = () => {
       width: 60,
     },
     {
-      title: 'Kode Sampel',
-      key: 'kode_sampel',
-      render: (_, record) => {
-        const codes = generateSampleCodes(record);
-        return (
-          <div>
-            <div className="fw-bold text-primary">{codes[0] || record.kode_sampel}</div>
-            {codes.length > 1 && (
-              <small className="text-muted">+{codes.length - 1} sampel lainnya</small>
-            )}
-          </div>
-        );
-      },
+      title: 'Kode Batch',
+      key: 'kode_batch',
+      render: (_, record) => (
+        <div>
+          <div className="fw-bold text-primary">{record.kode_batch || '-'}</div>
+        </div>
+      ),
     },
     {
       title: 'Klien',
@@ -130,9 +136,12 @@ const DashboardTeknisi = () => {
           default: color = 'default';
         }
         
+        let label = status;
+        if (status.toLowerCase() === 'menunggu_verifikasi_kepala') label = 'Menunggu Verifikasi';
+        else label = status.toUpperCase().replace('_', ' ');
         return (
           <Tag icon={icon} color={color} className="px-3 py-1 rounded-pill">
-            {status.toUpperCase().replace('_', ' ')}
+            {label}
           </Tag>
         );
       }

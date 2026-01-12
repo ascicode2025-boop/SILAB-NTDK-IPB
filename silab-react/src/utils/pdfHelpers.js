@@ -1,6 +1,8 @@
 // Helper functions untuk format data ke PDF
 
 export const formatDataForPDF = (booking) => {
+      let headerTitle2 = "";
+    let headerTitle1 = "";
   if (!booking || !booking.analysis_items) {
     console.warn('No booking or analysis_items found');
     return null;
@@ -43,6 +45,7 @@ export const formatDataForPDF = (booking) => {
       const displayValue = hasilMatch ? hasilMatch[1] : value.split(" ")[0];
       
       // Kategorisasi berdasarkan nama item
+      const itemNameLower = (itemName || '').toLowerCase();
       if (itemName === "BDM") {
         if (!hematologiItems[code]) hematologiItems[code] = {};
         hematologiItems[code].BDM = displayValue;
@@ -58,10 +61,12 @@ export const formatDataForPDF = (booking) => {
         hematologiItems[code].HB = displayValue;
         availableHematologiParams.add("HB");
       }
-      else if (itemName === "Hematokrit") {
+      else if (itemNameLower.includes('hematokrit') || itemNameLower === 'pcv') {
+        // Use label 'PCV' if source name is exactly 'pcv', otherwise use 'Hematokrit'
         if (!hematologiItems[code]) hematologiItems[code] = {};
-        hematologiItems[code].PCV = displayValue;
-        availableHematologiParams.add("PCV");
+        const label = itemNameLower === 'pcv' ? 'PCV' : 'Hematokrit';
+        hematologiItems[code][label] = displayValue;
+        availableHematologiParams.add(label);
       }
       else if (itemName === "Diferensiasi Leukosit") {
         if (!hematologiItems[code]) hematologiItems[code] = {};
@@ -119,29 +124,39 @@ export const formatDataForPDF = (booking) => {
   // Build table1 (Hematologi) - hanya jika ada data
   let table1 = null;
   if (availableHematologiParams.size > 0) {
-    const hematologiParamOrder = ["BDM", "BDP", "HB", "PCV", "Limfosit", "Heterofil", "Eosinofil", "Monosit", "Basofil"];
-    const activeHematologiParams = hematologiParamOrder.filter(p => availableHematologiParams.has(p));
-    
-    // Build header with units
+    // Urutan dan label parameter sesuai gambar
+    const hematologiParamOrder = [
+      "BDM", "BDP", "HB", "Hematokrit", "PCV", "Limfosit", "Heterofil", "Eosinofil", "Monosit", "Basofil"
+    ];
+    // Mapping label sesuai gambar / sesuai nama yang dipesan klien
     const headerMap = {
-      "BDM": "BDM\n(10⁶/µL)",
-      "BDP": "BDP\n(10³/µL)",
-      "HB": "HB\n(G%)",
-      "PCV": "PCV\n(%)",
-      "Limfosit": "Limfosit\n(%)",
-      "Heterofil": "Heterofil\n(%)",
-      "Eosinofil": "Eosinofil\n(%)",
-      "Monosit": "Monosit\n(%)",
-      "Basofil": "Basofil\n(%)"
+      "BDM": "BDM",
+      "BDP": "BDP",
+      "HB": "HB",
+      "Hematokrit": "Hematokrit",
+      "PCV": "PCV",
+      "Limfosit": "Limfosit (%)",
+      "Heterofil": "Neutrofil (%)",
+      "Eosinofil": "Eosinofil (%)",
+      "Monosit": "Monosit (%)",
+      "Basofil": "Basofil (%)"
     };
-    
-    const table1Header = ["Kode", ...activeHematologiParams.map(p => headerMap[p] || p)];
-    const table1Rows = codes.map(code => {
+    // Filter hanya parameter yang valid dan ada di headerMap
+    const activeHematologiParams = hematologiParamOrder.filter(p => availableHematologiParams.has(p) && headerMap[p]);
+    const table1Header = ["No", "Kode", ...activeHematologiParams.map(p => headerMap[p])];
+    const table1Rows = codes.map((code, idx) => {
       const data = hematologiItems[code] || {};
-      return [code, ...activeHematologiParams.map(p => data[p] || "-")];
+      return [idx + 1, code, ...activeHematologiParams.map(p => data[p] || "-")];
     });
-    
+    // Build parameter analisis string for title
+    const paramStr = activeHematologiParams.map(p => (headerMap[p] || p).replace(' (%)','')).join(', ');
+    let diffStr = '';
+    if (activeHematologiParams.includes('Limfosit') || activeHematologiParams.includes('Heterofil') || activeHematologiParams.includes('Eosinofil') || activeHematologiParams.includes('Monosit') || activeHematologiParams.includes('Basofil')) {
+      diffStr = ' dan Differensiasi Leukosit';
+    }
     table1 = [table1Header, ...table1Rows];
+    // Update title1 to match requested format
+    headerTitle1 = `Tabel 1. Hasil Analisis ${paramStr}${diffStr} pada hewan ternak ${jenisHewan}`;
   }
 
   // Build table2 (Metabolit) - hanya jika ada data
@@ -154,19 +169,19 @@ export const formatDataForPDF = (booking) => {
     
     // Build header with units
     const headerMap = {
-      "Glukosa": "Glukosa\n(mg/dL)",
-      "Total Protein": "Total P.\n(g/dL)",
-      "Albumin": "Albumin\n(mg/dL)",
-      "Kolestrol": "Kolestrol\n(mg/dL)",
-      "Trigliserida": "Trigliserid\na (mg/dL)",
-      "Urea/BUN": "Urea/BU\nN (mg/dL)",
-      "Kreatinin": "Kreatinin\n(mg/dL)",
-      "Kalsium": "Kalsium\n(mg/dL)",
-      "HDL-kol": "HDL-ko\nl (mg/dL)",
-      "LDL-kol": "LDL-ko\nl (mg/dL)",
-      "Asam Urat": "Asam\nUrat (mg/dL)",
-      "SGOT": "SGOT\n(U/L)",
-      "SGPT": "SGPT\n(U/L)"
+      "Glukosa": "Glukosa",
+      "Total Protein": "Total Protein",
+      "Albumin": "Albumin",
+      "Kolestrol": "Kolestrol",
+      "Trigliserida": "Trigliserida",
+      "Urea/BUN": "Urea/BUN",
+      "Kreatinin": "Kreatinin",
+      "Kalsium": "Kalsium",
+      "HDL-kol": "HDL-kol",
+      "LDL-kol": "LDL-kol",
+      "Asam Urat": "Asam Urat",
+      "SGOT": "SGOT",
+      "SGPT": "SGPT"
     };
     
     const table2Header = ["No", "Kode", ...activeMetabolitParams.map(p => headerMap[p] || p)];
@@ -174,8 +189,39 @@ export const formatDataForPDF = (booking) => {
       const data = metabolitItems[code] || {};
       return [index + 1, code, ...activeMetabolitParams.map(p => data[p] || "-")];
     });
-    
+    // Build parameter analisis string for title2
+    const paramStr2 = activeMetabolitParams.map(p => headerMap[p]).join(', ');
     table2 = [table2Header, ...table2Rows];
+    headerTitle2 = `Tabel 2. Hasil Analisis ${paramStr2} pada hewan ternak ${jenisHewan}`;
+  }
+
+  // Determine parameter analisis dari booking
+  const parameterAnalisis = booking.jenis_analisis || 
+    (table1 && table2 ? "Hematologi dan Metabolit" : 
+     table1 ? "Hematologi" : 
+     table2 ? "Metabolit" : "****");
+
+  // Determine tanggal - use status_updated_at if available (set when Kepala approves), 
+  // otherwise use updated_at, created_at, or placeholder
+  let tanggalDisplay = "**/**/****";
+  if (booking.status_updated_at) {
+    const date = new Date(booking.status_updated_at);
+    if (!isNaN(date.getTime())) {
+      tanggalDisplay = date.toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "2-digit", 
+        year: "numeric"
+      });
+    }
+  } else if (booking.updated_at) {
+    const date = new Date(booking.updated_at);
+    if (!isNaN(date.getTime())) {
+      tanggalDisplay = date.toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      });
+    }
   }
 
   return {
@@ -183,9 +229,10 @@ export const formatDataForPDF = (booking) => {
       kepada: "Kepada Yth.",
       instansi: booking.user?.full_name || booking.user?.name || "****",
       tempat: "Di Tempat",
-      tanggal: "**/**/****", // Format DD/MM/YYYY dengan placeholder bintang
-      title1: table1 ? `Tabel 1. Hasil Analisis Hematologi pada hewan ternak ${jenisHewan}` : null,
-      title2: table2 ? `Tabel 2. Hasil Analisis Metabolit pada hewan ternak ${jenisHewan}` : null,
+      tanggal: tanggalDisplay, // Format DD/MM/YYYY - uses status_updated_at if available
+      parameterAnalisis: parameterAnalisis,
+      title1: table1 ? headerTitle1 : null,
+      title2: table2 ? headerTitle2 : null,
     },
     table1: table1,
     table2: table2

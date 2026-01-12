@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import CustomPopup from "./Common/CustomPopup";
 import { Form, Button, InputGroup } from "react-bootstrap";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -22,6 +23,8 @@ function LoginPage() {
 
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  // State untuk popup
+  const [popup, setPopup] = useState({ show: false, title: "", message: "", type: "info", onClose: null });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -72,10 +75,17 @@ function LoginPage() {
 
       // Jika role adalah 'klien' DAN (Nama Lengkap kosong ATAU Institusi kosong)
       if (user.role === "klien" && (!user.full_name || !user.institusi)) {
-        alert("Halo! Karena Anda pengguna baru, silakan lengkapi Data Profil Anda terlebih dahulu.");
-        // Arahkan paksa ke halaman edit profil
-        history.push("/dashboard/ProfileAkunKlien/EditProfileKlien");
-        return; // Hentikan eksekusi agar tidak lanjut ke switch di bawah
+        setPopup({
+          show: true,
+          title: "Lengkapi Data Diri",
+          message: "Halo! Karena Anda pengguna baru, silakan lengkapi Data Profil Anda terlebih dahulu agar bisa menggunakan layanan kami.",
+          type: "info",
+          onClose: () => {
+            setPopup((p) => ({ ...p, show: false }));
+            history.push("/dashboard/ProfileAkunKlien/EditProfileKlien");
+          }
+        });
+        return;
       }
 
       // ============================================================
@@ -229,6 +239,15 @@ function LoginPage() {
           </p>
         </div>
       </div>
+
+      <CustomPopup
+        show={popup.show}
+        title={popup.title}
+        message={popup.message}
+        type={popup.type}
+        buttonText="Isi Data Profil"
+        onClose={popup.onClose}
+      />
 
       <style>
         {`

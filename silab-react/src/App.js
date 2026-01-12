@@ -38,6 +38,8 @@ import AlasanMenolak from "./components/Teknisi/AlasanMenolak";
 import InputNilaiAnalisis from "./components/Teknisi/InputNilaiAnalisis";
 import FormInputNilaiAnalisis from "./components/Teknisi/FormInputNilaiAnalisis";
 import GeneratePdfAnalysis from "./components/Teknisi/GeneratePdfAnalysis";
+import ProfileAkunTeknisi from "./components/Teknisi/ProfileAkunTeknisi";
+import EditProfileTeknisi from "./components/Teknisi/EditProfileTeknisi";
 
 // --- IMPORT FITUR DASHBOARD Koordinator ---
 import DashboardKoordinator from "./components/Koordinator/DashboardKoordinator";
@@ -47,6 +49,8 @@ import TandaTanganKoordinator from "./components/Koordinator/TandaTanganKoordina
 import ManajemenPembayaran from "./components/Koordinator/ManajemenPembayaran";
 import LaporanKoordinator from "./components/Koordinator/LaporanKoordinator";
 import ManajemenAkun from "./components/Koordinator/ManajemenRole";
+import ProfileAkunKoordinator from "./components/Koordinator/ProfileAkunKoordinator";
+import EditProfileKoordinator from "./components/Koordinator/EditProfileKoordinator";
 
 // --- IMPORT FITUR DASHBOARD Kepala ---
 import LaporanKepala from "./components/Kepala/LaporanKepala";
@@ -80,6 +84,8 @@ function AppLayoutWithNavbar() {
 function AppLayoutWithoutNavbar() {
   return (
     <Switch>
+      {/* Alias route untuk /teknisi/dashboard/riwayat agar menampilkan RiwayatAnalisisTeknisi */}
+      <PrivateRoute path="/teknisi/dashboard/riwayat" component={require("./components/Teknisi/RiwayatAnalisisTeknisi").default} allowedRoles={["teknisi"]} />
       {/* --- HALAMAN AKSES PUBLIK (Login/Register) --- */}
       {/* Tetap Route biasa, karena user belum login di sini */}
       <Route path="/login" component={LoginPage} />
@@ -89,6 +95,8 @@ function AppLayoutWithoutNavbar() {
       {/* --- DASHBOARD INTERNAL (WAJIB LOGIN + CEK ROLE) --- */}
 
       {/* 1. Koordinator (Hanya role 'koordinator' yang boleh masuk) */}
+      <PrivateRoute path="/koordinator/dashboard/profile/edit" component={EditProfileKoordinator} allowedRoles={["koordinator"]} />
+      <PrivateRoute path="/koordinator/dashboard/profile" component={ProfileAkunKoordinator} allowedRoles={["koordinator"]} />
       <PrivateRoute path="/koordinator/dashboard/manajemenAkun" component={ManajemenAkun} allowedRoles={["koordinator"]} />
       <PrivateRoute path="/koordinator/dashboard/laporanKoordinator" component={LaporanKoordinator} allowedRoles={["koordinator"]} />
       <PrivateRoute path="/koordinator/dashboard/tandaTanganKoordinator" component={TandaTanganKoordinator} allowedRoles={["koordinator"]} />
@@ -98,9 +106,9 @@ function AppLayoutWithoutNavbar() {
       <PrivateRoute path="/koordinator/dashboard" component={DashboardKoordinator} allowedRoles={["koordinator"]} />
 
       {/* 2. Kepala (Hanya role 'kepala' yang boleh masuk) */}
-      <PrivateRoute path="/kepala/dashboard/laporanKepala" component={LaporanKepala} allowedRoles={["kepala"]} />
-      <PrivateRoute path="/kepala/dashboard/verifikasiKepala" component={VerifikasiKepala} allowedRoles={["kepala"]} />
       <PrivateRoute path="/kepala/dashboard/verifikasiKepala/lihatHasilPdfKepala/:id" component={LihatHasilPdfKepala} allowedRoles={["kepala"]} />
+      <PrivateRoute path="/kepala/dashboard/verifikasiKepala" component={VerifikasiKepala} allowedRoles={["kepala"]} />
+      <PrivateRoute path="/kepala/dashboard/laporanKepala" component={LaporanKepala} allowedRoles={["kepala"]} />
       <PrivateRoute path="/kepala/dashboard" component={DashboardKepala} allowedRoles={["kepala"]} />
 
       {/* 3. Teknisi (Hanya role 'teknisi' yang boleh masuk) */}
@@ -111,6 +119,10 @@ function AppLayoutWithoutNavbar() {
       <PrivateRoute path="/teknisi/dashboard/verifikasiSampel" component={VerifikasiSampel} allowedRoles={["teknisi"]} />
       <PrivateRoute path="/teknisi/dashboard/jadwalSampel" component={JadwalSampel} allowedRoles={["teknisi"]} />
       <PrivateRoute path="/teknisi/dashboard/aturTanggalTeknisi" component={AturTanggalTeknisi} allowedRoles={["teknisi"]} />
+      <PrivateRoute path="/teknisi/dashboard/profile/edit" component={EditProfileTeknisi} allowedRoles={["teknisi"]} />
+      <PrivateRoute path="/teknisi/dashboard/profile" component={ProfileAkunTeknisi} allowedRoles={["teknisi"]} />
+      {/* Route baru untuk Riwayat Analisis Teknisi */}
+      <PrivateRoute path="/teknisi/dashboard/riwayat-analisis" component={require("./components/Teknisi/RiwayatAnalisisTeknisi").default} allowedRoles={["teknisi"]} />
       <PrivateRoute path="/teknisi/dashboard" component={DashboardTeknisi} allowedRoles={["teknisi"]} />
 
       {/* 4. Klien / Umum (Hanya role 'klien' yang boleh masuk) */}

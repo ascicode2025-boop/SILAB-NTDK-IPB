@@ -16,6 +16,11 @@ function InputNilaiAnalisis() {
 
   useEffect(() => {
     fetchData();
+    // Auto-refresh setiap 10 detik
+    const interval = setInterval(() => {
+      fetchData();
+    }, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchData = async () => {
@@ -24,10 +29,18 @@ function InputNilaiAnalisis() {
       const data = await getAllBookings();
       const allBookings = data?.data || [];
 
-      // Filter status "proses" dan "menunggu_verifikasi" untuk input/edit
+      // Filter status untuk input/edit: "proses", "selesai_di_analisis", "menunggu_verifikasi", "draft", "ditolak" dan status yang menunjukkan dikembalikan ke teknisi (dikirim_ke_teknisi)
       const approved = allBookings.filter((booking) => {
         const status = (booking.status || '').toLowerCase();
-        return status === "proses" || status === "menunggu_verifikasi";
+        return (
+          status === "proses" ||
+          status === "selesai_di_analisis" ||
+          status === "menunggu_verifikasi" ||
+          status === "draft" ||
+          status === "ditolak" ||
+          status === "dikirim_ke_teknisi" ||
+          status === "dikirim ke teknisi"
+        );
       });
       setApprovedSamples(approved);
     } catch (error) {
@@ -86,28 +99,15 @@ function InputNilaiAnalisis() {
       width: 60,
     },
     {
-      title: "Kode Sampel",
-      dataIndex: "kode_sampel",
-      key: "kode_sampel",
-      width: 180,
-      render: (text, record) => {
-        const codes = generateSampleCodes(record);
-        const firstCode = codes[0] || text;
-        const totalCodes = codes.length;
-        
-        return (
-          <div>
-            <Tag color="blue" style={{ marginBottom: '2px' }}>
-              {firstCode}
-            </Tag>
-            {totalCodes > 1 && (
-              <Tag color="cyan" style={{ fontSize: '0.7rem' }}>
-                +{totalCodes - 1} lainnya
-              </Tag>
-            )}
-          </div>
-        );
-      },
+      title: "Kode Batch",
+      dataIndex: "kode_batch",
+      key: "kode_batch",
+      width: 220, // Perlebar kolom agar kode batch tidak terpotong
+      render: (text, record) => (
+        <Tag color="blue" style={{ marginBottom: '2px', fontWeight: 600, fontSize: '1rem', letterSpacing: '1px', whiteSpace: 'nowrap' }}>
+          {record.kode_batch || '-'}
+        </Tag>
+      ),
     },
 
     {
@@ -150,11 +150,23 @@ function InputNilaiAnalisis() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 120,
+      width: 160,
       align: "center",
       render: (status) => {
         if (status === "menunggu_verifikasi") {
           return <Tag color="orange">Menunggu Verifikasi</Tag>;
+        }
+        if (status === "selesai_di_analisis") {
+          return <Tag color="green">Selesai di Analisis</Tag>;
+        }
+        if (status === "draft") {
+          return <Tag color="gold">Draft</Tag>;
+        }
+        if (status === "ditolak") {
+          return <Tag color="red">Ditolak</Tag>;
+        }
+        if (status === "dikirim_ke_teknisi" || status === "dikirim ke teknisi") {
+          return <Tag color="blue">Dikirim ke Teknisi</Tag>;
         }
         return <Tag color="blue">Proses</Tag>;
       },
@@ -163,18 +175,38 @@ function InputNilaiAnalisis() {
       title: "Aksi",
       key: "action",
       align: "center",
-      width: 150,
+      width: 200,
       fixed: "right",
       render: (_, record) => {
+        let buttonText = "Input";
+        let disabled = false;
+        if (record.status === "menunggu_verifikasi") {
+          buttonText = "Edit";
+          disabled = true; // Tidak bisa input/edit jika sudah dikirim ke koordinator
+        }
+        if (record.status === "selesai_di_analisis") {
+          buttonText = "Kirim ke Koordinator";
+        }
+        // Jika booking dikirim kembali ke teknisi oleh koordinator, teknisi dapat mengedit
+        if (record.status === "dikirim_ke_teknisi" || record.status === "dikirim ke teknisi") {
+          buttonText = "Edit (Dikirim Kembali)";
+          disabled = false;
+        }
+        if (record.status === "draft") buttonText = "Lanjutkan Pengerjaan";
+        if (record.status === "ditolak") {
+          buttonText = "Perbaiki Hasil (Ditolak)";
+          disabled = false; // Bisa edit jika ditolak
+        }
         return (
           <Button 
             type="primary" 
             icon={<EditOutlined />} 
             size="middle"
             loading={loading} 
+            disabled={disabled}
             onClick={() => handleInputNilai(record)}
           >
-            {record.status === "menunggu_verifikasi" ? "Edit" : "Input"}
+            {buttonText}
           </Button>
         );
       },

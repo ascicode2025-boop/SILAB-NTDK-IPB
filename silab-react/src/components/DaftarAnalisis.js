@@ -1,22 +1,20 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Card} from "react-bootstrap";
 import Footer from "./Footer";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "@fontsource/poppins";
 
 function DaftarAnalisis() {
-  const Metabolit = [
-    { kategori: "Metabolit", nama: "Analisis A", harga: "Rp. 40.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-    { kategori: "Metabolit", nama: "Analisis B", harga: "Rp. 50.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-    { kategori: "Metabolit", nama: "Analisis C", harga: "Rp. 60.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-    { kategori: "Metabolit", nama: "Analisis D", harga: "Rp. 70.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-  ];
-
-  const Hematologi = [
-    { kategori: "Hematologi", nama: "Analisis Darah Lengkap", harga: "Rp. 80.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-    { kategori: "Hematologi", nama: "Analisis Hemoglobin", harga: "Rp. 55.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-    { kategori: "Hematologi", nama: "Analisis Eritrosit", harga: "Rp. 60.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-  ];
+  const [groupedAnalisis, setGroupedAnalisis] = useState({});
+  const API_URL = process.env.REACT_APP_API_BASE_URL;
+  useEffect(() => {
+    if (API_URL) {
+      fetch(`${API_URL}/analysis-prices-grouped`)
+        .then(res => res.json())
+        .then(data => setGroupedAnalisis(data))
+        .catch(err => console.error('Gagal mengambil daftar analisis:', err));
+    }
+  }, [API_URL]);
 
   const renderKategori = (title, data) => (
     <>
@@ -56,7 +54,7 @@ function DaftarAnalisis() {
               >
                 <Card.Img
                   variant="top"
-                  src={item.img}
+                  src={"/asset/daftarAnalisis/Rectangle19.png"}
                   style={{
                     objectFit: "cover",
                     height: "180px",
@@ -64,9 +62,9 @@ function DaftarAnalisis() {
                 />
                 <Card.Body className="text-white">
                   <Card.Title style={{ fontSize: "1rem", fontWeight: "600" }}>
-                    {item.nama}
+                    {item.jenis_analisis}
                   </Card.Title>
-                  <Card.Text style={{ fontSize: "0.9rem" }}>{item.harga}</Card.Text>
+                  <Card.Text style={{ fontSize: "0.9rem" }}>Rp. {item.harga.toLocaleString('id-ID')}</Card.Text>
                 </Card.Body>
               </Card>
             </Col>
@@ -86,11 +84,12 @@ function DaftarAnalisis() {
           padding: "50px 0 0 0",
         }}
       >
-        {/* Kategori Metabolit */}
-        {renderKategori("Metabolit", Metabolit)}
-
-        {/* Kategori Hematologi */}
-        {renderKategori("Hematologi", Hematologi)}
+        {/* Render semua kategori dari API */}
+        {Object.keys(groupedAnalisis).length === 0 ? (
+          <div className="text-center">Memuat daftar analisis...</div>
+        ) : (
+          Object.entries(groupedAnalisis).map(([kategori, data]) => renderKategori(kategori, data))
+        )}
       </section>
 
       {/* ✅ Footer dipanggil di bawah halaman */}

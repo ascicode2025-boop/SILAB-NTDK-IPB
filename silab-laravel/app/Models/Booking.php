@@ -28,6 +28,11 @@ class Booking extends Model
         return $this->hasMany(BookingAnalysisItem::class);
     }
 
+    public function signature()
+    {
+        return $this->hasOne(\App\Models\Signature::class);
+    }
+
     // Override toArray to ensure snake_case for relations
     public function toArray()
     {

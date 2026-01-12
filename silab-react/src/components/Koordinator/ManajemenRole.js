@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Table, Button, Badge, Form, InputGroup, Modal } from 'react-bootstrap';
 import { ShieldCheck, Edit3, Trash2, Plus, Search, Users, Settings, UserCircle, EyeOff, Eye, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import NavbarLoginKoordinator from './NavbarLoginKoordinator';
 import FooterSetelahLogin from '../FooterSetelahLogin';
+import axios from 'axios';
+import { getAuthHeader, getToken } from '../../services/AuthService';
+
+const API_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
 const ManajemenAkun = () => {
   // State untuk Modal dan Visibilitas Password
@@ -12,13 +16,124 @@ const ManajemenAkun = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Data Dummy Pengguna
-  const users = [
-    { id: 1, name: 'Budi Santoso', email: 'budi@lab.com', role: 'Super Admin', status: 'Aktif', color: '#8D766B' },
-    { id: 2, name: 'Siti Aminah', email: 'siti@lab.com', role: 'Koordinator', status: 'Aktif', color: '#A68A7D' },
-    { id: 3, name: 'Dr. Ahmad', email: 'ahmad@lab.com', role: 'Kepala Lab', status: 'Aktif', color: '#634E44' },
-    { id: 4, name: 'Rani Wijaya', email: 'rani@lab.com', role: 'Analis', status: 'Non-Aktif', color: '#BC9F8B' },
-  ];
+  // Dynamic users fetched from backend
+  const [users, setUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [unauthenticated, setUnauthenticated] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+
+  // Add account form state
+  const [createForm, setCreateForm] = useState({ name: '', email: '', institution: '', phone: '', role: 'Teknisi', password: '' });
+  const [creating, setCreating] = useState(false);
+
+  // helper: role match function (case-insensitive)
+  const roleMatch = (role, keywords) => {
+    if (!role) return false;
+    const r = role.toString().toLowerCase();
+    return keywords.some(k => r.includes(k.toLowerCase()));
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    // ensure we have a token before calling protected endpoint
+    if (!getToken()) {
+      console.warn('Tidak ada token otentikasi. Pastikan Anda login sebagai admin.');
+      setUsers([]);
+      setLoadingUsers(false);
+      setUnauthenticated(true);
+      return;
+    }
+
+    try {
+      const res = await axios.get(`${API_URL}/users`, { headers: getAuthHeader() });
+      const raw = (res && res.data && (res.data.data || res.data)) || [];
+      setUsers(raw.map(u => ({
+        id: u.id,
+        name: u.full_name || u.name || u.username || u.display_name || u.nama || '-',
+        email: u.email || '-',
+        role: u.role || u.jabatan || (u.roles && u.roles[0]) || '-',
+        status: (u.status || (u.active ? 'Aktif' : 'Non-Aktif')) || 'Aktif',
+        institution: u.institution || u.institusi || u.institusi_id || '',
+        phone: u.phone || u.no_hp || u.nomor_telepon || ''
+      })));
+    } catch (e) {
+      console.error('Gagal fetch users:', e);
+      // if unauthorized, show friendly message
+      if (e && e.response && e.response.status === 401) {
+        setUnauthenticated(true);
+      }
+    }
+    setLoadingUsers(false);
+  };
+
+  const toggleActive = async (user) => {
+    const newStatus = (user.status || 'Aktif') === 'Aktif' ? 'Non-Aktif' : 'Aktif';
+    // optimistic UI update
+    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
+    try {
+      const res = await axios.patch(`${API_URL}/users/${user.id}`, { status: newStatus }, { headers: getAuthHeader() });
+      // refresh list from server to get authoritative values (and recalc counts)
+      await fetchUsers();
+    } catch (e) {
+      console.error('Gagal update status:', e);
+      // revert on error
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: user.status } : u));
+      const msg = e && e.response && (e.response.data && e.response.data.message) ? e.response.data.message : 'Gagal mengubah status akun';
+      alert(msg);
+    }
+  };
+
+  const openView = (user) => {
+    setSelectedUser(user);
+    setShowViewModal(true);
+  };
+
+  const handleCreateChange = (e) => {
+    setCreateForm({ ...createForm, [e.target.name]: e.target.value });
+  };
+
+  const submitCreate = async (e) => {
+    e.preventDefault();
+    setCreating(true);
+    // client-side validation: institution required for Kepala Lab and Koordinator
+    if (['Kepala Lab', 'Koordinator'].includes(createForm.role) && !(createForm.institution || '').trim()) {
+      alert('Institusi/Laboratorium wajib diisi untuk role yang dipilih.');
+      setCreating(false);
+      return;
+    }
+
+    try {
+      const payload = {
+        name: createForm.name,
+        email: createForm.email,
+        role: createForm.role,
+        institution: createForm.institution,
+        phone: createForm.phone,
+        password: createForm.password,
+      };
+      await axios.post(`${API_URL}/users`, payload, { headers: getAuthHeader() });
+      setShowModal(false);
+      setCreateForm({ name: '', email: '', institution: '', phone: '', role: 'Teknisi', password: '' });
+      fetchUsers();
+    } catch (err) {
+      console.error('Gagal membuat akun:', err);
+      alert('Gagal membuat akun. Periksa console untuk detail.');
+    }
+    setCreating(false);
+  };
+
+  // dynamic label for institution based on selected role
+  const institutionLabel = () => {
+    if (createForm.role === 'Teknisi') return 'Institusi';
+    if (createForm.role === 'Kepala Lab') return 'Laboratorium';
+    if (createForm.role === 'Koordinator') return 'Institusi / Unit';
+    return 'Institusi';
+  };
 
   const theme = {
     primary: '#8D766B',
@@ -66,8 +181,8 @@ const ManajemenAkun = () => {
           {/* Statistik Ringkas */}
           <Row className="mb-5 g-4">
             {[
-              { label: 'Total Pengguna', value: '22 User', icon: <Users size={24} />, color: theme.primary },
-              { label: 'Admin Aktif', value: '5 Akun', icon: <ShieldCheck size={24} />, color: theme.dark },
+              { label: 'Total Pengguna', value: `${users.length} User`, icon: <Users size={24} />, color: theme.primary },
+              { label: 'Admin Aktif', value: `${users.filter(u => roleMatch(u.role, ['kepala', 'koordinator'] ) && (u.status||'Aktif') === 'Aktif').length} Akun`, icon: <ShieldCheck size={24} />, color: theme.dark },
               { label: 'Sistem Terintegrasi', value: '100%', icon: <Settings size={24} />, color: theme.accent }
             ].map((stat, idx) => (
               <Col md={4} key={idx}>
@@ -87,6 +202,16 @@ const ManajemenAkun = () => {
               </Col>
             ))}
           </Row>
+
+          {unauthenticated && (
+            <Row className="mb-4">
+              <Col>
+                <Card style={cardStyle} className="p-3 border-0 shadow-sm">
+                  <Card.Body className="text-center text-muted">Silakan login sebagai admin untuk melihat daftar pengguna.</Card.Body>
+                </Card>
+              </Col>
+            </Row>
+          )}
 
           {/* Tabel Utama */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
@@ -114,42 +239,51 @@ const ManajemenAkun = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((user) => (
-                    <tr key={user.id} style={{ verticalAlign: 'middle' }}>
-                      <td className="py-4 px-4">
-                        <div className="d-flex align-items-center">
-                          <div 
-                            className="me-3 d-flex align-items-center justify-content-center rounded-circle shadow-sm"
-                            style={{ width: '45px', height: '45px', backgroundColor: `${user.color}15`, color: user.color }}
-                          >
-                            <UserCircle size={28} strokeWidth={1.5} />
-                          </div>
-                          <div>
-                            <div className="fw-bold">{user.name}</div>
-                            <div className="text-muted small">{user.email}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <Badge bg="none" style={{ backgroundColor: `${user.color}15`, color: user.color, borderRadius: '8px', padding: '8px 12px', fontWeight: '600', fontSize: '11px', border: `1px solid ${user.color}25` }}>
-                          {user.role}
-                        </Badge>
-                      </td>
-                      <td className="text-center">
-                        <div className="d-flex align-items-center justify-content-center gap-2">
-                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: user.status === 'Aktif' ? '#2ECC71' : '#BDC3C7' }}></div>
-                          <span className="fw-medium" style={{ fontSize: '13px' }}>{user.status}</span>
-                        </div>
-                      </td>
-                      <td className="text-center">
-                        <div className="d-flex justify-content-center gap-2">
-                          <button className="action-btn edit"><Edit3 size={16} /></button>
-                          <button className="action-btn settings"><Settings size={16} /></button>
-                          <button className="action-btn delete"><Trash2 size={16} /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {(() => {
+                    const filtered = users.filter(u => roleMatch(u.role, ['teknisi','koordinator','kepala']));
+                    if (filtered.length === 0) return (
+                      <tr><td colSpan={4} className="text-center py-4 text-muted">Tidak ada akun teknisi/koordinator/kepala</td></tr>
+                    );
+                    return filtered.map((user) => {
+                      const roleLower = (user.role || '').toLowerCase();
+                      const color = roleLower.includes('koordinator') ? '#A68A7D' : (roleLower.includes('kepala') ? '#634E44' : '#8D766B');
+                      return (
+                        <tr key={user.id} style={{ verticalAlign: 'middle' }}>
+                          <td className="py-4 px-4">
+                            <div className="d-flex align-items-center">
+                              <div 
+                                className="me-3 d-flex align-items-center justify-content-center rounded-circle shadow-sm"
+                                style={{ width: '45px', height: '45px', backgroundColor: `${color}15`, color: color }}
+                              >
+                                <UserCircle size={28} strokeWidth={1.5} />
+                              </div>
+                              <div>
+                                <div className="fw-bold">{user.name}</div>
+                                <div className="text-muted small">{user.email}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <Badge bg="none" style={{ backgroundColor: `${color}15`, color: color, borderRadius: '8px', padding: '8px 12px', fontWeight: '600', fontSize: '11px', border: `1px solid ${color}25` }}>
+                              {user.role}
+                            </Badge>
+                          </td>
+                          <td className="text-center">
+                            <div className="d-flex align-items-center justify-content-center gap-2">
+                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: user.status === 'Aktif' ? '#2ECC71' : '#BDC3C7' }}></div>
+                              <span className="fw-medium" style={{ fontSize: '13px' }}>{user.status}</span>
+                            </div>
+                          </td>
+                          <td className="text-center">
+                            <div className="d-flex justify-content-center gap-2">
+                              <button title="Lihat" onClick={() => openView(user)} className="action-btn edit"><Eye size={16} /></button>
+                              <button title="Non-aktifkan / Aktifkan" onClick={() => { if(window.confirm('Non-aktifkan/aktifkan akun ini?')) toggleActive(user); }} className="action-btn delete"><Trash2 size={16} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
                 </tbody>
               </Table>
             </Card>
@@ -170,77 +304,77 @@ const ManajemenAkun = () => {
             </Button>
           </div>
           <Modal.Body className="px-4 px-md-5 pb-5 pt-0">
-            <Form>
+            <Form onSubmit={submitCreate}>
               <Form.Group className="mb-3">
-                <Form.Label className="text-muted small ms-1">Username</Form.Label>
-                <Form.Control type="text" className="custom-input shadow-sm" placeholder="Masukkan username" />
+                <Form.Label className="text-muted small ms-1">Nama Lengkap</Form.Label>
+                <Form.Control name="name" value={createForm.name} onChange={handleCreateChange} type="text" className="custom-input shadow-sm" placeholder="Masukkan nama lengkap" required />
               </Form.Group>
 
               <Form.Group className="mb-3">
                 <Form.Label className="text-muted small ms-1">Email</Form.Label>
-                <Form.Control type="email" className="custom-input shadow-sm" placeholder="Masukkan email" />
+                <Form.Control name="email" value={createForm.email} onChange={handleCreateChange} type="email" className="custom-input shadow-sm" placeholder="Masukkan email" required />
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label className="text-muted small ms-1">Institusi</Form.Label>
-                <Form.Control type="text" className="custom-input shadow-sm" placeholder="Nama institusi" />
+                <Form.Label className="text-muted small ms-1">{institutionLabel()}{['Kepala Lab','Koordinator'].includes(createForm.role) ? ' *' : ''}</Form.Label>
+                <Form.Control name="institution" value={createForm.institution} onChange={handleCreateChange} type="text" className="custom-input shadow-sm" placeholder={createForm.role === 'Kepala Lab' ? 'Nama laboratorium' : 'Nama institusi / unit'} required={['Kepala Lab','Koordinator'].includes(createForm.role)} />
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label className="text-muted small ms-1">Nomor telfon</Form.Label>
-                <Form.Control type="text" className="custom-input shadow-sm" placeholder="08xxxxxxxx" />
+                <Form.Label className="text-muted small ms-1">Nomor telepon</Form.Label>
+                <Form.Control name="phone" value={createForm.phone} onChange={handleCreateChange} type="text" className="custom-input shadow-sm" placeholder="08xxxxxxxx" />
               </Form.Group>
 
               <Form.Group className="mb-3">
                 <Form.Label className="text-muted small ms-1">Role</Form.Label>
-                <Form.Control type="text" className="custom-input shadow-sm" placeholder="Pilih peran" />
+                <Form.Select name="role" value={createForm.role} onChange={handleCreateChange} className="custom-input shadow-sm">
+                  <option value="Teknisi">Teknisi</option>
+                  <option value="Kepala Lab">Kepala Lab</option>
+                  <option value="Koordinator">Koordinator</option>
+                </Form.Select>
               </Form.Group>
 
               <Form.Group className="mb-3">
                 <Form.Label className="text-muted small ms-1">Password</Form.Label>
                 <InputGroup className="shadow-sm rounded-pill overflow-hidden border">
-                  <Form.Control 
-                    type={showPassword ? "text" : "password"} 
-                    style={{ border: 'none' }} 
-                    className="py-2 px-3 shadow-none" 
-                  />
-                  <InputGroup.Text 
-                    className="bg-white border-0 cursor-pointer"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
+                  <Form.Control name="password" value={createForm.password} onChange={handleCreateChange} type={showPassword ? "text" : "password"} style={{ border: 'none' }} className="py-2 px-3 shadow-none" required />
+                  <InputGroup.Text className="bg-white border-0 cursor-pointer" onClick={() => setShowPassword(!showPassword)}>
                     {showPassword ? <Eye size={18} className="text-muted" /> : <EyeOff size={18} className="text-muted" />}
                   </InputGroup.Text>
                 </InputGroup>
               </Form.Group>
 
-              <Form.Group className="mb-4">
-                <Form.Label className="text-muted small ms-1">Confirm Password</Form.Label>
-                <InputGroup className="shadow-sm rounded-pill overflow-hidden border">
-                  <Form.Control 
-                    type={showConfirmPassword ? "text" : "password"} 
-                    style={{ border: 'none' }} 
-                    className="py-2 px-3 shadow-none" 
-                  />
-                  <InputGroup.Text 
-                    className="bg-white border-0 cursor-pointer"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? <Eye size={18} className="text-muted" /> : <EyeOff size={18} className="text-muted" />}
-                  </InputGroup.Text>
-                </InputGroup>
-              </Form.Group>
-
               <div className="text-center mt-4">
-                <Button 
-                  className="w-50 border-0 py-2 shadow-sm btn-submit-cokelat" 
-                  style={{ backgroundColor: '#92786D', borderRadius: '15px', fontWeight: '500' }}
-                  onClick={() => setShowModal(false)}
-                >
-                  Buat akun
+                <Button type="submit" disabled={creating} className="w-50 border-0 py-2 shadow-sm btn-submit-cokelat" style={{ backgroundColor: '#92786D', borderRadius: '15px', fontWeight: '500' }}>
+                  {creating ? 'Membuat...' : 'Buat akun'}
                 </Button>
               </div>
             </Form>
           </Modal.Body>
+        </Modal>
+
+        {/* VIEW USER MODAL */}
+        <Modal show={showViewModal} onHide={() => setShowViewModal(false)} centered contentClassName="border-0 shadow-lg custom-modal-content" style={{ zIndex: 1060 }}>
+          <Modal.Header closeButton>
+            <Modal.Title>Detail Akun</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {selectedUser ? (
+              <div>
+                <p><strong>Nama:</strong> {selectedUser.name}</p>
+                <p><strong>Email:</strong> {selectedUser.email}</p>
+                <p><strong>Role:</strong> {selectedUser.role}</p>
+                <p><strong>Institusi:</strong> {selectedUser.institution || '-'}</p>
+                <p><strong>Telepon:</strong> {selectedUser.phone || '-'}</p>
+                <p><strong>Status:</strong> {selectedUser.status}</p>
+              </div>
+            ) : (
+              <div className="text-center text-muted">Tidak ada data</div>
+            )}
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowViewModal(false)}>Tutup</Button>
+          </Modal.Footer>
         </Modal>
 
         <style>{`

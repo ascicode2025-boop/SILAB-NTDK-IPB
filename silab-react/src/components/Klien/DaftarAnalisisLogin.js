@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Card, Badge } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "@fontsource/poppins/400.css";
@@ -6,21 +6,26 @@ import "@fontsource/poppins/600.css";
 import "@fontsource/poppins/700.css";
 import NavbarLogin from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
+import axios from "axios";
 
 function DaftarAnalisisLogin() {
-  const dataAnalisis = {
-    Metabolit: [
-      { nama: "Analisis A", harga: "Rp 40.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-      { nama: "Analisis B", harga: "Rp 50.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-      { nama: "Analisis C", harga: "Rp 60.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-      { nama: "Analisis D", harga: "Rp 70.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-    ],
-    Hematologi: [
-      { nama: "Analisis Darah Lengkap", harga: "Rp 80.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-      { nama: "Analisis Hemoglobin", harga: "Rp 55.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-      { nama: "Analisis Eritrosit", harga: "Rp 60.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-    ],
-  };
+  const [dataAnalisis, setDataAnalisis] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // Mengambil data analisis dari backend
+    axios.get("http://localhost:8000/api/analysis-prices-grouped")
+      .then((res) => {
+        // Response: { Metabolit: [...], Hematologi: [...] }
+        setDataAnalisis(res.data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError("Gagal mengambil data analisis.");
+        setLoading(false);
+      });
+  }, []);
 
   const CardAnalisis = ({ item, kategori }) => (
     <Col xs={12} sm={6} lg={3}>
@@ -44,7 +49,7 @@ function DaftarAnalisisLogin() {
         <div style={{ position: "relative" }}>
           <Card.Img
             variant="top"
-            src={item.img}
+            src={item.img || "/asset/daftarAnalisis/Rectangle19.png"}
             style={{ height: "180px", objectFit: "cover" }}
           />
           <Badge 
@@ -61,7 +66,7 @@ function DaftarAnalisisLogin() {
             className="mb-2" 
             style={{ fontSize: "1.1rem", fontWeight: "700", color: "#2D3436" }}
           >
-            {item.nama}
+            {item.jenis_analisis || item.nama}
           </Card.Title>
           <Card.Text 
             style={{ 
@@ -70,7 +75,7 @@ function DaftarAnalisisLogin() {
               fontWeight: "600" 
             }}
           >
-            {item.harga}
+            Rp {Number(item.harga).toLocaleString("id-ID")}
           </Card.Text>
         </Card.Body>
       </Card>
@@ -78,8 +83,8 @@ function DaftarAnalisisLogin() {
   );
 
   return (
-    <NavbarLogin> 
-      <Container style={{marginTop: "2rem"}}>
+    <NavbarLogin>
+      <Container style={{ marginTop: "2rem" }}>
         <div className="mb-3 text-center text-md-start">
           <h2 className="fw-bold" style={{ color: "#45352F", fontSize: "2.5rem" }}>
             Daftar <span style={{ color: "#8D6E63" }}>Layanan Analisis</span>
@@ -87,30 +92,35 @@ function DaftarAnalisisLogin() {
           <p className="text-muted">Pilih jenis analisis laboratorium yang Anda butuhkan</p>
         </div>
 
-        {Object.entries(dataAnalisis).map(([kategori, items]) => (
-          <div key={kategori} className="mb-5">
-            <div className="d-flex align-items-center mb-4">
-              <div style={{ 
-                width: "5px", 
-                height: "30px", 
-                backgroundColor: "#8D6E63", 
-                borderRadius: "10px",
-                marginRight: "15px" 
-              }}></div>
-              <h4 className="fw-bold m-0" style={{ color: "#4E342E" }}>
-                Kategori {kategori}
-              </h4>
+        {loading ? (
+          <div className="text-center py-5">Memuat data analisis...</div>
+        ) : error ? (
+          <div className="text-center text-danger py-5">{error}</div>
+        ) : (
+          Object.entries(dataAnalisis).map(([kategori, items]) => (
+            <div key={kategori} className="mb-5">
+              <div className="d-flex align-items-center mb-4">
+                <div style={{
+                  width: "5px",
+                  height: "30px",
+                  backgroundColor: "#8D6E63",
+                  borderRadius: "10px",
+                  marginRight: "15px"
+                }}></div>
+                <h4 className="fw-bold m-0" style={{ color: "#4E342E" }}>
+                  Kategori {kategori}
+                </h4>
+              </div>
+              <Row className="g-4">
+                {items.map((item, idx) => (
+                  <CardAnalisis key={idx} item={item} kategori={kategori} />
+                ))}
+              </Row>
             </div>
-            
-            <Row className="g-4">
-              {items.map((item, idx) => (
-                <CardAnalisis key={idx} item={item} kategori={kategori} />
-              ))}
-            </Row>
-          </div>
-        ))}
+          ))
+        )}
       </Container>
-    <FooterSetelahLogin />
+      <FooterSetelahLogin />
     </NavbarLogin>
   );
 }

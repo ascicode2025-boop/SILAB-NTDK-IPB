@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useParams, useHistory } from "react-router-dom";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
 import FooterSetelahLogin from "../FooterSetelahLogin";
-import { getAllBookings, updateAnalysisResult, finalizeAnalysis } from "../../services/BookingService";
-import { Button, Spin, message, Card, Input, Typography, Divider, Tag, Space, Alert, Checkbox } from "antd";
+import { getAllBookings, getBookingById, updateAnalysisResult, finalizeAnalysis } from "../../services/BookingService";
+import { Button, Spin, message, Card, Input, Typography, Divider, Tag, Space, Alert, Checkbox, Modal } from "antd";
 import { SaveOutlined, ExperimentOutlined, UserOutlined, BarcodeOutlined, SettingOutlined, CheckCircleFilled } from "@ant-design/icons";
 import "@fontsource/poppins";
 
@@ -108,22 +108,41 @@ function FormInputNilaiAnalisis() {
       setLoading(true);
       // Reset form ke state kosong setiap kali fetch booking baru
       setNilaiAnalisis({});
-      
-      const data = await getAllBookings();
-      const all = data?.data || [];
-      const detail = all.find((b) => String(b.id) === String(id));
-      setBooking(detail);
 
-      if (detail?.analysis_items) {
-        const groups = {};
-        detail.analysis_items.forEach((item) => {
-          const nama = item.nama_analisis || detail?.jenis_analisis || "Analisis";
-          if (!groups[nama]) groups[nama] = [];
-          groups[nama].push(item);
-        });
-        setGroupedItems(groups);
-        // Parse existing result hanya jika ada data tersimpan
-        parseExistingResult(detail);
+      // Ambil booking terbaru dari backend berdasarkan ID agar data tersinkronisasi
+      try {
+        const resp = await getBookingById(id);
+        const detail = resp?.data || resp; // backend mungkin mengemas di { data: ... }
+        setBooking(detail);
+
+        if (detail?.analysis_items) {
+          const groups = {};
+          detail.analysis_items.forEach((item) => {
+            const nama = item.nama_analisis || detail?.jenis_analisis || "Analisis";
+            if (!groups[nama]) groups[nama] = [];
+            groups[nama].push(item);
+          });
+          setGroupedItems(groups);
+          // Parse existing result hanya jika ada data tersimpan
+          parseExistingResult(detail);
+        }
+        return;
+      } catch (e) {
+        // Fallback ke getAllBookings jika endpoint by-id gagal
+        const data = await getAllBookings();
+        const all = data?.data || [];
+        const detail = all.find((b) => String(b.id) === String(id));
+        setBooking(detail);
+        if (detail?.analysis_items) {
+          const groups = {};
+          detail.analysis_items.forEach((item) => {
+            const nama = item.nama_analisis || detail?.jenis_analisis || "Analisis";
+            if (!groups[nama]) groups[nama] = [];
+            groups[nama].push(item);
+          });
+          setGroupedItems(groups);
+          parseExistingResult(detail);
+        }
       }
     } catch (error) {
       message.error("Terjadi kesalahan saat memuat data.");
@@ -249,6 +268,49 @@ function FormInputNilaiAnalisis() {
       setNilaiAnalisis(parsed);
     } else {
       console.log("No data to populate - form will remain empty");
+      // Fallback: coba isi secara heuristik jika format hasil berbeda
+      const fallback = {};
+      // Parse kode_sampel dari booking
+      let codes = [];
+      try {
+        if (typeof detail.kode_sampel === 'string') {
+          const maybe = JSON.parse(detail.kode_sampel);
+          codes = Array.isArray(maybe) ? maybe : [detail.kode_sampel];
+        } else if (Array.isArray(detail.kode_sampel)) {
+          codes = detail.kode_sampel;
+        }
+      } catch (e) {
+        codes = typeof detail.kode_sampel === 'string' ? [detail.kode_sampel] : [];
+      }
+
+      detail.analysis_items.forEach((item) => {
+        if (!item.hasil || item.hasil.trim() === "") return;
+        const parts = item.hasil.split(" | ");
+        // Jika jumlah parts sama dengan jumlah kode, map satu-per-satu
+        if (codes.length > 0 && parts.length === codes.length) {
+          parts.forEach((p, idx) => {
+            const num = p.match(/[\d.,]+/);
+            if (!num) return;
+            const cleaned = num[0].replace(/,/g, '.');
+            const code = codes[idx];
+            if (stdConc[item.nama_item] !== undefined) {
+              // assign to sample value
+              fallback[`${item.nama_item}-spl-${code}`] = cleaned;
+            } else if (item.nama_item === 'BDM') {
+              fallback[`BDM-jumlah-${code}`] = cleaned;
+            } else if (item.nama_item === 'BDP') {
+              fallback[`BDP-jumlah-${code}`] = cleaned;
+            } else {
+              fallback[`${item.nama_item}-${code}`] = cleaned;
+            }
+          });
+        }
+      });
+
+      if (Object.keys(fallback).length > 0) {
+        console.log('Applying fallback parsed values:', fallback);
+        setNilaiAnalisis(fallback);
+      }
     }
   };
 
@@ -258,15 +320,19 @@ function FormInputNilaiAnalisis() {
 
   const generateSampleCodes = (booking) => {
     if (!booking) return [];
-    
+
     try {
       let codes = [];
-      
+
       if (typeof booking.kode_sampel === 'string') {
         try {
-          codes = JSON.parse(booking.kode_sampel);
-          if (Array.isArray(codes)) {
-            return codes;
+          const parsed = JSON.parse(booking.kode_sampel);
+          if (Array.isArray(parsed)) {
+            codes = parsed;
+          } else if (typeof parsed === 'string') {
+            codes = [parsed];
+          } else {
+            codes = [booking.kode_sampel];
           }
         } catch (e) {
           codes = [booking.kode_sampel];
@@ -274,8 +340,25 @@ function FormInputNilaiAnalisis() {
       } else if (Array.isArray(booking.kode_sampel)) {
         codes = booking.kode_sampel;
       }
-      
-      return codes;
+
+      // extract codes from analysis_items hasil (format: [CODE]: ...)
+      const fromItems = [];
+      if (Array.isArray(booking.analysis_items)) {
+        booking.analysis_items.forEach((it) => {
+          if (!it?.hasil) return;
+          const parts = it.hasil.split(" | ");
+          parts.forEach((p) => {
+            const m = p.match(/\[(.*?)\]/);
+            if (m && m[1]) {
+              if (!fromItems.includes(m[1])) fromItems.push(m[1]);
+            }
+          });
+        });
+      }
+
+      // merge and dedupe
+      const merged = Array.from(new Set([...(Array.isArray(codes) ? codes : []), ...fromItems]));
+      return merged;
     } catch (error) {
       console.error('Error parsing kode_sampel:', error);
       return [];
@@ -287,10 +370,17 @@ function FormInputNilaiAnalisis() {
   };
 
   const handleResetForm = () => {
-    if (window.confirm('Reset semua input? Data yang belum disimpan akan hilang.')) {
-      setNilaiAnalisis({});
-      message.info('Form telah direset');
-    }
+    Modal.confirm({
+      title: 'Reset Semua Input?',
+      content: 'Data yang belum disimpan akan hilang. Lanjutkan reset form?',
+      okText: 'Ya, Reset',
+      okType: 'danger',
+      cancelText: 'Batal',
+      onOk: () => {
+        setNilaiAnalisis({});
+        message.info('Form telah direset');
+      },
+    });
   };
 
   // === HELPER: BUILD PAYLOAD (hanya simpan yang terisi) ===
@@ -381,15 +471,14 @@ function FormInputNilaiAnalisis() {
       }
       // === 5. HEMOGLOBIN / HEMATOKRIT ===
       else if (namaItem === "Hemoglobin Darah" || namaItem === "Hematokrit") {
-        const key = namaItem.includes("Hemo") ? "Hemoglobin" : "Hematokrit";
+        // Gunakan key sesuai namaItem agar konsisten dengan input
+        const key = namaItem; // "Hemoglobin Darah" atau "Hematokrit"
         const unit = namaItem.includes("Hemo") ? "G%" : "%";
         const results = codes
           .map((code) => {
             const val = nilaiAnalisis[`${key}-${code}`] || "";
-            
             // Skip jika tidak ada input
             if (!val) return null;
-            
             const hasil = calculateResult(key, val);
             // Format: [CODE]: INPUT=val HASIL=hasil unit
             return `[${code}]: INPUT=${val} HASIL=${hasil} ${unit}`;
@@ -429,9 +518,9 @@ function FormInputNilaiAnalisis() {
       setLastSaved(new Date());
       
       message.success(`Draft berhasil disimpan! ${filledItems.length} item tersimpan.`);
-      
-      // Reload data untuk update UI dengan data terbaru dari backend
-      await fetchBooking();
+
+      // Redirect ke daftar input nilai analisis setelah simpan draft
+      history.push("/teknisi/dashboard/inputNilaiAnalisis");
     } catch (error) {
       console.error("Gagal menyimpan:", error);
       message.error("Terjadi kesalahan saat menyimpan data.");
@@ -473,15 +562,38 @@ function FormInputNilaiAnalisis() {
       const saveResponse = await updateAnalysisResult(booking.id, { items: itemsPayload });
       console.log("Save response:", saveResponse);
       
-      // 2. Lalu finalize
+      // 2. Lalu finalize dan refresh data dari server untuk memastikan hasil tersimpan
       await finalizeAnalysis(booking.id);
-      
-      message.success("Analisis selesai! Mengarahkan ke generate PDF...");
-      
-      // 3. Redirect ke halaman generate PDF dengan booking ID
+
+      // Refresh booking dari backend agar UI menggunakan data paling baru
+      try {
+        const fresh = await getBookingById(booking.id);
+        const detail = fresh?.data || fresh;
+        if (detail) {
+          setBooking(detail);
+          if (detail?.analysis_items) {
+            const groups = {};
+            detail.analysis_items.forEach((item) => {
+              const nama = item.nama_analisis || detail?.jenis_analisis || "Analisis";
+              if (!groups[nama]) groups[nama] = [];
+              groups[nama].push(item);
+            });
+            setGroupedItems(groups);
+          }
+        }
+      } catch (e) {
+        // Jika fetch by-id gagal, swallow and continue — user tetap berada di form
+        console.warn('Gagal memuat booking terbaru setelah finalize:', e);
+      }
+
+      // Tampilkan pesan sukses dan arahkan ke generator PDF untuk meng-generate file
+      setLastSaved(new Date());
+      message.success("Analisis ditandai selesai (server). Mengarahkan untuk generate PDF...");
+
+      // Redirect ke halaman generate PDF (preview only, tidak otomatis download atau kirim)
       history.push({
         pathname: "/teknisi/dashboard/generatePdfAnalysis",
-        state: { booking: { id: booking.id } }
+        state: { booking: { id: booking.id }, autoGenerate: false }
       });
     } catch (error) {
       console.error("Gagal menyelesaikan:", error);
@@ -500,6 +612,8 @@ function FormInputNilaiAnalisis() {
       setLoading(false);
     }
   };
+
+  // Pengiriman ke Koordinator dihapus - gunakan tombol Selesaikan untuk generate PDF
 
   if (loading && !booking)
     return (
@@ -526,12 +640,6 @@ function FormInputNilaiAnalisis() {
               </div>
               {lastSaved && (
                 <div className="text-end">
-                  <Text type="secondary" style={{ fontSize: "12px", display: "block" }}>
-                    Terakhir disimpan:
-                  </Text>
-                  <Text strong style={{ color: "#52c41a" }}>
-                    {lastSaved.toLocaleTimeString("id-ID")}
-                  </Text>
                 </div>
               )}
             </div>
@@ -545,16 +653,11 @@ function FormInputNilaiAnalisis() {
               <div className="col-md-4 border-end">
                 <Space direction="vertical" size={0}>
                   <Text type="secondary" style={{ fontSize: "12px" }}>
-                    <BarcodeOutlined /> Kode Sampel
+                    <BarcodeOutlined /> Kode Batch
                   </Text>
                   <Title level={5} className="m-0 text-primary">
-                    {generateSampleCodes(booking)[0] || booking.kode_sampel}
+                    {booking.kode_batch || '-'}
                   </Title>
-                  {generateSampleCodes(booking).length > 1 && (
-                    <Text type="secondary" style={{ fontSize: "11px" }}>
-                      +{generateSampleCodes(booking).length - 1} kode lainnya
-                    </Text>
-                  )}
                 </Space>
               </div>
               <div className="col-md-4 border-end">
@@ -577,6 +680,8 @@ function FormInputNilaiAnalisis() {
               </div>
             </div>
           </Card>
+
+          {/* (debug panel removed) */}
 
           {/* Form items */}
           {Object.values(groupedItems)
@@ -621,7 +726,7 @@ function FormInputNilaiAnalisis() {
 
                       <Checkbox 
                         checked={getResultUnitForItem(item.nama_item) === "g/dL"} 
-                        onChange={() => setResultUnitForItem(item.nama_item, "g/dL")}
+                        onChange={() => setResultUnitForItem(item.namaItem, "g/dL")}
                       >
                         Hasil (g/dL)
                       </Checkbox>
@@ -875,7 +980,8 @@ function FormInputNilaiAnalisis() {
                       </thead>
                       <tbody>
                         {generateSampleCodes(booking).map((code, i) => {
-                          const key = `${item.nama_item === "Hematokrit" ? "Hematokrit" : "Hemoglobin"}-${code}`;
+                          // Gunakan item.nama_item langsung agar konsisten dengan buildItemsPayload
+                          const key = `${item.nama_item}-${code}`;
                           return (
                             <tr key={i}>
                               <td>
@@ -885,7 +991,7 @@ function FormInputNilaiAnalisis() {
                                 <Input type="number" className="text-center" value={nilaiAnalisis[key] || ""} onChange={(e) => handleInputChange(key, e.target.value)} />
                               </td>
                               <td className="bg-light">
-                                <Input className="text-center fw-bold" value={calculateResult(item.nama_item.includes("Hemo") ? "Hemoglobin" : "Hematokrit", nilaiAnalisis[key])} disabled />
+                                <Input className="text-center fw-bold" value={calculateResult(item.nama_item, nilaiAnalisis[key])} disabled />
                               </td>
                             </tr>
                           );
@@ -973,6 +1079,7 @@ function FormInputNilaiAnalisis() {
               >
                 Selesaikan Analisis
               </Button>
+              {/* Pengiriman ke Koordinator dihapus; gunakan tombol Selesaikan untuk generate PDF */}
             </div>
           </div>
         </div>

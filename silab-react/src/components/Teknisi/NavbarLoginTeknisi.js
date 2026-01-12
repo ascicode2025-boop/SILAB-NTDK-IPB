@@ -204,9 +204,7 @@ function NavbarLoginTeknisi({ children }) {
             </Dropdown.Toggle>
 
             <Dropdown.Menu className="shadow-lg border-0 mt-2" style={{ borderRadius: "10px" }}>
-              <Dropdown.Item className="py-2" onClick={() => history.push("/dashboard/ProfileAkunKlien")}>
-                <i className="bi bi-person me-2"></i> Profil Akun
-              </Dropdown.Item>
+              <Dropdown.Item className="py-2" onClick={() => history.push("/teknisi/dashboard/profile")}>Profil Akun</Dropdown.Item>
               <hr className="dropdown-divider opacity-50" />
               <Dropdown.Item className="py-2 text-danger" onClick={handleLogout}>
                 <i className="bi bi-box-arrow-right me-2"></i> Logout
@@ -224,7 +222,12 @@ function NavbarLoginTeknisi({ children }) {
               key={menu.key}
               onClick={() => {
                 setActiveMenu(menu.key);
-                history.push(`/teknisi/dashboard/${menu.key}`);
+                // Khusus menu riwayat, arahkan ke /teknisi/dashboard/riwayat
+                if(menu.key === "riwayat") {
+                  history.push("/teknisi/dashboard/riwayat");
+                } else {
+                  history.push(`/teknisi/dashboard/${menu.key}`);
+                }
                 setSidebarOpen(false);
               }}
               className={`d-flex align-items-center mb-2 py-2 px-3 rounded ${activeMenu === menu.key ? "active" : ""}`}

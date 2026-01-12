@@ -5,6 +5,8 @@ import NavbarLogin from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
 import "react-datepicker/dist/react-datepicker.css";
 import { createBooking } from "../../services/BookingService";
+import { getAnalysisPrices } from "../../services/AnalysisPriceService";
+import { getMonthlyQuota } from "../../services/QuotaService";
 import dayjs from "dayjs";
 import { useHistory } from "react-router-dom";
 
@@ -14,6 +16,7 @@ export default function HematologiDanMetabolit() {
 
   // State Data
   const [analyses, setAnalyses] = useState([]);
+  const [analysisPrices, setAnalysisPrices] = useState({});
   const [jumlahSampel, setJumlahSampel] = useState(1);
   const [kodeSampel, setKodeSampel] = useState(["01"]);
 
@@ -27,6 +30,7 @@ export default function HematologiDanMetabolit() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
+  const [availableDates, setAvailableDates] = useState([]);
 
   const ANIMAL_CODES = {
     Ayam: "AY",
@@ -55,7 +59,61 @@ export default function HematologiDanMetabolit() {
     if (savedDate) setTanggalKirim(new Date(savedDate));
   }, []);
 
-  const analysisOptions = ["BDM", "BDP", "Hemoglobin Darah", "Hematokrit", "Diferensiasi Leukosit", "Glukosa", "Total Protein", "Albumin", "Trigliserida", "Kolestrol", "HDL-kol", "LDL-kol", "Urea/BUN", "Kreatinin", "Kalsium"];
+  // Fetch available dates from quota for next 3 months
+  useEffect(() => {
+    const fetchAvailableDates = async () => {
+      const dates = [];
+      const today = new Date();
+      for (let i = 0; i < 3; i++) {
+        const targetDate = new Date(today.getFullYear(), today.getMonth() + i, 1);
+        const month = targetDate.getMonth() + 1;
+        const year = targetDate.getFullYear();
+        try {
+          const response = await getMonthlyQuota(month, year, 'hematologi');
+          if (response && response.data) {
+            response.data.forEach(day => {
+              if (day.remaining_quota > 0 && !day.is_libur) {
+                dates.push(day.date);
+              }
+            });
+          }
+        } catch (err) {
+          console.error('Gagal mengambil data kuota:', err);
+        }
+      }
+      setAvailableDates(dates);
+    };
+    fetchAvailableDates();
+  }, []);
+
+  // Analysis options from backend
+  const [analysisOptions, setAnalysisOptions] = useState([]);
+
+  // Ambil harga analisis dari backend
+  useEffect(() => {
+    getAnalysisPrices().then((data) => {
+      // Gabungkan hematologi & metabolit
+      const options = [];
+      const priceMap = {};
+      if (data && data.hematologi) {
+        data.hematologi.forEach(item => {
+          options.push({ kategori: 'Hematologi', ...item });
+          priceMap[item.jenis_analisis] = item.harga;
+        });
+      }
+      if (data && data.metabolit) {
+        data.metabolit.forEach(item => {
+          options.push({ kategori: 'Metabolit', ...item });
+          priceMap[item.jenis_analisis] = item.harga;
+        });
+      }
+      setAnalysisOptions(options);
+      setAnalysisPrices(priceMap);
+    });
+  }, []);
+
+  // Hitung total harga analisis terpilih
+  const totalHarga = jumlahSampel * analyses.reduce((sum, item) => sum + (Number(analysisPrices[item]) || 0), 0);
 
   const handleCheckboxChange = (value) => {
     setAnalyses((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
@@ -63,7 +121,7 @@ export default function HematologiDanMetabolit() {
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setAnalyses([...analysisOptions]);
+      setAnalyses(analysisOptions.map(opt => opt.jenis_analisis));
     } else {
       setAnalyses([]);
     }
@@ -296,14 +354,31 @@ export default function HematologiDanMetabolit() {
                     <i className="bi bi-list-check me-2"></i>Pilih Jenis Analisis
                   </h5>
                   <div className="p-3 bg-light rounded-3 shadow-sm">
-                    <Form.Check type="checkbox" label={<strong>Pilih Semua Item</strong>} checked={isAllSelected} onChange={handleSelectAll} className="mb-3 pb-2 border-bottom" />
-                    <Row>
-                      {analysisOptions.map((item, index) => (
-                        <Col md={6} lg={4} key={index}>
-                          <Form.Check type="checkbox" label={item} checked={analyses.includes(item)} onChange={() => handleCheckboxChange(item)} className="mb-2 small" />
-                        </Col>
-                      ))}
-                    </Row>
+                    {analysisOptions.length === 0 ? (
+                      <Alert variant="warning" className="mb-0">Data analisis tidak tersedia. Silakan cek koneksi atau hubungi admin.</Alert>
+                    ) : (
+                      <>
+                        <Form.Check type="checkbox" label={<strong>Pilih Semua Item</strong>} checked={isAllSelected} onChange={handleSelectAll} className="mb-3 pb-2 border-bottom" />
+                        <Row>
+                          {analysisOptions.map((item, index) => (
+                            <Col md={6} lg={4} key={index}>
+                              <Form.Check
+                                type="checkbox"
+                                label={item.jenis_analisis}
+                                checked={analyses.includes(item.jenis_analisis)}
+                                onChange={() => handleCheckboxChange(item.jenis_analisis)}
+                                className="mb-2 small"
+                              />
+                            </Col>
+                          ))}
+                        </Row>
+                        {/* Total Harga */}
+                        <div className="mt-4 text-end">
+                          <span className="fw-bold" style={{fontSize:'1.1em'}}>Total Harga: </span>
+                          <span className="fw-bold text-success" style={{fontSize:'1.2em'}}>Rp{totalHarga.toLocaleString()}</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -316,11 +391,15 @@ export default function HematologiDanMetabolit() {
                     <DatePicker
                       selected={tanggalKirim}
                       onChange={(date) => setTanggalKirim(date)}
-                      // TAMBAHKAN properti di bawah ini:
                       wrapperClassName="w-100"
                       className="form-control py-2 px-3 shadow-sm border-0 bg-light w-100"
                       dateFormat="dd MMMM yyyy"
                       placeholderText="Klik untuk pilih tanggal"
+                      minDate={new Date()}
+                      filterDate={(date) => {
+                        const dateStr = dayjs(date).format('YYYY-MM-DD');
+                        return availableDates.includes(dateStr);
+                      }}
                       required
                     />
                   </Form.Group>

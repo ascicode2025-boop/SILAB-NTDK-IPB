@@ -5,46 +5,134 @@ import { useHistory, useLocation } from "react-router-dom";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
 import FooterSetelahLogin from "../FooterSetelahLogin";
 import { formatDataForPDF } from "../../utils/pdfHelpers";
-import { message, Spin, Table, Tag, Button, Space } from "antd";
-import { EyeOutlined, SendOutlined, EditOutlined, DownloadOutlined } from "@ant-design/icons";
-import { kirimKeKoordinator, getAllBookings } from "../../services/BookingService";
 
-export default function GeneratePdfAnalysis({ autoGenerate = true, filename = "hasil_analisis.pdf", booking: propBooking = null }) {
+import { message, Spin, Table, Tag, Button, Modal, Progress } from "antd";
+import { EyeOutlined, SendOutlined, EditOutlined, DownloadOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { getAllBookings, uploadPdfAndKirim } from "../../services/BookingService";
+
+export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "hasil_analisis.pdf", booking: propBooking = null }) {
+  // modal state and upload state for sending PDF to Koordinator
   const location = useLocation();
   const history = useHistory();
+  const resolvedAutoGenerate = location.state?.autoGenerate ?? autoGenerate;
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [bookingData, setBookingData] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [bookingList, setBookingList] = useState([]);
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'detail'
+  const [modalVisible, setModalVisible] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   
-  // Get booking from props or route state
   const bookingFromRoute = propBooking || location.state?.booking;
 
+  const instituteHeader = [
+    "KEMENTERIAN RISET, TEKNOLOGI DAN PENDIDIKAN TINGGI",
+    "INSTITUT PERTANIAN BOGOR",
+    "FAKULTAS PETERNAKAN",
+    "DEPARTEMEN ILMU NUTRISI DAN TEKNOLOGI PAKAN",
+    "LABORATORIUM NUTRISI TERNAK DAGING DAN KERJA",
+    "Jl. Agathis Kampus IPB Darmaga, Bogor 16680",
+  ];
+
+  // --- DATA DEFAULT ---
+  const defaultData = {
+    header: {
+      kepada: "Kepada Yth.",
+      instansi: "****",
+      tempat: "Di Tempat",
+      tanggal: "**/**/****",
+      title1: "Tabel 1. Hasil Analisis Hematologi",
+      title2: "Tabel 2. Hasil Analisis Metabolit",
+    },
+    table1: [
+      [
+        "Kode",
+        "BDM\n(10⁶/µL)",
+        "BDP\n(10³/µL)",
+        "HB\n(g%)",
+        "PCV\n(%)",
+        "Limfosit\n(%)",
+        "Neutrofil\n(%)",
+        "Eosinofil\n(%)",
+        "Monosit\n(%)",
+        "Basofil\n(%)"
+      ],
+      ["-", "-", "-", "-", "-", "-", "-", "-", "-", "-"],
+    ],
+    table2: [
+      [
+        "No", 
+        "Kode", 
+        "Glukosa\n(mg/dL)", 
+        "Total Protein\n(g/dL)", 
+        "Albumin\n(mg/dL)", 
+        "Kolestrol\n(mg/dL)", 
+        "Trigliserida\n(mg/dL)",
+        "Urea/BUN\n(mg/dL)",
+        "Kreatinin\n(mg/dL)",
+        "Kalsium\n(mg/dL)",
+        "HDL-kol\n(mg/dL)",
+        "LDL-kol\n(mg/dL)"
+      ],
+      [],
+    ],
+  };
+
   useEffect(() => {
-    // Jika ada booking dari route (baru selesai input), langsung tampilkan detail
     if (bookingFromRoute?.id) {
       fetchBookingData(bookingFromRoute.id);
       setViewMode('detail');
     } else {
-      // Jika tidak, tampilkan list
       fetchAllVerificationBookings();
       setViewMode('list');
     }
   }, [bookingFromRoute]);
 
+  // --- PATCH: Pastikan status tidak auto-kirim ---
+  useEffect(() => {
+    if (bookingData && (bookingData.status === 'proses' || bookingData.status === 'draft')) {
+      // Status tetap, tidak auto update ke 'menunggu_verifikasi'
+      // Hanya update status setelah teknisi klik tombol kirim
+    }
+  }, [bookingData]);
+
+  // --- LOGIKA FETCH DATA UTAMA (DIPERBAIKI) ---
   const fetchAllVerificationBookings = async () => {
     try {
       setLoading(true);
       const response = await getAllBookings();
       const allBookings = response?.data || [];
       
-      // Filter booking dengan status menunggu_verifikasi
+      // Filter status: Tampilkan mulai dari 'menunggu_verifikasi' sampai selesai
+      // Agar teknisi bisa melihat riwayat yang sudah dikirim
+      const visibleStatuses = [
+        'menunggu_verifikasi', 
+        'menunggu_verifikasi_kepala', 
+        'menunggu_ttd', 
+        'menunggu_ttd_koordinator',
+        'menunggu_pembayaran',
+        'selesai',
+        'disetujui' // Jika ada
+      ];
+
       const verificationBookings = allBookings.filter(b => 
-        b.status === 'menunggu_verifikasi'
+        visibleStatuses.includes((b.status || "").toLowerCase())
       );
-      
+
+      // Sorting: Prioritaskan yang BUTUH AKSI (menunggu_verifikasi) di paling atas
+      verificationBookings.sort((a, b) => {
+        const statusA = (a.status || "").toLowerCase();
+        const statusB = (b.status || "").toLowerCase();
+
+        if (statusA === 'menunggu_verifikasi' && statusB !== 'menunggu_verifikasi') return -1;
+        if (statusA !== 'menunggu_verifikasi' && statusB === 'menunggu_verifikasi') return 1;
+        
+        // Sisanya urutkan berdasarkan tanggal terbaru
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+
       setBookingList(verificationBookings);
     } catch (error) {
       console.error("Error fetching bookings:", error);
@@ -57,33 +145,14 @@ export default function GeneratePdfAnalysis({ autoGenerate = true, filename = "h
   const fetchBookingData = async (bookingId) => {
     try {
       setLoading(true);
-      console.log('Fetching booking with ID:', bookingId);
-      
       const response = await getAllBookings();
-      console.log('All bookings response:', response);
-      
       const allBookings = response?.data || [];
-      console.log('Total bookings:', allBookings.length);
-      
       const booking = allBookings.find(b => b.id === bookingId);
       
       if (booking) {
-        console.log('=== BOOKING DATA FOUND ===');
-        console.log('Booking:', booking);
-        console.log('Has analysis_items?', !!booking.analysis_items);
-        console.log('Analysis items count:', booking.analysis_items?.length);
-        
-        if (booking.analysis_items && booking.analysis_items.length > 0) {
-          console.log('First item:', booking.analysis_items[0]);
-          booking.analysis_items.forEach((item, idx) => {
-            console.log(`Item ${idx}: ${item.nama_item}, hasil: "${item.hasil}"`);
-          });
-        }
-        
         setBookingData(booking);
         setSelectedBooking(booking);
       } else {
-        console.error('Booking not found with ID:', bookingId);
         message.error("Data booking tidak ditemukan!");
       }
     } catch (error) {
@@ -97,7 +166,6 @@ export default function GeneratePdfAnalysis({ autoGenerate = true, filename = "h
   const parseKodeSampel = (kodeSampel) => {
     try {
       let codes = [];
-      
       if (typeof kodeSampel === 'string') {
         const parsed = JSON.parse(kodeSampel);
         codes = Array.isArray(parsed) ? parsed : [parsed];
@@ -106,8 +174,6 @@ export default function GeneratePdfAnalysis({ autoGenerate = true, filename = "h
       } else {
         codes = [kodeSampel];
       }
-      
-      // Filter empty values dan return sebagai array untuk ditampilkan dengan Tag
       return codes.filter(c => c && c.trim() !== '');
     } catch (e) {
       return [kodeSampel];
@@ -133,31 +199,260 @@ export default function GeneratePdfAnalysis({ autoGenerate = true, filename = "h
     history.push(`/teknisi/dashboard/inputNilaiAnalisis/input-analisis/${selectedBooking.id}`);
   };
 
+  // sending to Koordinator removed: generate PDF only
+
+  // --- LOGIKA GENERATE PDF ---
+  const payload = bookingData ? formatDataForPDF(bookingData) : defaultData;
+
+  function generatePdfFile() {
+    if (!bookingData) return null;
+    const doc = new jsPDF("p", "mm", "a4");
+    let kodeBatch = bookingData?.kode_batch || bookingData?.kode_sampel || "-";
+    if (Array.isArray(kodeBatch)) kodeBatch = kodeBatch[0] || "-";
+    const safeKodeBatch = String(kodeBatch).replace(/[^a-zA-Z0-9-_]/g, "_");
+    const customFilename = `hasil_analisis - ${safeKodeBatch}.pdf`;
+    
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const leftMargin = 14;
+    const rightMargin = 14;
+    const usableWidth = pageWidth - leftMargin - rightMargin;
+    
+    const commonTableStyles = {
+      font: "helvetica",
+      fontSize: 8,
+      textColor: 20,
+      cellPadding: 1.5,
+      valign: 'middle',
+      halign: 'center',
+      lineWidth: 0.1,
+      lineColor: [200, 200, 200],
+      overflow: 'linebreak'
+    };
+    const commonHeadStyles = {
+      fillColor: [0, 85, 128],
+      textColor: 255,
+      fontStyle: 'bold',
+      halign: 'center',
+      valign: 'middle',
+      cellPadding: 2,
+    };
+    const commonAlternateRowStyles = {
+      fillColor: [248, 248, 248]
+    };
+
+    let cursorY = 20;
+    const logoWidth = 43;
+    const logoHeight = 30;
+    try {
+      doc.addImage("/asset/Logo-IPB.png", "PNG", 12, 5, logoWidth, logoHeight);
+    } catch (err) {}
+
+    let headerY = 10;
+    const offsetX = 15;
+    doc.setFontSize(12);
+    doc.setFont("Times New Roman", "bold");
+    instituteHeader.forEach((line) => {
+      doc.text(line, pageWidth / 2 + offsetX, headerY, { align: "center" });
+      headerY += 6;
+    });
+    headerY -= 2;
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(0, 0, 0);
+    doc.line(14, headerY, pageWidth - 14, headerY);
+    cursorY = headerY + 10;
+
+    doc.setFontSize(11);
+    doc.setFont("Times New Roman", "normal");
+    doc.text(payload.header.kepada, leftMargin, cursorY);
+    if (payload.header.tanggal) {
+      doc.text(`Tanggal: ${payload.header.tanggal}`, pageWidth - rightMargin, cursorY, { align: 'right' });
+    }
+    cursorY += 6;
+    doc.text(payload.header.instansi, leftMargin, cursorY);
+    cursorY += 6;
+    doc.text(payload.header.tempat, leftMargin, cursorY);
+    cursorY += 12;
+
+    if (payload.table1 && payload.table1.length > 0 && payload.header.title1) {
+      doc.setFontSize(11);
+      doc.setFont("Times New Roman", "bold");
+      const title1Lines = doc.splitTextToSize(payload.header.title1, usableWidth);
+      doc.text(title1Lines, leftMargin, cursorY);
+      cursorY += (title1Lines.length * 5) + 2;
+      const [table1Head, ...table1Body] = payload.table1;
+      const colNoWidth = 10;
+      const colKodeWidth = 35;
+      const remainingWidth = usableWidth - colNoWidth - colKodeWidth;
+      const paramColCount = table1Head.length - 2;
+      const paramColWidth = remainingWidth / (paramColCount > 0 ? paramColCount : 1);
+      let columnStylesT1 = { 0: { cellWidth: colNoWidth }, 1: { cellWidth: colKodeWidth } };
+      for (let i = 2; i < table1Head.length; i++) {
+        columnStylesT1[i] = { cellWidth: paramColWidth };
+      }
+      autoTable(doc, {
+        startY: cursorY,
+        head: [table1Head],
+        body: table1Body,
+        theme: 'grid',
+        styles: commonTableStyles,
+        headStyles: commonHeadStyles,
+        alternateRowStyles: commonAlternateRowStyles,
+        columnStyles: columnStylesT1,
+        margin: { left: leftMargin, right: rightMargin },
+        tableWidth: 'auto',
+      });
+      cursorY = doc.lastAutoTable.finalY + 12;
+    }
+
+    if (payload.table2 && payload.table2.length > 0 && payload.header.title2) {
+      if (pageHeight - cursorY < 40) {
+        doc.addPage();
+        cursorY = 20;
+      }
+      doc.setFontSize(11);
+      doc.setFont("Times New Roman", "bold");
+      const title2Lines = doc.splitTextToSize(payload.header.title2, usableWidth);
+      doc.text(title2Lines, leftMargin, cursorY);
+      cursorY += (title2Lines.length * 5) + 2;
+      const [table2Head, ...table2Body] = payload.table2;
+      const colNoWidth = 10;
+      const colKodeWidth = 35;
+      const remainingWidth = usableWidth - colNoWidth - colKodeWidth;
+      const paramColCount = table2Head.length - 2;
+      const paramColWidth = remainingWidth / (paramColCount > 0 ? paramColCount : 1);
+      let columnStylesT2 = { 0: { cellWidth: colNoWidth }, 1: { cellWidth: colKodeWidth } };
+      for (let i = 2; i < table2Head.length; i++) {
+        columnStylesT2[i] = { cellWidth: paramColWidth };
+      }
+      autoTable(doc, {
+        startY: cursorY,
+        head: [table2Head],
+        body: table2Body,
+        theme: 'grid',
+        styles: commonTableStyles,
+        headStyles: commonHeadStyles,
+        alternateRowStyles: commonAlternateRowStyles,
+        columnStyles: columnStylesT2,
+        margin: { left: leftMargin, right: rightMargin },
+        tableWidth: 'auto',
+      });
+      cursorY = doc.lastAutoTable.finalY + 15;
+    }
+
+    if (pageHeight - cursorY < 60) {
+      doc.addPage();
+      cursorY = 40;
+    } else {
+      cursorY += 15;
+    }
+    const signatureCenterPoint = pageWidth - 45;
+    doc.setFontSize(10);
+    doc.setFont("Times New Roman", "normal");
+    doc.text("Penanggungjawab Lab. Analisis", signatureCenterPoint, cursorY, { align: "center" });
+    cursorY += 5;
+    doc.text("Ilmu Nutrisi Ternak Daging dan Kerja", signatureCenterPoint, cursorY, { align: "center" });
+    cursorY += 25;
+    doc.setLineWidth(0.3);
+    doc.setDrawColor(0, 0, 0);
+    doc.line(signatureCenterPoint - 25, cursorY, signatureCenterPoint + 25, cursorY);
+
+    const blob = doc.output("blob");
+    return new File([blob], customFilename, { type: "application/pdf" });
+  }
+
+  function buildPDF(download = false) {
+    const file = generatePdfFile();
+    if (!file) return;
+    
+    if (!download) {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      const url = URL.createObjectURL(file);
+      setPdfUrl(url);
+    } else {
+      // Logic download
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  // --- DO UPLOAD & KIRIM KE KOORDINATOR ---
+  const doKirimKeKoordinator = async () => {
+    if (!bookingData) {
+      message.error("Data booking tidak ditemukan!");
+      return;
+    }
+    try {
+      setUploading(true);
+      setUploadProgress(0);
+
+      // Generate PDF as a File
+      const file = generatePdfFile();
+      if (!file) {
+        message.error("Gagal membuat file PDF. Silakan coba lagi.");
+        setUploading(false);
+        return;
+      }
+      if (!(file instanceof File)) {
+        message.error("File PDF tidak valid. Silakan coba lagi.");
+        setUploading(false);
+        return;
+      }
+      // Upload PDF ke server
+      try {
+        await uploadPdfAndKirim(bookingData.id, file, (percent) => {
+          setUploadProgress(percent);
+        });
+      } catch (err) {
+        console.error('Upload error response:', err?.response || err);
+        const serverMsg = err?.response?.data?.message || err?.response?.statusText || err.message || 'Gagal upload PDF ke server.';
+        const details = err?.response?.data?.errors ? JSON.stringify(err.response.data.errors) : null;
+        message.error(serverMsg + (details ? `: ${details}` : ''));
+        setUploading(false);
+        setUploadProgress(0);
+        return;
+      }
+
+      // Fetch ulang data agar status terupdate di UI
+      await fetchBookingData(bookingData.id);
+      setUploadProgress(100);
+      message.success({ content: "Hasil analisis berhasil dikirim ke Koordinator Lab!", duration: 2 });
+    } catch (error) {
+      console.error("Gagal kirim ke koordinator:", error);
+      message.error("Terjadi kesalahan saat mengirim ke koordinator.");
+    } finally {
+      setUploading(false);
+      // small delay to allow UI to show 100% progress
+      setTimeout(() => setUploadProgress(0), 800);
+    }
+  };
+
+  // Build preview PDF when entering detail view (do not change booking status)
+  useEffect(() => {
+    if (payload && bookingData && viewMode === 'detail') {
+      buildPDF(false); // hanya preview, tidak update status
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingData, viewMode]);
+  // Do not auto-download even if routed with autoGenerate flag; keep preview only
+
+  // --- KOLOM TABEL (Status Dinamis) ---
   const columns = [
     {
-      title: 'Kode Sampel',
-      dataIndex: 'kode_sampel',
-      key: 'kode_sampel',
+      title: 'Kode Batch',
+      dataIndex: 'kode_batch',
+      key: 'kode_batch',
       width: 200,
       fixed: 'left',
       render: (text, record) => {
-        const codes = parseKodeSampel(text);
-        const count = codes.length;
-        
-        if (count === 0) return '-';
-        
-        return (
-          <div>
-            <div style={{ marginBottom: '4px' }}>
-              <Tag color="blue" style={{ fontSize: '12px' }}>{codes[0]}</Tag>
-            </div>
-            {count > 1 && (
-              <Tag color="cyan" style={{ fontSize: '11px' }}>
-                +{count - 1} lainnya
-              </Tag>
-            )}
-          </div>
-        );
+        const kodeBatch = text || record.kode_sampel || '-';
+        return <Tag color="blue" style={{ fontSize: '12px' }}>{kodeBatch}</Tag>;
       },
     },
     {
@@ -165,15 +460,13 @@ export default function GeneratePdfAnalysis({ autoGenerate = true, filename = "h
       dataIndex: 'user',
       key: 'user',
       width: 180,
-      ellipsis: true,
-      render: (user) => user?.full_name || user?.nama_lengkap || '-',
+      render: (user) => user?.full_name || user?.name || '-',
     },
     {
       title: 'Jenis Analisis',
       dataIndex: 'jenis_analisis',
       key: 'jenis_analisis',
       width: 200,
-      ellipsis: true,
       render: (text) => text || '-',
     },
     {
@@ -183,17 +476,9 @@ export default function GeneratePdfAnalysis({ autoGenerate = true, filename = "h
       render: (_, record) => {
         const tanggal = record.tanggal_booking || record.created_at;
         if (!tanggal) return '-';
-        
-        const date = new Date(tanggal);
-        return (
-          <span style={{ whiteSpace: 'nowrap' }}>
-            {date.toLocaleDateString('id-ID', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric'
-            })}
-          </span>
-        );
+        return new Date(tanggal).toLocaleDateString('id-ID', {
+            day: 'numeric', month: 'short', year: 'numeric'
+        });
       },
     },
     {
@@ -203,8 +488,38 @@ export default function GeneratePdfAnalysis({ autoGenerate = true, filename = "h
       width: 170,
       align: 'center',
       render: (status) => {
-        const color = status === 'menunggu_verifikasi' ? 'warning' : 'default';
-        const text = status === 'menunggu_verifikasi' ? 'Menunggu Verifikasi' : status;
+        let color = 'default';
+        let text = status;
+
+        switch (status) {
+          case 'proses':
+          case 'draft':
+            color = 'warning';
+            text = 'Perlu Kirim Koordinator';
+            break;
+          case 'menunggu_verifikasi':
+            // Already sent by teknisi, waiting Koordinator verification
+            color = 'processing';
+            text = 'Sudah Dikirim ke Koordinator';
+            break;
+          case 'menunggu_verifikasi_kepala':
+            color = 'processing';
+            text = 'Di Koordinator';
+            break;
+            case 'menunggu_ttd':
+            case 'menunggu_ttd_koordinator':
+                color = 'purple';
+                text = 'Menunggu TTD';
+                break;
+            case 'menunggu_pembayaran':
+            case 'selesai':
+                color = 'success';
+                text = 'Selesai';
+                break;
+            default:
+                text = status?.replace(/_/g, ' ') || '-';
+        }
+        
         return <Tag color={color}>{text}</Tag>;
       },
     },
@@ -215,266 +530,24 @@ export default function GeneratePdfAnalysis({ autoGenerate = true, filename = "h
       fixed: 'right',
       align: 'center',
       render: (_, record) => (
-        <Button
-          type="primary"
-          icon={<EyeOutlined />}
-          size="small"
-          onClick={() => handleViewDetail(record)}
-        >
+        <Button type="primary" icon={<EyeOutlined />} size="small" onClick={() => handleViewDetail(record)}>
           Lihat PDF
         </Button>
       ),
     },
   ];
 
-  const instituteHeader = [
-    "KEMENTERIAN RISET, TEKNOLOGI DAN PENDIDIKAN TINGGI",
-    "INSTITUT PERTANIAN BOGOR",
-    "FAKULTAS PETERNAKAN",
-    "DEPARTEMEN ILMU NUTRISI DAN TEKNOLOGI PAKAN",
-    "LABORATORIUM NUTRISI TERNAK DAGING DAN KERJA",
-    "Jl. Agathis Kampus IPB Darmaga, Bogor 16680",
+  const sentStatuses = [
+    'menunggu_verifikasi',
+    'menunggu_verifikasi_kepala',
+    'menunggu_ttd',
+    'menunggu_ttd_koordinator',
+    'menunggu_pembayaran',
+    'selesai',
+    'disetujui'
   ];
 
-  const defaultData = {
-    header: {
-      kepada: "Kepada Yth.",
-      instansi: "****",
-      tempat: "Di Tempat",
-      tanggal: "**/**/****",
-      title1: "Tabel 1. Hasil Analisis Hematologi pada hewan ternak Ayam",
-      title2: "Tabel 2. Hasil Analisis Metabolit pada hewan ternak Ayam",
-    },
-    table1: [
-      ["Kode", "BDM\n(10⁶/µL)", "BDP\n(10³/µL)", "HB\n(G%)", "PCV\n(%)", "Limfosit\n(%)", "Heterofil\n(%)", "Eosinofil\n(%)", "Monosit\n(%)", "Basofil\n(%)"],
-      ["A", 4.26, 14.3, 8.0, 28, 54.35, 26.81, 8.7, 9.42, 0.72],
-      ["B", 6.53, 9.75, 10.0, 31, 51.41, 28.17, 11.27, 8.45, 0.7],
-    ],
-    table2: [
-      ["No", "Kode", "Glukosa\n(mg/dL)", "Total P.\n(g/dL)", "Albumin\n(mg/dL)"],
-      [1, "A", 61.31, 7.82, 3.02],
-      [2, "B", 66.29, 6.52, 2.91],
-    ],
-  };
-
-  // Generate data dari booking atau gunakan default
-  const payload = bookingData ? formatDataForPDF(bookingData) : defaultData;
-
-  function buildPDF(download = false) {
-    const doc = new jsPDF("p", "mm", "a4");
-    const leftMargin = 14;
-    let cursorY = 20;
-    const pageWidth = doc.internal.pageSize.getWidth();
-
-    /// ===== Tambahkan logo IPB =====
-    const logoWidth = 43;
-    const logoHeight = 30;
-    const logoX = 12; // posisi dari kiri
-    const logoY = 5; // posisi mendekati atas
-
-    doc.addImage("/asset/Logo-IPB.png", "PNG", logoX, logoY, logoWidth, logoHeight);
-
-    let headerY = 10; // mulai dekat atas halaman
-    const offsetX = 15; // geser sedikit ke kanan
-
-    doc.setFontSize(12); // ukuran font header
-    doc.setFont("Times New Roman", "bold");
-
-    instituteHeader.forEach((line) => {
-      doc.text(line, pageWidth / 2 + offsetX, headerY, { align: "center" });
-      headerY += 6; // jarak antar baris
-    });
-
-    cursorY = headerY + 4; // update cursorY setelah header
-
-    // Garis pemisah
-    const lineOffsetUp = 2;
-
-    headerY -= lineOffsetUp;
-    doc.setLineWidth(0.5);
-    doc.line(14, headerY, pageWidth - 14, headerY);
-    cursorY = headerY + 10;
-
-    // ===== Header "Kepada Yth." =====
-    doc.setFontSize(11);
-    doc.setFont("Times New Roman", "400");
-    doc.text(payload.header.kepada, leftMargin, cursorY);
-    if (payload.header.tanggal) {
-      doc.text(`Tanggal ${payload.header.tanggal}`, 160, cursorY);
-    }
-    cursorY += 6;
-    doc.text(payload.header.instansi, leftMargin, cursorY);
-    cursorY += 6;
-    doc.text(payload.header.tempat, leftMargin, cursorY);
-
-    cursorY += 10;
-
-    // ===== Table 1 (Hematologi) - hanya tampilkan jika ada data =====
-    if (payload.table1 && payload.header.title1) {
-      doc.setFontSize(12);
-      doc.text(payload.header.title1, leftMargin, cursorY);
-      cursorY += 6;
-      const [table1Head, ...table1Body] = payload.table1;
-      
-      // Hitung jumlah kolom untuk distribusi lebar otomatis
-      const numCols = table1Head.length;
-      const availableWidth = pageWidth - leftMargin - 14; // total lebar yang tersedia
-      const kodeWidth = 25; // lebar khusus untuk kolom kode
-      const remainingWidth = availableWidth - kodeWidth;
-      const colWidth = remainingWidth / (numCols - 1); // distribusi merata untuk kolom lainnya
-      
-      // Build columnStyles dynamically
-      const columnStyles = { 0: { cellWidth: kodeWidth, halign: 'center' } };
-      for (let i = 1; i < numCols; i++) {
-        columnStyles[i] = { cellWidth: colWidth, halign: 'center' };
-      }
-      
-      autoTable(doc, { 
-        startY: cursorY, 
-        head: [table1Head], 
-        body: table1Body, 
-        styles: { 
-          fontSize: 8,
-          cellPadding: 2,
-          overflow: 'linebreak',
-          halign: 'center',
-          valign: 'middle'
-        }, 
-        headStyles: { 
-          fillColor: [220, 220, 220],
-          fontSize: 7,
-          fontStyle: 'bold',
-          halign: 'center',
-          valign: 'middle',
-          minCellHeight: 10
-        },
-        columnStyles: columnStyles,
-        margin: { left: leftMargin, right: 14 },
-        tableWidth: 'auto'
-      });
-
-      let finalY = doc.lastAutoTable?.finalY || cursorY + 40;
-      cursorY = finalY + 12;
-    }
-
-    // ===== Table 2 (Metabolit) - hanya tampilkan jika ada data =====
-    if (payload.table2 && payload.header.title2) {
-      doc.setFontSize(12);
-      doc.text(payload.header.title2, leftMargin, cursorY);
-      cursorY += 6;
-      const [table2Head, ...table2Body] = payload.table2;
-      
-      // Hitung jumlah kolom untuk distribusi lebar otomatis
-      const numCols = table2Head.length;
-      const availableWidth = pageWidth - leftMargin - 14;
-      const noWidth = 10; // kolom No sangat kecil
-      const kodeWidth = 25; // kolom Kode
-      const remainingWidth = availableWidth - noWidth - kodeWidth;
-      const colWidth = remainingWidth / (numCols - 2); // distribusi untuk kolom parameter
-      
-      // Build columnStyles dynamically
-      const columnStyles = { 
-        0: { cellWidth: noWidth, halign: 'center' },
-        1: { cellWidth: kodeWidth, halign: 'center' }
-      };
-      for (let i = 2; i < numCols; i++) {
-        columnStyles[i] = { cellWidth: colWidth, halign: 'center' };
-      }
-      
-      autoTable(doc, { 
-        startY: cursorY, 
-        head: [table2Head], 
-        body: table2Body, 
-        styles: { 
-          fontSize: 8,
-          cellPadding: 2,
-          overflow: 'linebreak',
-          halign: 'center',
-          valign: 'middle'
-        }, 
-        headStyles: { 
-          fillColor: [220, 220, 220],
-          fontSize: 7,
-          fontStyle: 'bold',
-          halign: 'center',
-          valign: 'middle',
-          minCellHeight: 10
-        },
-        columnStyles: columnStyles,
-        margin: { left: leftMargin, right: 14 },
-        tableWidth: 'auto'
-      });
-    }
-
-    // ===== Preview / Download PDF =====
-    if (!download) {
-      const blob = doc.output("blob");
-
-      // Revoke previous object URL if any to avoid memory leaks
-      try {
-        if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-      } catch (e) {
-        // ignore
-      }
-
-      // Wrap blob into a File with a filename so browsers' PDF viewers
-      // and download buttons can use the intended filename.
-      const file = new File([blob], filename, { type: "application/pdf" });
-      const url = URL.createObjectURL(file);
-      setPdfUrl(url);
-      return;
-    }
-
-    doc.save(filename);
-  }
-
-  useEffect(() => {
-    if (autoGenerate && payload && bookingData && viewMode === 'detail') buildPDF(false);
-  }, [bookingData, viewMode]);
-
-// ...existing code...
-  const handleKirimKeKoordinator = async () => {
-    if (!bookingData) {
-      message.error("Data booking tidak ditemukan!");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      // Panggil API untuk kirim ke koordinator
-      const response = await kirimKeKoordinator(bookingData.id);
-
-      // Jika API mengembalikan booking yang sudah diupdate, gunakan itu.
-      if (response?.data) {
-        setBookingData(response.data);
-        setSelectedBooking(response.data);
-      } else {
-        // Kalau tidak, panggil ulang untuk mengambil data terbaru dari server
-        await fetchBookingData(bookingData.id);
-      }
-
-      message.success("Hasil analisis berhasil dikirim ke Koordinator Lab!");
-
-      // Pastikan mode tetap di detail dan perbarui preview PDF (payload berdasarkan bookingData terbaru)
-      setViewMode('detail');
-      // Biarkan state ter-set dulu, kemudian rebuild preview
-      setTimeout(() => {
-        if (autoGenerate && bookingData) buildPDF(false);
-      }, 500);
-
-      // Redirect ke list view setelah sebentar
-      setTimeout(() => {
-        handleBackToList();
-      }, 1500);
-    } catch (error) {
-      console.error("Gagal kirim ke koordinator:", error);
-      message.error("Terjadi kesalahan saat mengirim ke koordinator.");
-    } finally {
-      setLoading(false);
-    }
-  };
-// ...existing code...
+  const isSent = bookingData && sentStatuses.includes((bookingData.status || '').toLowerCase());
 
   return (
     <NavbarLoginTeknisi>
@@ -486,86 +559,107 @@ export default function GeneratePdfAnalysis({ autoGenerate = true, filename = "h
         )}
         
         {!loading && viewMode === 'list' && (
-          <div className="row">
-            <div className="col-12">
-              <div className="card shadow-sm">
-                <div className="card-header bg-primary text-white">
-                  <h5 className="mb-0">Daftar Hasil Analisis yang Menunggu Verifikasi</h5>
-                </div>
-                <div className="card-body">
-                  <p className="text-muted mb-3">
-                    Berikut adalah daftar pesanan yang telah selesai dianalisis dan menunggu dikirim ke koordinator untuk verifikasi.
-                  </p>
-                  <Table
-                    columns={columns}
-                    dataSource={bookingList}
-                    rowKey="id"
-                    pagination={{ pageSize: 10 }}
-                    scroll={{ x: 1100 }}
-                    locale={{ emptyText: 'Tidak ada data yang menunggu verifikasi' }}
-                  />
-                </div>
-              </div>
+          <div className="card shadow-sm">
+            <div className="card-header bg-primary text-white">
+              <h5 className="mb-0">Daftar Hasil Analisis (Riwayat)</h5>
+            </div>
+            <div className="card-body">
+              <Table
+                columns={columns}
+                dataSource={bookingList}
+                rowKey="id"
+                pagination={{ pageSize: 10 }}
+                scroll={{ x: 1100 }}
+                locale={{ emptyText: 'Tidak ada data analisis' }}
+              />
             </div>
           </div>
         )}
         
         {!loading && viewMode === 'detail' && (
-          <div className="row">
-            <div className="col-12 d-flex flex-column">
-              <div className="mb-3">
-                <h5 className="mb-3">Preview Hasil Analisis (PDF)</h5>
-                <p>Preview PDF ditampilkan di bawah, klik tombol untuk download, edit data, atau kirim ke koordinator.</p>
-                <div className="d-flex gap-2 mb-3 flex-wrap">
-                  <Button 
-                    type="default" 
-                    icon={<DownloadOutlined />}
-                    onClick={() => buildPDF(true)}
-                  >
-                    Download PDF
-                  </Button>
-                  <Button 
-                    type="default"
+          <div className="d-flex flex-column gap-3">
+             <div className="card shadow-sm p-3">
+                <h5 className="mb-3">Preview Hasil Analisis</h5>
+                <div className="d-flex gap-2 flex-wrap">
+                  <Button icon={<DownloadOutlined />} onClick={() => buildPDF(true)}>Download PDF</Button>
+
+                  {/* Edit tetap boleh diklik selama booking belum dikirim ke Koordinator */}
+                  <Button
                     icon={<EditOutlined />}
                     onClick={handleEditData}
-                    disabled={!bookingData}
+                    disabled={!bookingData || isSent}
                   >
                     Edit Data
                   </Button>
-                  <Button 
-                    type="primary"
-                    icon={<SendOutlined />}
-                    onClick={handleKirimKeKoordinator} 
-                    disabled={!bookingData}
-                  >
-                    Kirim Ke Koordinator Lab
-                  </Button>
-                  <Button 
-                    onClick={handleBackToList}
-                  >
-                    Kembali ke Daftar
-                  </Button>
-                </div>
-              </div>
 
-              <div style={{ minHeight: "750px" }}>
+                  {/* Jika sudah dikirim, tampilkan indikator; jika belum, tampilkan tombol Kirim */}
+                  {(() => {
+                    const sentStatuses = [
+                      'menunggu_verifikasi',
+                      'menunggu_verifikasi_kepala',
+                      'menunggu_ttd',
+                      'menunggu_ttd_koordinator',
+                      'menunggu_pembayaran',
+                      'selesai',
+                      'disetujui'
+                    ];
+                    const isSent = bookingData && sentStatuses.includes((bookingData.status || '').toLowerCase());
+                    if (isSent) {
+                      return (
+                        <Button 
+                          type="default" 
+                          icon={<CheckCircleOutlined />} 
+                          disabled 
+                          style={{ background: '#f6ffed', borderColor: '#b7eb8f', color: '#52c41a' }}
+                        >
+                          Sudah Dikirim ke Koordinator
+                        </Button>
+                      );
+                    }
+                    return (
+                      <Button
+                        type="primary"
+                        icon={<SendOutlined />}
+                        onClick={() => setModalVisible(true)}
+                        disabled={!bookingData || uploading}
+                      >
+                        Kirim Ke Koordinator Lab
+                      </Button>
+                    );
+                  })()}
+
+                  {uploading && (
+                    <div style={{ minWidth: 240, marginLeft: 12 }}>
+                      <Progress percent={uploadProgress} status={uploadProgress < 100 ? 'active' : 'success'} />
+                    </div>
+                  )}
+
+                  <Modal
+                    title="Konfirmasi Pengiriman"
+                    open={modalVisible}
+                    onOk={() => { setModalVisible(false); doKirimKeKoordinator(); }}
+                    onCancel={() => setModalVisible(false)}
+                    okText="Ya, Kirim"
+                    cancelText="Batal"
+                  >
+                    <p>Apakah Anda yakin ingin mengirim hasil analisis ke Koordinator Lab?</p>
+                  </Modal>
+                  <Button onClick={handleBackToList}>Kembali ke Daftar</Button>
+                </div>
+             </div>
+             
+             <div className="card shadow-sm p-0" style={{ height: "800px" }}>
                 {pdfUrl && (
                   <iframe
                     src={pdfUrl}
                     title="PDF Preview"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      border: "1px solid #ddd",
-                    }}
+                    style={{ width: "100%", height: "100%", border: "none" }}
                   />
                 )}
-              </div>
-            </div>
+             </div>
           </div>
         )}
       </div>
-
       <FooterSetelahLogin />
     </NavbarLoginTeknisi>
   );

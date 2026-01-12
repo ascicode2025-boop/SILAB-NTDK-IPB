@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Container, Row, Col, Card, Table, Button, Form, InputGroup } from 'react-bootstrap';
 import { Search, Download, Calendar, Filter, FileSpreadsheet } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -7,13 +7,67 @@ import NavbarLogin from './NavbarLoginKlien';
 import FooterSetelahLogin from '../FooterSetelahLogin';
 
 const RiwayatAnalisisKlien = () => {
-  // Data sesuai format gambar referensi
-  const historyData = [
-    { no: 1, nama: 'Analisis Sampel 001', jenis: 'Hematologi' },
-    { no: 2, nama: 'Analisis Sampel 002', jenis: 'Metabolit' },
-    { no: 3, nama: 'Analisis Sampel 003', jenis: 'Proksimat' },
-    { no: 4, nama: 'Analisis Sampel 004', jenis: 'Mikrobiologi' },
-  ];
+
+  // State untuk data riwayat
+  const [historyData, setHistoryData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      setLoading(true);
+      try {
+        const apiBase = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000/api';
+        const token = localStorage.getItem('token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        // Ambil data booking yang statusnya selesai/lunas/ditandatangani
+        const res = await fetch(`${apiBase}/bookings`, { headers });
+        const json = await res.json();
+        if (json && json.success) {
+          const finished = (json.data || []).filter(b => {
+            const st = (b.status || '').toLowerCase();
+            return [
+              'selesai',
+              'lunas',
+              'paid',
+              'ditandatangani',
+              'verified'
+            ].includes(st);
+          });
+          // Log isi analysis_items untuk debugging
+          finished.forEach((b, idx) => {
+            console.log(`Booking #${b.id} full object:`, b);
+          });
+          // Map ke format tampilan
+          setHistoryData(finished.map((b, idx) => {
+            // ...existing code...
+            let namaAnalisis = '-';
+            let jenisAnalisis = '-';
+            if (b.analysis_items && b.analysis_items.length > 0) {
+              const arrJenis = b.analysis_items.map(i => (i.jenis_analisis || i.jenisAnalisis || '').toLowerCase().trim()).filter(j => j);
+              const namaUnik = [...new Set(arrJenis)].filter(j => j && j !== '-');
+              namaAnalisis = namaUnik.length > 0 ? namaUnik.map(j => j.charAt(0).toUpperCase() + j.slice(1)).join(', ') : '-';
+              jenisAnalisis = b.analysis_items.map(i => i.nama_item || i.namaItem || '-').join(', ');
+            }
+            return {
+              no: idx + 1,
+              kode_batch: b.kode_batch || '-',
+              jenis: jenisAnalisis,
+              tanggal: b.updated_at ? new Date(b.updated_at).toLocaleDateString('id-ID') : '-',
+              status: b.status,
+              pdf_path: b.pdf_path,
+              invoice_path: b.invoice_path || (b.invoice && b.invoice.file_path),
+              id: b.id
+            };
+          }));
+        }
+      } catch (e) {
+        setHistoryData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHistory();
+  }, []);
 
   const theme = {
     primary: '#8D766B',      // Cokelat SILAB
@@ -37,14 +91,7 @@ const RiwayatAnalisisKlien = () => {
                 <h2 className="fw-bold mb-1">Riwayat Analisis</h2>
                 <p className="text-muted small">Hasil pengujian laboratorium yang telah divalidasi dan selesai.</p>
               </Col>
-              <Col xs="auto" className="d-flex gap-2">
-                <Button className="btn-export">
-                  <FileSpreadsheet size={18} className="me-2" /> Excel
-                </Button>
-                <Button className="btn-export">
-                  <Download size={18} className="me-2" /> PDF
-                </Button>
-              </Col>
+              {/* Hapus tombol download PDF/Excel */}
             </Row>
           </motion.div>
 
@@ -75,22 +122,38 @@ const RiwayatAnalisisKlien = () => {
               <Table responsive hover className="mb-0 custom-table-style">
                 <thead>
                   <tr className="text-center align-middle">
-                    <th style={{ width: '80px' }}>No</th>
-                    <th>Nama Analisis</th>
+                    <th style={{ width: '60px' }}>No</th>
+                    <th>Kode Batch</th>
                     <th>Jenis Analisis</th>
-                    <th style={{ width: '200px' }}>Aksi</th>
+                    <th>Tanggal Selesai</th>
+                    <th>Status</th>
+                    <th style={{ width: '160px' }}>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {historyData.map((item) => (
+                  {loading ? (
+                    <tr><td colSpan={6} className="text-center py-5 text-muted">Memuat data...</td></tr>
+                  ) : historyData.length === 0 ? (
+                    <tr><td colSpan={6} className="text-center py-5 text-muted">Belum ada riwayat analisis selesai.</td></tr>
+                  ) : historyData.map((item) => (
                     <tr key={item.no} className="text-center align-middle">
                       <td className="py-4 border-end">{item.no}</td>
-                      <td className="py-4 border-end text-start ps-5">{item.nama}</td>
+                      <td className="py-4 border-end">{item.kode_batch}</td>
                       <td className="py-4 border-end">{item.jenis}</td>
-                      <td className="py-4">
-                        <Button className="btn-lihat-custom">
-                          Lihat
-                        </Button>
+                      <td className="py-4 border-end">{item.tanggal}</td>
+                      <td className="py-4 border-end">
+                        {['lunas','paid','verified'].includes((item.status||'').toLowerCase()) ? (
+                          <span className="badge bg-success">Lunas</span>
+                        ) : (item.status||'').toLowerCase() === 'ditandatangani' ? (
+                          <span className="badge bg-primary">Ditandatangani</span>
+                        ) : (
+                          <span className="badge bg-info text-dark">Selesai</span>
+                        )}
+                      </td>
+                      <td className="py-4 d-flex flex-wrap gap-2 justify-content-center align-items-center">
+                        {item.pdf_path && (
+                          <a className="btn btn-lihat-custom" href={`${process.env.REACT_APP_API_BASE_URL ? process.env.REACT_APP_API_BASE_URL.replace(/\/api$/, '') : 'http://127.0.0.1:8000'}/storage/${item.pdf_path}`} target="_blank" rel="noreferrer">Lihat Hasil</a>
+                        )}
                       </td>
                     </tr>
                   ))}

@@ -61,12 +61,15 @@ function LandingPage() {
   },
 ];
 
-  const daftarAnalisis = [
-    { kategori: "Metabolit", nama: "Nama Analisis", harga: "Rp. 40.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-    { kategori: "Metabolit", nama: "Nama Analisis", harga: "Rp. 50.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-    { kategori: "Metabolit", nama: "Nama Analisis", harga: "Rp. 50.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-    { kategori: "Metabolit", nama: "Nama Analisis", harga: "Rp. 50.000", img: "/asset/daftarAnalisis/Rectangle19.png" },
-  ];
+  // State untuk daftar harga analisis dari API
+  const [daftarAnalisis, setDaftarAnalisis] = useState([]);
+  useEffect(() => {
+    if (API_URL) {
+      axios.get(`${API_URL}/analysis-prices`)
+        .then(res => setDaftarAnalisis(res.data))
+        .catch(err => console.error('Gagal mengambil daftar harga:', err));
+    }
+  }, []);
 
   return (
     <div id="pageWrapper">
@@ -94,9 +97,11 @@ function LandingPage() {
         </div>
 
         {/* ======================= GALERI ======================= */}
-        <h4 className="text-center mb-5 gallery-title" style={{ marginTop: "4rem", padding: "1rem" }}>
-          Galeri Divisi INTP
-        </h4>
+        <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+          <h4 className="text-center mb-5 gallery-title" style={{ marginTop: "4rem", padding: "1rem" }}>
+            Galeri Divisi INTP
+          </h4>
+        </div>
 
         <section
           id="galeriHeader"
@@ -147,23 +152,29 @@ function LandingPage() {
 
 
         {/* ======================= ANALISIS ======================= */}
-        <h4 className="text-center mb-5 gallery-title" style={{ marginTop: "6rem" }}>
-          Daftar Jenis dan Biaya
-        </h4>
+        <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+          <h4 className="text-center mb-5 gallery-title" style={{ marginTop: "6rem" }}>
+            Daftar Jenis dan Biaya
+          </h4>
+        </div>
 
         <Container className="py-4">
           <Row className="g-4 justify-content-start">
-            {daftarAnalisis.map((item, idx) => (
-              <Col key={idx} xs={12} sm={6} md={4} lg={3}>
-                <Card className="h-100 text-center shadow-sm daftarAnalisis-card" style={{backgroundColor: ""}}>
-                  <Card.Img variant="top" src={item.img} className="img-fluid" />
-                  <Card.Body>
-                    <Card.Title className="text-black">{item.nama}</Card.Title>
-                    <Card.Text className="text-black">{item.harga}</Card.Text>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
+            {daftarAnalisis.length === 0 ? (
+              <Col><div>Memuat daftar harga...</div></Col>
+            ) : (
+              daftarAnalisis.slice(0, 4).map((item, idx) => (
+                <Col key={idx} xs={12} sm={6} md={4} lg={3}>
+                  <Card className="h-100 text-center shadow-sm daftarAnalisis-card" style={{backgroundColor: ""}}>
+                    <Card.Img variant="top" src="/asset/daftarAnalisis/Rectangle19.png" className="img-fluid" />
+                    <Card.Body>
+                      <Card.Title className="text-black">{item.jenis_analisis}</Card.Title>
+                      <Card.Text className="text-black">Rp. {item.harga.toLocaleString('id-ID')}</Card.Text>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              ))
+            )}
           </Row>
         </Container>
 

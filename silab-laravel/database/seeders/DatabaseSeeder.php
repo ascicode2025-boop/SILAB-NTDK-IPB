@@ -54,5 +54,10 @@ class DatabaseSeeder extends Seeder
             'institusi' => 'Internal Lab', // <-- Tambahkan ini
             'nomor_telpon' => '081234567892'
         ]);
- }
+        $this->call([
+            AnalysisPriceSeeder::class,
+            QuotaSettingSeeder::class,
+            AchievementSeeder::class,
+        ]);
+    }
 }

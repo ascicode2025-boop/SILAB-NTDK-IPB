@@ -5,6 +5,8 @@ import NavbarLogin from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
 import "react-datepicker/dist/react-datepicker.css";
 import { createBooking } from "../../services/BookingService";
+import { getAnalysisPrices } from "../../services/AnalysisPriceService";
+import { getMonthlyQuota } from "../../services/QuotaService";
 import dayjs from "dayjs";
 import { useHistory } from "react-router-dom";
 
@@ -13,6 +15,7 @@ export default function Hematologi() {
   const [tanggalKirim, setTanggalKirim] = useState(null);
 
   const [analyses, setAnalyses] = useState([]);
+  const [analysisPrices, setAnalysisPrices] = useState({});
   const [jumlahSampel, setJumlahSampel] = useState(1);
   const [kodeSampel, setKodeSampel] = useState(["01"]);
 
@@ -26,6 +29,7 @@ export default function Hematologi() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
+  const [availableDates, setAvailableDates] = useState([]);
 
   const ANIMAL_CODES = {
     Ayam: "AY",
@@ -51,14 +55,56 @@ export default function Hematologi() {
     if (savedDate) setTanggalKirim(new Date(savedDate));
   }, []);
 
-  const analysisOptions = ["BDM", "BDP", "Hemoglobin Darah", "Hematokrit", "Diferensiasi Leukosit"];
+  // Fetch available dates from quota for next 3 months
+  useEffect(() => {
+    const fetchAvailableDates = async () => {
+      const dates = [];
+      const today = new Date();
+      for (let i = 0; i < 3; i++) {
+        const targetDate = new Date(today.getFullYear(), today.getMonth() + i, 1);
+        const month = targetDate.getMonth() + 1;
+        const year = targetDate.getFullYear();
+        try {
+          const response = await getMonthlyQuota(month, year, 'hematologi');
+          if (response && response.data) {
+            response.data.forEach(day => {
+              if (day.remaining_quota > 0 && !day.is_libur) {
+                dates.push(day.date);
+              }
+            });
+          }
+        } catch (err) {
+          console.error('Gagal mengambil data kuota:', err);
+        }
+      }
+      setAvailableDates(dates);
+    };
+    fetchAvailableDates();
+  }, []);
+
+  // Analysis options from backend
+  const [analysisOptions, setAnalysisOptions] = useState([]);
+
+  // Ambil harga analisis dari backend
+  useEffect(() => {
+    getAnalysisPrices().then((data) => {
+      if (data && data.hematologi) {
+        setAnalysisOptions(data.hematologi);
+        const priceMap = {};
+        data.hematologi.forEach(item => {
+          priceMap[item.jenis_analisis] = item.harga;
+        });
+        setAnalysisPrices(priceMap);
+      }
+    });
+  }, []);
 
   const handleCheckboxChange = (value) => {
     setAnalyses((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
   };
 
   const handleSelectAll = (e) => {
-    setAnalyses(e.target.checked ? [...analysisOptions] : []);
+    setAnalyses(e.target.checked ? analysisOptions.map(opt => opt.jenis_analisis) : []);
   };
 
   const isAllSelected = analysisOptions.length > 0 && analyses.length === analysisOptions.length;
@@ -116,6 +162,9 @@ export default function Hematologi() {
     marginBottom: "0.5rem",
     display: "block",
   };
+
+  // Hitung total harga analisis terpilih
+  const totalHarga = jumlahSampel * analyses.reduce((sum, item) => sum + (Number(analysisPrices[item]) || 0), 0);
 
   return (
     <NavbarLogin>
@@ -255,10 +304,20 @@ export default function Hematologi() {
                     <Row>
                       {analysisOptions.map((item, i) => (
                         <Col md={6} key={i}>
-                          <Form.Check type="checkbox" label={item} checked={analyses.includes(item)} onChange={() => handleCheckboxChange(item)} />
+                          <Form.Check
+                            type="checkbox"
+                            label={item.jenis_analisis}
+                            checked={analyses.includes(item.jenis_analisis)}
+                            onChange={() => handleCheckboxChange(item.jenis_analisis)}
+                          />
                         </Col>
                       ))}
                     </Row>
+                    {/* Total Harga */}
+                    <div className="mt-4 text-end">
+                      <span className="fw-bold" style={{fontSize:'1.1em'}}>Total Harga: </span>
+                      <span className="fw-bold text-success" style={{fontSize:'1.2em'}}>Rp{totalHarga.toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -271,6 +330,12 @@ export default function Hematologi() {
                     wrapperClassName="w-100"
                     className="form-control py-2 px-3 shadow-sm border-0 bg-light"
                     dateFormat="dd MMMM yyyy"
+                    placeholderText="Klik untuk pilih tanggal"
+                    minDate={new Date()}
+                    filterDate={(date) => {
+                      const dateStr = dayjs(date).format('YYYY-MM-DD');
+                      return availableDates.includes(dateStr);
+                    }}
                     required
                   />
                 </Form.Group>

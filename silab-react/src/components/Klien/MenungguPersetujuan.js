@@ -3,7 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import NavbarLogin from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
-import "../../css/MenungguPersetujuan.css"; // Pastikan CSS tambahan ada di sini
+import "../../css/MenungguPersetujuan.css"; 
 import { getUserBookings, cancelBooking } from "../../services/BookingService";
 import { useHistory } from "react-router-dom";
 import dayjs from "dayjs";
@@ -15,12 +15,13 @@ const MenungguPersetujuan = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(2);
+  const [fullName, setFullName] = useState(""); 
 
   useEffect(() => {
     const fetchBookings = async () => {
       try {
         const response = await getUserBookings();
-        const bookings = response.data;
+        const bookings = response.data; // Pastikan ini array
 
         if (!bookings || bookings.length === 0) {
           setLoading(false);
@@ -29,8 +30,27 @@ const MenungguPersetujuan = () => {
 
         const filtered = bookings.filter((b) => {
           const status = (b.status || "").toLowerCase();
-          return status === "menunggu" || status === "menunggu persetujuan" || status === "disetujui" || status === "ditolak";
+          return (
+            status === "menunggu" ||
+            status === "menunggu persetujuan" ||
+            status === "disetujui" ||
+            status === "ditolak"
+          );
         });
+
+        // PERBAIKAN DI SINI:
+        // Cek struktur data user dari relasi Laravel (booking.user.full_name)
+        if (bookings.length > 0) {
+          const firstBooking = bookings[0];
+          // Prioritas: user.full_name -> user.name -> user_fullname (legacy) -> localStorage
+          const detectedName = 
+            firstBooking.user?.full_name || 
+            firstBooking.user?.name || 
+            firstBooking.user_fullname || 
+            "Pelanggan";
+            
+          setFullName(detectedName);
+        }
 
         setBookingList(filtered);
       } catch (error) {
@@ -65,6 +85,7 @@ const MenungguPersetujuan = () => {
           setLoading(true);
           await cancelBooking(bookingId);
           message.success("Pesanan berhasil dibatalkan");
+          // Refresh data
           const response = await getUserBookings();
           const filtered = response.data.filter((b) => {
             const status = (b.status || "").toLowerCase();
@@ -84,14 +105,10 @@ const MenungguPersetujuan = () => {
   const getStatusBadge = (status) => {
     const lowerStatus = (status || "").toLowerCase();
     switch (lowerStatus) {
-      case "proses":
-        return "bg-info text-white";
-      case "disetujui":
-        return "bg-success text-white";
-      case "ditolak":
-        return "bg-danger text-white";
-      default:
-        return "bg-warning text-dark";
+      case "proses": return "bg-info text-white";
+      case "disetujui": return "bg-success text-white";
+      case "ditolak": return "bg-danger text-white";
+      default: return "bg-warning text-dark";
     }
   };
 
@@ -124,13 +141,30 @@ const MenungguPersetujuan = () => {
     }
   };
 
+  const getBatchPrefix = (codes) => {
+    // Jika booking punya kode_batch, gunakan itu
+    if (Array.isArray(codes) && codes.booking && codes.booking.kode_batch) {
+      return codes.booking.kode_batch;
+    }
+    // Fallback ke cara lama jika tidak ada kode_batch
+    if (!codes || codes.length === 0) return "-";
+    const first = codes[0] || "";
+    const idx = first.lastIndexOf("-");
+    if (idx > 0) return first.substring(0, idx);
+    return first;
+  };
+
+  // PERBAIKAN DI SINI: Logika WA Link
   const getWALink = () => {
     if (!selectedBooking) return "#";
     const phone = "6282111485562";
-    const userName = localStorage.getItem("user_name") || "Klien SILAB";
     const allCodes = generateSampleCodes(selectedBooking);
+    
+    // Ambil nama spesifik dari booking yang dipilih (jika ada relasi user), atau gunakan state global
+    const specificName = selectedBooking.user?.full_name || selectedBooking.user?.name || fullName || "Pelanggan";
+
     let text = `Halo Admin SILAB, konfirmasi pesanan:\n\n`;
-    text += `👤 *Nama:* ${userName}\n`;
+    text += `👤 *Nama:* ${specificName}\n`;
     text += `📦 *Jumlah:* ${selectedBooking.jumlah_sampel} Sampel\n`;
     text += `🏷️ *Daftar Kode Sampel:*\n${allCodes.join("\n")}\n\n`;
     text += `🔬 *Layanan:* ${selectedBooking.jenis_analisis}\n`;
@@ -162,7 +196,9 @@ const MenungguPersetujuan = () => {
           </div>
           <div className="progress-line big-line filled"></div>
           <div className="step">
-            <div className={`icon-wrapper active ${currentStep === 2 ? "pulse-active" : ""} big-step`}>{isRejected ? <i className="bi bi-x-lg"></i> : <i className="bi bi-clock"></i>}</div>
+            <div className={`icon-wrapper active ${currentStep === 2 ? "pulse-active" : ""} big-step`}>
+              {isRejected ? <i className="bi bi-x-lg"></i> : <i className="bi bi-clock"></i>}
+            </div>
             <p className="label active-text">{isRejected ? "Ditolak" : "Verifikasi"}</p>
           </div>
           <div className={`progress-line big-line ${currentStep >= 3 ? "filled" : ""}`}></div>
@@ -175,7 +211,6 @@ const MenungguPersetujuan = () => {
         </div>
 
         <div className="card border-0 shadow-sm mx-auto" style={{ maxWidth: "500px", borderRadius: "16px", overflow: "hidden" }}>
-          {/* Header warna lebih tipis (5px) */}
           <div style={{ height: "5px", backgroundColor: isRejected ? "#dc3545" : isApproved ? "#198754" : "#ffc107" }}></div>
 
           <div className="card-body p-4">
@@ -290,6 +325,9 @@ const MenungguPersetujuan = () => {
               <div className="row g-3">
                 {bookingList.map((item) => {
                   const codes = generateSampleCodes(item);
+                  // Inject booking ke codes agar getBatchPrefix bisa akses kode_batch
+                  codes.booking = item;
+                  const batchPrefix = getBatchPrefix(codes);
                   return (
                     <div key={item.id} className="col-12">
                       <div className="card border-0 shadow-sm hover-card-modern p-2" style={{ cursor: "pointer", borderRadius: "15px" }} onClick={() => handleSelectBooking(item)}>
@@ -300,7 +338,8 @@ const MenungguPersetujuan = () => {
                             </div>
                             <div>
                               <h6 className="fw-bold mb-1">
-                                {codes[0]} {codes.length > 1 && <span className="text-primary small">(+{codes.length - 1} lainnya)</span>}
+                                {batchPrefix}
+                                {codes.length > 1 && <span className="text-primary small"> (+{codes.length} sampel)</span>}
                               </h6>
                               <div className="text-muted small">
                                 <i className="bi bi-calendar-event me-1"></i> {dayjs(item.tanggal_kirim).format("DD MMM YYYY")}

@@ -6,24 +6,124 @@ import {
   Tooltip,
   ResponsiveContainer
 } from "recharts";
-import React from "react";
-import { Row, Col, Card, Table, Button } from "react-bootstrap";
+import React, { useEffect, useState } from "react";
+import { Row, Col, Card, Table, Button, Spinner } from "react-bootstrap";
 import {
   FaClock,
   FaCheckCircle,
   FaFileAlt,
   FaExclamationTriangle,
 } from "react-icons/fa";
+import { useHistory } from "react-router-dom";
 import NavbarLoginKepala from "./NavbarLoginKepala";
-
-const dataAktivitas = [
-  { bulan: "Jan", total: 10 },
-  { bulan: "Feb", total: 15 },
-  { bulan: "Mar", total: 22 },
-  { bulan: "Apr", total: 30 },
-];
+import { getAllBookings } from "../../services/BookingService";
 
 function DashboardKepala() {
+  const history = useHistory();
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    menungguVerifikasi: 0,
+    sudahDisetujui: 0,
+    laporanBulanIni: 0,
+  });
+  const [pendingBookings, setPendingBookings] = useState([]);
+  const [dataAktivitas, setDataAktivitas] = useState([]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const res = await getAllBookings();
+      const all = res?.data || [];
+      
+      // Hitung statistik
+      const menungguVerifikasi = all.filter(b => 
+        (b.status || "").toLowerCase() === "menunggu_verifikasi_kepala"
+      ).length;
+      
+      const sudahDisetujui = all.filter(b => 
+        (b.status || "").toLowerCase() === "selesai"
+      ).length;
+      
+      // Laporan bulan ini
+      const now = new Date();
+      const thisMonth = now.getMonth();
+      const thisYear = now.getFullYear();
+      const laporanBulanIni = all.filter(b => {
+        const createdAt = new Date(b.created_at);
+        return createdAt.getMonth() === thisMonth && createdAt.getFullYear() === thisYear;
+      }).length;
+      
+      setStats({
+        menungguVerifikasi,
+        sudahDisetujui,
+        laporanBulanIni,
+      });
+      
+      // Ambil booking yang menunggu verifikasi kepala (max 5)
+      const pending = all.filter(b => 
+        (b.status || "").toLowerCase() === "menunggu_verifikasi_kepala"
+      ).slice(0, 5);
+      setPendingBookings(pending);
+      
+      // Generate data aktivitas bulanan
+      const monthlyData = generateMonthlyData(all);
+      setDataAktivitas(monthlyData);
+      
+    } catch (err) {
+      console.error("Gagal mengambil data dashboard:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateMonthlyData = (bookings) => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    
+    // Ambil 4 bulan terakhir
+    const result = [];
+    for (let i = 3; i >= 0; i--) {
+      const monthIndex = (currentMonth - i + 12) % 12;
+      const count = bookings.filter(b => {
+        const createdAt = new Date(b.created_at);
+        return createdAt.getMonth() === monthIndex;
+      }).length;
+      result.push({ bulan: months[monthIndex], total: count });
+    }
+    return result;
+  };
+
+  const parseKodeSampel = (kodeSampel) => {
+    try {
+      if (!kodeSampel) return "-";
+      if (typeof kodeSampel === "string") {
+        const parsed = JSON.parse(kodeSampel);
+        const arr = Array.isArray(parsed) ? parsed : [parsed];
+        return arr.filter(Boolean).join(", ");
+      }
+      if (Array.isArray(kodeSampel)) return kodeSampel.join(", ");
+      return String(kodeSampel);
+    } catch {
+      return String(kodeSampel);
+    }
+  };
+
+  if (loading) {
+    return (
+      <NavbarLoginKepala>
+        <div className="text-center py-5">
+          <Spinner animation="border" variant="primary" />
+          <p className="mt-2">Memuat data...</p>
+        </div>
+      </NavbarLoginKepala>
+    );
+  }
+
   return (
     <NavbarLoginKepala>
       <div className="dashboard-wrapper">
@@ -36,7 +136,7 @@ function DashboardKepala() {
             <Card className="summary-card">
               <FaClock className="icon" />
               <p>Menunggu Verifikasi</p>
-              <h3>5</h3>
+              <h3>{stats.menungguVerifikasi}</h3>
               <span>Laporan</span>
             </Card>
           </Col>
@@ -45,7 +145,7 @@ function DashboardKepala() {
             <Card className="summary-card">
               <FaCheckCircle className="icon" />
               <p>Sudah Disetujui</p>
-              <h3>20</h3>
+              <h3>{stats.sudahDisetujui}</h3>
               <span>Hasil</span>
             </Card>
           </Col>
@@ -54,26 +154,28 @@ function DashboardKepala() {
             <Card className="summary-card">
               <FaFileAlt className="icon" />
               <p>Laporan Bulan Ini</p>
-              <h3>3</h3>
+              <h3>{stats.laporanBulanIni}</h3>
               <span>Dokumen</span>
             </Card>
           </Col>
         </Row>
 
        {/* ===== ALERT / VERIFIKASI ===== */}
+       {pendingBookings.length > 0 && (
 <div className="verifikasi-wrapper">
   <Card className="verifikasi-card">
     <FaExclamationTriangle className="verifikasi-icon" />
     <div className="verifikasi-content">
       <p>
-        Hasil analisis sampel <strong>K001</strong> siap diverifikasi
+        Hasil analisis <strong>{pendingBookings[0]?.kode_batch || parseKodeSampel(pendingBookings[0]?.kode_sampel)}</strong> siap diverifikasi
       </p>
-      <Button size="sm" className="verifikasi-btn">
+      <Button size="sm" className="verifikasi-btn" onClick={() => history.push('/kepala/dashboard/verifikasiKepala')}>
         Verifikasi Sekarang
       </Button>
     </div>
   </Card>
 </div>
+       )}
 
 
         {/* ===== CHART ===== */}
@@ -99,39 +201,49 @@ function DashboardKepala() {
         {/* ===== TABLE ===== */}
 <Card className="table-card shadow-sm">
   <Card.Header className="table-header">
-    Aktivitas Terbaru Laboratorium
+    Sampel Menunggu Verifikasi Akhir
   </Card.Header>
 
   <Table hover responsive className="mb-0 custom-table">
     <thead>
       <tr>
-        <th>Tanggal</th>
-        <th>Aktivitas</th>
-        <th>Pelaksana</th>
+        <th>Kode Batch</th>
+        <th>Jenis Analisis</th>
+        <th>Tanggal Masuk</th>
         <th>Status</th>
+        <th>Aksi</th>
       </tr>
     </thead>
 
     <tbody>
-      <tr>
-        <td>28 Nov 2025</td>
-        <td>Kalibrasi Timbangan Digital</td>
-        <td>Budi Teknisi</td>
-        <td>
-          <span className="status-badge selesai">Selesai</span>
-        </td>
-      </tr>
-
-      <tr>
-        <td>28 Nov 2025</td>
-        <td>Peminjaman Mikroskop</td>
-        <td>Siti Koordinator</td>
-        <td>
-          <span className="status-badge menunggu">
-            Menunggu
-          </span>
-        </td>
-      </tr>
+      {pendingBookings.length === 0 ? (
+        <tr>
+          <td colSpan={5} className="text-center py-4 text-muted">
+            Tidak ada sampel yang menunggu verifikasi akhir
+          </td>
+        </tr>
+      ) : (
+        pendingBookings.map((item) => (
+          <tr key={item.id}>
+            <td className="fw-semibold">{item.kode_batch || parseKodeSampel(item.kode_sampel)}</td>
+            <td>{item.jenis_analisis || item.jenis || "-"}</td>
+            <td>{item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID') : "-"}</td>
+            <td>
+              <span className="status-badge menunggu">Menunggu Verifikasi</span>
+            </td>
+            <td>
+              <Button 
+                size="sm" 
+                variant="primary" 
+                style={{ backgroundColor: "#45352F", borderColor: "#45352F" }}
+                onClick={() => history.push(`/kepala/dashboard/verifikasiKepala/lihatHasilPdfKepala/${item.id}`)}
+              >
+                Lihat Detail
+              </Button>
+            </td>
+          </tr>
+        ))
+      )}
     </tbody>
   </Table>
 </Card>

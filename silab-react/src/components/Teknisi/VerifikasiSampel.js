@@ -7,7 +7,7 @@ import dayjs from "dayjs";
 import { Modal } from "react-bootstrap";
 
 // Import Service API
-import { getAllBookings, updateBookingStatus } from "../../services/BookingService";
+import { getAllBookings, updateBookingStatus, deleteBooking } from "../../services/BookingService";
 
 const VerifikasiSampel = () => {
   const history = useHistory();
@@ -70,6 +70,7 @@ const VerifikasiSampel = () => {
     if (st === "menunggu") return "Menunggu Persetujuan";
     if (st === "menunggu persetujuan") return "Menunggu Persetujuan";
     if (st === "menunggu_pembayaran" || st === "menunggu pembayaran" || st === "menunggu-pembayaran") return "Menunggu Pembayaran";
+    if (st === "menunggu_verifikasi_kepala") return "Menunggu Verifikasi";
     if (st === "disetujui") return "Disetujui";
     if (st === "proses") return "Proses";
     if (st === "selesai") return "Selesai";
@@ -120,6 +121,8 @@ const VerifikasiSampel = () => {
       state: {
         bookingId: row.id,
         kodeSampel: row.kode_sampel,
+        kodeBatch: row.kode_batch,
+        sampleCodes: generateSampleCodes(row),
         namaKlien: row.user ? row.user.full_name || row.user.name : "-",
         nomorTelpon: noHp,
       },
@@ -129,14 +132,32 @@ const VerifikasiSampel = () => {
   const handleSampelSampai = async (row) => {
     try {
       await updateBookingStatus(row.id, { status: "proses" });
+      // Ambil data booking terbaru setelah update status
+      const allBookings = (await getAllBookings()).data;
+      const updatedBooking = allBookings.find(b => b.id === row.id);
       await fetchData();
       message.success("Sampel diterima! Status: Sedang Dianalisis");
       history.push({
         pathname: "/teknisi/dashboard/inputNilaiAnalisis",
-        state: { booking: row },
+        state: { booking: updatedBooking || row },
       });
     } catch (err) {
       message.error("Gagal mengubah status sampel");
+    }
+  };
+
+  // Hapus booking (hanya status dibatalkan)
+  const handleDelete = async (row) => {
+    if (!window.confirm(`Hapus booking batch ${row.kode_batch || ''}? Data tidak bisa dikembalikan!`)) return;
+    try {
+      setIsProcessing(true);
+      await deleteBooking(row.id);
+      message.success('Booking berhasil dihapus!');
+      fetchData();
+    } catch (err) {
+      message.error(err?.message || 'Gagal menghapus booking.');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -168,13 +189,13 @@ const VerifikasiSampel = () => {
         <div className="card border-0 shadow-sm rounded-4 overflow-hidden mb-5">
           <div className="table-responsive">
             <Spin spinning={loading} tip="Memuat data...">
-              <table className="table table-hover align-middle mb-0">
+              <table className="table table-hover align-middle mb-0" style={{ minWidth: '1100px' }}>
                 <thead className="bg-dark text-white">
                   <tr>
                     <th className="ps-4 py-3 text-uppercase small fw-bold" style={{ width: "60px" }}>
                       No
                     </th>
-                    <th className="py-3 text-uppercase small fw-bold">Kode Sampel</th>
+                    <th className="py-3 text-uppercase small fw-bold">Kode Batch</th>
                     <th className="py-3 text-uppercase small fw-bold">Klien</th>
                     <th className="py-3 text-uppercase small fw-bold text-center">Jml</th>
                     <th className="py-3 text-uppercase small fw-bold">Jenis Analisis</th>
@@ -189,7 +210,9 @@ const VerifikasiSampel = () => {
                       <tr key={row.id}>
                         <td className="ps-4 text-muted">{index + 1}</td>
                         <td>
-                          <div className="fw-bold text-dark mb-0">{generateSampleCodes(row)[0] || row.kode_sampel}</div>
+                          <span className="badge bg-primary bg-opacity-10 text-primary fw-bold px-3 py-2 rounded-pill shadow-sm" style={{ fontSize: '1rem', letterSpacing: '1px' }}>
+                            {row.kode_batch || '-'}
+                          </span>
                           {generateSampleCodes(row).length > 1 && (
                             <div className="text-muted" style={{ fontSize: "11px" }}>
                               +{generateSampleCodes(row).length - 1} sampel lainnya
@@ -238,6 +261,12 @@ const VerifikasiSampel = () => {
                                 </button>
                               </>
                             )}
+                            {/* Tombol hapus hanya untuk status dibatalkan */}
+                            {(row.status || '').toLowerCase() === 'dibatalkan' && (
+                              <button className="btn btn-danger btn-sm rounded-3 shadow-sm" onClick={() => handleDelete(row)} disabled={isProcessing} title="Hapus booking dibatalkan">
+                                <i className="bi bi-trash"></i>
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -267,13 +296,13 @@ const VerifikasiSampel = () => {
 
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
             <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0">
+              <table className="table table-hover align-middle mb-0" style={{ minWidth: '900px' }}>
                 <thead style={{ backgroundColor: "#f8f9fa" }}>
                   <tr>
                     <th className="ps-4 py-3 text-muted small fw-bold" style={{ width: "60px" }}>
                       No
                     </th>
-                    <th className="py-3 text-muted small fw-bold">Kode Sampel</th>
+                    <th className="py-3 text-muted small fw-bold">Kode Batch</th>
                     <th className="py-3 text-muted small fw-bold">Klien</th>
                     <th className="py-3 text-muted small fw-bold text-center">Jumlah</th>
                     <th className="py-3 text-muted small fw-bold">Analisis</th>
@@ -285,7 +314,11 @@ const VerifikasiSampel = () => {
                     approvedData.map((row, index) => (
                       <tr key={row.id}>
                         <td className="ps-4 text-muted">{index + 1}</td>
-                        <td className="fw-bold text-dark">{generateSampleCodes(row)[0] || row.kode_sampel}</td>
+                        <td>
+                          <span className="badge bg-primary bg-opacity-10 text-primary fw-bold px-3 py-2 rounded-pill shadow-sm" style={{ fontSize: '1rem', letterSpacing: '1px' }}>
+                            {row.kode_batch || '-'}
+                          </span>
+                        </td>
                         <td>{row.user ? row.user.full_name || row.user.name : "-"}</td>
                         <td className="text-center">
                           <span className="badge bg-light text-dark border">{row.jumlah_sampel}</span>
@@ -332,7 +365,7 @@ const VerifikasiSampel = () => {
                   </div>
                   <div className="d-flex justify-content-between border-bottom pb-1">
                     <span className="text-secondary">Kode Batch</span>
-                    <span className="fw-bold">{generateSampleCodes(detailData)[0] || detailData.kode_sampel}</span>
+                    <span className="fw-bold badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill shadow-sm" style={{ fontSize: '1rem', letterSpacing: '1px' }}>{detailData.kode_batch || '-'}</span>
                   </div>
                   <div className="d-flex justify-content-between border-bottom pb-1">
                     <span className="text-secondary">Tgl Kirim</span>
@@ -402,7 +435,7 @@ const VerifikasiSampel = () => {
             </div>
             <h4 className="fw-bold">Konfirmasi</h4>
             <p className="text-muted">
-              Setujui sampel <b>{generateSampleCodes(selectedSample)[0]}</b>? <br />
+              Setujui <b>batch {selectedSample.kode_batch || '-'}</b>? <br />
               Klien: <b>{selectedSample.user?.full_name || selectedSample.user?.name}</b>
             </p>
             <div className="d-flex justify-content-center gap-2 mt-4">

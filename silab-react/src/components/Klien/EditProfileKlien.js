@@ -3,6 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import { Image, Spinner } from "react-bootstrap";
 import FooterSetelahLogin from "../FooterSetelahLogin";
 import NavbarProfile from "./NavbarProfile";
+import CustomPopup from "../Common/CustomPopup";
 import { FaUserCircle, FaCamera } from "react-icons/fa";
 import { useHistory } from "react-router-dom";
 import axios from "axios";
@@ -28,6 +29,9 @@ function EditProfileKlien() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isFirstTime, setIsFirstTime] = useState(false);
+
+  // State untuk popup
+  const [popup, setPopup] = useState({ show: false, title: "", message: "", type: "info", onClose: null });
 
   // 1. LOAD DATA DARI DATABASE
   useEffect(() => {
@@ -86,36 +90,47 @@ function EditProfileKlien() {
 
   // 2. FUNGSI SIMPAN DENGAN VALIDASI WAJIB ISI
   const handleSave = async () => {
-    
     // --- [VALIDASI FRONTEND] ---
-    // Wajib isi semua KECUALI Bio dan Foto
     if (!formData.full_name.trim()) {
-        alert("Nama Lengkap wajib diisi!");
-        return;
+      setPopup({
+        show: true,
+        title: "Nama Lengkap wajib diisi!",
+        message: "Mohon isi nama lengkap Anda sebelum menyimpan profil.",
+        type: "error",
+        onClose: () => setPopup((p) => ({ ...p, show: false }))
+      });
+      return;
     }
     if (!formData.institusi || formData.institusi === "") {
-        alert("Silakan pilih Institusi!");
-        return;
+      setPopup({
+        show: true,
+        title: "Institusi wajib dipilih!",
+        message: "Silakan pilih institusi Anda sebelum menyimpan profil.",
+        type: "error",
+        onClose: () => setPopup((p) => ({ ...p, show: false }))
+      });
+      return;
     }
     if (!formData.nomor_telpon.trim()) {
-        alert("Nomor Telepon wajib diisi!");
-        return;
+      setPopup({
+        show: true,
+        title: "Nomor Telepon wajib diisi!",
+        message: "Mohon isi nomor telepon Anda sebelum menyimpan profil.",
+        type: "error",
+        onClose: () => setPopup((p) => ({ ...p, show: false }))
+      });
+      return;
     }
-    // ---------------------------
 
     setSaving(true);
-    
     const dataToSend = new FormData();
     dataToSend.append("name", formData.name);
     dataToSend.append("full_name", formData.full_name);
     dataToSend.append("institusi", formData.institusi);
     dataToSend.append("nomor_telpon", formData.nomor_telpon);
-    
-    // Bio dikirim apa adanya (boleh kosong string)
     dataToSend.append("bio", formData.bio || "");
-
     if (avatarFile) {
-        dataToSend.append("avatar", avatarFile);
+      dataToSend.append("avatar", avatarFile);
     }
 
     try {
@@ -132,30 +147,76 @@ function EditProfileKlien() {
 
       // --- LOGIKA REDIRECT ---
       if (isFirstTime) {
-          alert("Selamat! Profil Anda sudah lengkap. Anda akan diarahkan ke Dashboard.");
-          history.push("/dashboard"); // User Baru -> Dashboard
+        setPopup({
+          show: true,
+          title: "Profil Lengkap!",
+          message: "Selamat! Profil Anda sudah lengkap. Anda akan diarahkan ke Dashboard.",
+          type: "success",
+          onClose: () => {
+            setPopup((p) => ({ ...p, show: false }));
+            history.push("/dashboard");
+          }
+        });
       } else {
-          alert("Profil berhasil diperbarui!");
-          history.push("/dashboard/ProfileAkunKlien"); // Edit Biasa -> Lihat Profil
+        setPopup({
+          show: true,
+          title: "Profil berhasil diperbarui!",
+          message: "Data profil Anda telah berhasil disimpan.",
+          type: "success",
+          onClose: () => {
+            setPopup((p) => ({ ...p, show: false }));
+            history.push("/dashboard/ProfileAkunKlien");
+          }
+        });
       }
 
     } catch (error) {
       console.error("Gagal update:", error.response);
       const msg = error.response?.data?.message || "Terjadi kesalahan saat menyimpan.";
       const validationErrors = error.response?.data?.errors;
-      
-      if(validationErrors) {
-          if(validationErrors.avatar) {
-              alert(`Gagal upload avatar: ${validationErrors.avatar[0]}\n\nPastikan file adalah gambar (JPG, PNG, GIF, BMP, WEBP, TIFF)`);
-          } else if(validationErrors.name) {
-              alert(`Gagal: ${validationErrors.name[0]}`);
-          } else if(validationErrors.full_name) {
-              alert(`Gagal: ${validationErrors.full_name[0]}`);
-          } else {
-              alert(`Gagal: ${msg}`);
-          }
+
+      if (validationErrors) {
+        if (validationErrors.avatar) {
+          setPopup({
+            show: true,
+            title: "Gagal upload avatar",
+            message: `${validationErrors.avatar[0]}\nPastikan file adalah gambar (JPG, PNG, GIF, BMP, WEBP, TIFF)`,
+            type: "error",
+            onClose: () => setPopup((p) => ({ ...p, show: false }))
+          });
+        } else if (validationErrors.name) {
+          setPopup({
+            show: true,
+            title: "Gagal menyimpan profil",
+            message: validationErrors.name[0],
+            type: "error",
+            onClose: () => setPopup((p) => ({ ...p, show: false }))
+          });
+        } else if (validationErrors.full_name) {
+          setPopup({
+            show: true,
+            title: "Gagal menyimpan profil",
+            message: validationErrors.full_name[0],
+            type: "error",
+            onClose: () => setPopup((p) => ({ ...p, show: false }))
+          });
+        } else {
+          setPopup({
+            show: true,
+            title: "Gagal menyimpan profil",
+            message: msg,
+            type: "error",
+            onClose: () => setPopup((p) => ({ ...p, show: false }))
+          });
+        }
       } else {
-          alert(`Gagal: ${msg}`);
+        setPopup({
+          show: true,
+          title: "Gagal menyimpan profil",
+          message: msg,
+          type: "error",
+          onClose: () => setPopup((p) => ({ ...p, show: false }))
+        });
       }
     } finally {
       setSaving(false);
@@ -183,7 +244,6 @@ function EditProfileKlien() {
       <div className="container mt-5 mb-5 font-poppins">
         <div className="row justify-content-center">
           <div className="col-md-8">
-
             {/* FOTO PROFIL (Opsional) */}
             <div className="text-center mb-4">
               <div className="position-relative d-inline-block">
@@ -199,7 +259,6 @@ function EditProfileKlien() {
                 ) : (
                   <FaUserCircle size={150} className="text-secondary" />
                 )}
-                
                 <label 
                     htmlFor="avatarInput" 
                     className="position-absolute bottom-0 end-0 bg-primary text-white p-2 rounded-circle shadow"
@@ -208,12 +267,10 @@ function EditProfileKlien() {
                     <FaCamera size={18} />
                 </label>
               </div>
-
               <div className="mt-3">
                 <h4 className="fw-bold mb-0">{formData.full_name || formData.name}</h4>
                 <p className="text-muted small">@{formData.name}</p>
               </div>
-
               <input
                 type="file"
                 accept="image/*"
@@ -222,11 +279,9 @@ function EditProfileKlien() {
                 onChange={handleAvatarChange}
               />
             </div>
-
             {/* FORM DATA */}
             <div className="card shadow-sm border-0" style={{borderRadius: '15px'}}>
               <div className="card-body p-4">
-
                 {/* USERNAME (Wajib, Unik) */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold">
@@ -241,7 +296,6 @@ function EditProfileKlien() {
                     required
                   />
                 </div>
-
                 {/* NAMA LENGKAP (Wajib) */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold">
@@ -257,7 +311,6 @@ function EditProfileKlien() {
                     required
                   />
                 </div>
-
                 {/* EMAIL (Read Only - Dari Register) */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold">
@@ -272,7 +325,6 @@ function EditProfileKlien() {
                     style={{cursor: 'not-allowed'}}
                   />
                 </div>
-
                 {/* INSTITUSI (Wajib) */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold">
@@ -296,7 +348,6 @@ function EditProfileKlien() {
                     </optgroup>
                   </select>
                 </div>
-
                 {/* NO TELPON (Wajib) */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold">
@@ -312,7 +363,6 @@ function EditProfileKlien() {
                     required
                   />
                 </div>
-
                 {/* ROLE (Read Only) */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold">Role</label>
@@ -324,7 +374,6 @@ function EditProfileKlien() {
                     disabled
                   />
                 </div>
-
                 {/* BIO (Opsional - Tidak ada tanda bintang) */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold">Bio</label>
@@ -337,7 +386,6 @@ function EditProfileKlien() {
                     placeholder="Tulis bio singkat (opsional)..."
                   />
                 </div>
-
                 <div className="d-flex gap-2 mt-4">
                   <button 
                     className="btn btn-primary px-4 fw-bold" 
@@ -357,13 +405,19 @@ function EditProfileKlien() {
                       </button>
                   )}
                 </div>
-
               </div>
             </div>
           </div>
         </div>
       </div>
-
+      <CustomPopup
+        show={popup.show}
+        title={popup.title}
+        message={popup.message}
+        type={popup.type}
+        buttonText="OK"
+        onClose={popup.onClose}
+      />
       <FooterSetelahLogin />
     </>
   );

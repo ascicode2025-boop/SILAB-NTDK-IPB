@@ -44,7 +44,7 @@ function NavbarLoginKoordinator({ children }) {
       fetchNotifications();
 
       if (notif.booking_id) {
-        history.push("/teknisi/dashboard/verifikasiSampel");
+        history.push("/koordinator/dashboard/verifikasiSampelKoordinator");
       }
     } catch (error) {
       console.error("Error marking notification as read:", error);
@@ -192,7 +192,7 @@ function NavbarLoginKoordinator({ children }) {
             </Dropdown.Toggle>
 
             <Dropdown.Menu className="shadow-lg border-0 mt-2" style={{ borderRadius: "10px" }}>
-              <Dropdown.Item className="py-2" onClick={() => history.push("/dashboard/ProfileAkunKlien")}>
+              <Dropdown.Item className="py-2" onClick={() => history.push("/koordinator/dashboard/profile")}>
                 <i className="bi bi-person me-2"></i> Profil Akun
               </Dropdown.Item>
               <hr className="dropdown-divider opacity-50" />

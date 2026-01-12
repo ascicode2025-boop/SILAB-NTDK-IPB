@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Container, Row, Col, Card, Button } from "react-bootstrap";
+import { Container, Row, Col, Card, Button, Spinner } from "react-bootstrap";
 import { FaFlask, FaClipboardCheck, FaCheckCircle, FaBell } from "react-icons/fa";
 import { useHistory } from "react-router-dom";
 import NavbarLoginKoordinator from "./NavbarLoginKoordinator";
@@ -11,11 +11,10 @@ const DashboardKoordinator = () => {
   const history = useHistory();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  // INI NANTI DARI BACKEND / API (SEKARANG DUMMY)
   const [totalSampelMasukHariIni, setTotalSampelMasukHariIni] = useState(0);
   const [totalMenungguTTD, setTotalMenungguTTD] = useState(0);
   const [totalSampelSelesai, setTotalSampelSelesai] = useState(0);
-  const [loadingMetrics, setLoadingMetrics] = useState(false);
+  const [loadingMetrics, setLoadingMetrics] = useState(true);
 
   const fetchMetrics = async () => {
     try {
@@ -23,24 +22,63 @@ const DashboardKoordinator = () => {
       const res = await getAllBookings();
       const all = res?.data || [];
 
+      // 1. Setup Tanggal Hari Ini (Start of Day)
       const today = new Date();
-      const isSameDay = (dStr) => {
-        if (!dStr) return false;
-        const d = new Date(dStr);
-        return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+      today.setHours(0, 0, 0, 0);
+
+      // Fungsi Helper untuk cek tanggal
+      const isSameDate = (dateString) => {
+        if (!dateString) return false;
+        const dateToCheck = new Date(dateString);
+        dateToCheck.setHours(0, 0, 0, 0);
+        return dateToCheck.getTime() === today.getTime();
       };
 
-      const masukHariIni = all.filter((b) => isSameDay(b.tanggal_booking || b.created_at)).length;
+      // 2. Hitung "Sampel Masuk Hari Ini"
+      // Definisikan apa yang dimaksud "Masuk". Apakah Booking dibuat hari ini?
+      // Atau Sampel yang statusnya "menunggu_verifikasi" hari ini?
+      // Di sini kita hitung semua booking yang DIBUAT (created_at) HARI INI
+      const masukHariIni = all.filter((b) => isSameDate(b.created_at)).length;
 
-      // Hitung menunggu TTD: terima kedua status umum yang mungkin dipakai
-      const menungguTTD = all.filter((b) => b.status === "menunggu_ttd" || b.status === "menunggu_verifikasi").length;
+      // 3. Hitung "Menunggu TTD / Verifikasi" (Tugas Aktif Koordinator)
+      // Ini menghitung total sample yang MEMBUTUHKAN aksi koordinator SAAT INI
+      // Status yang relevan:
+      // - menunggu_verifikasi (Baru dikirim teknisi)
+      // - menunggu_ttd (Sudah disetujui kepala, menunggu TTD koordinator)
+      // - menunggu_ttd_koordinator (Variasi status TTD)
+      // - menunggu_sign (Variasi status TTD)
+      const statusPending = [
+        "menunggu_verifikasi",
+        "menunggu_ttd",
+        "menunggu_ttd_koordinator",
+        "menunggu_sign"
+      ];
+      
+      // Catatan: 'menunggu_verifikasi_kepala' TIDAK dihitung di sini karena itu tugas Kepala Lab, 
+      // bukan tugas aktif koordinator saat ini.
+      
+      const menungguTTD = all.filter((b) => 
+        statusPending.includes((b.status || "").toLowerCase())
+      ).length;
 
-      // Hitung selesai / sudah ditandatangani
-      const selesai = all.filter((b) => b.status === "selesai" || b.status === "ditandatangani").length;
+      // 4. Hitung "Sampel Selesai"
+      // Sampel yang proses analisis dan administrasinya sudah tuntas
+      const statusDone = [
+        "menunggu_pembayaran", // Biasanya setelah TTD selesai, masuk ke pembayaran
+        "selesai", 
+        "disetujui", // Jika ini berarti final approval
+        "lunas"      // Jika sudah bayar
+      ];
+      
+      const selesai = all.filter((b) => 
+        statusDone.includes((b.status || "").toLowerCase())
+      ).length;
 
+      // Update State
       setTotalSampelMasukHariIni(masukHariIni);
       setTotalMenungguTTD(menungguTTD);
       setTotalSampelSelesai(selesai);
+
     } catch (err) {
       console.error("Gagal mengambil metrik:", err);
     } finally {
@@ -59,7 +97,7 @@ const DashboardKoordinator = () => {
         style={{
           fontFamily: "Poppins, sans-serif",
           backgroundColor: "#f1efed",
-          minHeight: "70Vh",
+          minHeight: "85vh",
         }}
       >
         <Container fluid>
@@ -73,45 +111,44 @@ const DashboardKoordinator = () => {
             </p>
           </div>
 
-          {/* CARD 1 */}
+          {/* CARD METRICS */}
           <Row className="mb-4">
+            {/* CARD 1: Sampel Masuk Hari Ini */}
             <Col md={4} className="mb-3">
               <Card className="h-100 border-0 shadow-sm" style={{ borderRadius: 22 }}>
                 <Card.Body>
                   <div className="d-flex align-items-center">
-                    <FaFlask size={30} className="me-3" color="#6d4c41" />
+                    <div className="p-3 rounded-circle me-3" style={{ backgroundColor: '#efebe9' }}>
+                        <FaFlask size={24} color="#6d4c41" />
+                    </div>
                     <div>
-                      <Card.Title className="mb-0">{totalSampelMasukHariIni} Sampel Masuk</Card.Title>
-                      <Card.Text style={{ color: "#8d6e63" }}>Sampel diterima hari ini</Card.Text>
+                      <Card.Title className="mb-0 fw-bold" style={{ fontSize: '1.5rem' }}>
+                        {loadingMetrics ? <Spinner size="sm" animation="border" /> : totalSampelMasukHariIni}
+                      </Card.Title>
+                      <Card.Text style={{ color: "#8d6e63", fontSize: '0.9rem' }}>Sampel Baru Hari Ini</Card.Text>
                     </div>
                   </div>
-                  <Button
-                    className="mt-3 w-100"
-                    style={{
-                      backgroundColor: "#8d6e63",
-                      border: "none",
-                      borderRadius: 18,
-                    }}
-                  >
-                    Lihat Detail
-                  </Button>
                 </Card.Body>
               </Card>
             </Col>
 
-            {/* CARD 2 */}
+            {/* CARD 2: Menunggu Verifikasi/TTD */}
             <Col md={4} className="mb-3">
               <Card className="h-100 border-0 shadow-sm" style={{ borderRadius: 22 }}>
                 <Card.Body>
-                  <div className="d-flex align-items-center">
-                    <FaClipboardCheck size={30} className="me-3" color="#6d4c41" />
+                  <div className="d-flex align-items-center mb-3">
+                    <div className="p-3 rounded-circle me-3" style={{ backgroundColor: '#fff3e0' }}>
+                        <FaClipboardCheck size={24} color="#ef6c00" />
+                    </div>
                     <div>
-                      <Card.Title className="mb-0">{loadingMetrics ? "..." : totalMenungguTTD} Menunggu TTD</Card.Title>
-                      <Card.Text style={{ color: "#8d6e63" }}>Hasil belum ditandatangani</Card.Text>
+                      <Card.Title className="mb-0 fw-bold" style={{ fontSize: '1.5rem' }}>
+                        {loadingMetrics ? <Spinner size="sm" animation="border" /> : totalMenungguTTD}
+                      </Card.Title>
+                      <Card.Text style={{ color: "#ef6c00", fontSize: '0.9rem' }}>Perlu Aksi Koordinator</Card.Text>
                     </div>
                   </div>
                   <Button
-                    className="mt-3 w-100"
+                    className="w-100"
                     style={{
                       backgroundColor: "#8d6e63",
                       border: "none",
@@ -125,33 +162,27 @@ const DashboardKoordinator = () => {
               </Card>
             </Col>
 
-            {/* CARD 3 */}
+            {/* CARD 3: Sampel Selesai */}
             <Col md={4} className="mb-3">
               <Card className="h-100 border-0 shadow-sm" style={{ borderRadius: 22 }}>
                 <Card.Body>
                   <div className="d-flex align-items-center">
-                    <FaCheckCircle size={30} className="me-3" color="#6d4c41" />
+                    <div className="p-3 rounded-circle me-3" style={{ backgroundColor: '#e8f5e9' }}>
+                        <FaCheckCircle size={24} color="#2e7d32" />
+                    </div>
                     <div>
-                      <Card.Title className="mb-0">{totalSampelSelesai} Sampel Selesai</Card.Title>
-                      <Card.Text style={{ color: "#8d6e63" }}>Analisis telah selesai</Card.Text>
+                      <Card.Title className="mb-0 fw-bold" style={{ fontSize: '1.5rem' }}>
+                        {loadingMetrics ? <Spinner size="sm" animation="border" /> : totalSampelSelesai}
+                      </Card.Title>
+                      <Card.Text style={{ color: "#2e7d32", fontSize: '0.9rem' }}>Sampel Selesai</Card.Text>
                     </div>
                   </div>
-                  <Button
-                    className="mt-3 w-100"
-                    style={{
-                      backgroundColor: "#8d6e63",
-                      border: "none",
-                      borderRadius: 18,
-                    }}
-                  >
-                    Lihat Hasil
-                  </Button>
                 </Card.Body>
               </Card>
             </Col>
           </Row>
 
-          {/* POP UP */}
+          {/* NOTIFICATION CARD */}
           <Row>
             <Col md={12}>
               <Card
@@ -161,8 +192,8 @@ const DashboardKoordinator = () => {
                   backgroundColor: "#d7ccc8",
                 }}
               >
-                <Card.Body className="d-flex justify-content-between align-items-center flex-wrap">
-                  <div className="d-flex align-items-center">
+                <Card.Body className="d-flex justify-content-between align-items-center flex-wrap p-4">
+                  <div className="d-flex align-items-center mb-2 mb-md-0">
                     <div
                       style={{
                         backgroundColor: "#fff",
@@ -173,18 +204,23 @@ const DashboardKoordinator = () => {
                       <FaBell size={26} color="#6d4c41" />
                     </div>
                     <div className="ms-3">
-                      <h6 className="fw-semibold mb-1">Sampel Baru Dikirim Hari Ini</h6>
-                      <small style={{ color: "#5d4037" }}>Perlu verifikasi hasil analisis</small>
+                      <h6 className="fw-semibold mb-1" style={{ color: "#3e2723" }}>
+                        Halo Koordinator!
+                      </h6>
+                      <small style={{ color: "#5d4037" }}>
+                        Ada {totalMenungguTTD} dokumen yang memerlukan verifikasi atau tanda tangan Anda saat ini.
+                      </small>
                     </div>
                   </div>
 
                   <Button
-                    onClick={() => history.push("/koordinator/verifikasi")}
+                    onClick={() => history.push("/koordinator/dashboard/verifikasiSampelKoordinator")}
                     style={{
-                      backgroundColor: "#8d6e63",
+                      backgroundColor: "#5d4037",
                       border: "none",
                       borderRadius: 20,
-                      padding: "8px 22px",
+                      padding: "10px 28px",
+                      fontWeight: "500"
                     }}
                   >
                     Verifikasi Sekarang

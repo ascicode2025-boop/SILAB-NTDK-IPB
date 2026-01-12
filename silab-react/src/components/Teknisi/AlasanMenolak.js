@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
@@ -10,8 +11,9 @@ export default function AlasanMenolak() {
   const history = useHistory();
   const location = useLocation();
 
-  // 1. AMBIL DATA (TERMASUK NO TELPON)
-  const { bookingId, kodeSampel, namaKlien, nomorTelpon } = location.state || {};
+
+  // 1. AMBIL DATA (TERMASUK NO TELPON, KODE BATCH, KODE SAMPEL ARRAY)
+  const { bookingId, kodeSampel, kodeBatch, sampleCodes, namaKlien, nomorTelpon } = location.state || {};
 
   const [alasan, setAlasan] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -42,18 +44,24 @@ export default function AlasanMenolak() {
   // Fungsi Generate Link WA
   const handleWAConfirmation = () => {
     if (!nomorTelpon) {
-        alert("Nomor telepon klien tidak ditemukan di database.");
-        return;
+      alert("Nomor telepon klien tidak ditemukan di database.");
+      return;
     }
-
     const phone = formatWA(nomorTelpon);
     let text = `Halo Kak ${namaKlien},\n\n`;
-    text += `Kami dari Laboratorium SILAB menginformasikan bahwa sampel dengan kode:\n`;
-    text += `🏷️ *${kodeSampel}*\n\n`;
-    text += `Mohon maaf statusnya kami *TOLAK* dengan alasan:\n`;
+    text += `Kami dari Laboratorium SILAB menginformasikan bahwa *Batch* dengan kode:\n`;
+    text += `🆔 *${kodeBatch || "-"}*\n`;
+    if (Array.isArray(sampleCodes) && sampleCodes.length > 0) {
+      text += `\nDaftar kode sampel:\n`;
+      sampleCodes.forEach((code, idx) => {
+        text += `- ${code}\n`;
+      });
+    } else if (kodeSampel) {
+      text += `\nKode Sampel: *${kodeSampel}*\n`;
+    }
+    text += `\nMohon maaf statusnya kami *TOLAK* dengan alasan:\n`;
     text += `_"${alasan}"_\n\n`;
     text += `Mohon diperbaiki/dikirim ulang sesuai catatan tersebut. Terima kasih.`;
-
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, "_blank");
   };
 
@@ -89,21 +97,49 @@ export default function AlasanMenolak() {
     history.push("/teknisi/dashboard/verifikasiSampel");
   };
 
+
+  // Fallback for kodeBatch and sampleCodes if not passed (for backward compatibility)
+  const kodeBatchDisplay = kodeBatch || "-";
+  let sampleCodeList = [];
+  if (Array.isArray(sampleCodes)) {
+    sampleCodeList = sampleCodes;
+  } else if (kodeSampel) {
+    try {
+      // Try parse if stringified array
+      const parsed = JSON.parse(kodeSampel);
+      if (Array.isArray(parsed)) sampleCodeList = parsed;
+      else sampleCodeList = [kodeSampel];
+    } catch {
+      sampleCodeList = [kodeSampel];
+    }
+  }
+
   if (!bookingId) return null; 
 
   return (
     <NavbarLoginTeknisi>
+
       <div className="min-h-screen bg-[#eee9e6] font-poppins container py-5 justify-content-center d-flex">
         <div className="card shadow-lg p-0" style={{ width: "650px", borderRadius: "25px" }}>
-          
+          {/* Header: Kode Batch as Title */}
           <div className="card-header text-center text-white" style={{ background: "#4b3a34", borderTopLeftRadius: "25px", borderTopRightRadius: "25px" }}>
-            <h5 className="m-2">Alasan Penolakan Sampel</h5>
-            <p className="m-0 small opacity-75">
-                Kode: {kodeSampel} | Klien: {namaKlien}
-            </p>
+            <div className="d-flex flex-column align-items-center gap-1">
+              <span className="badge bg-primary bg-opacity-10 text-primary fw-bold px-4 py-2 rounded-pill shadow-sm mb-2" style={{ fontSize: '1.2rem', letterSpacing: '1px' }}>{kodeBatchDisplay}</span>
+              <h5 className="m-0">Alasan Penolakan Sampel</h5>
+              <p className="m-0 small opacity-75">Klien: {namaKlien}</p>
+            </div>
           </div>
 
           <div className="card-body" style={{ background: "#e7e7e7", borderBottomLeftRadius: "25px", borderBottomRightRadius: "25px" }}>
+            {/* Daftar Kode Sampel */}
+            <div className="mb-3">
+              <div className="text-muted small text-uppercase fw-bold mb-1">Daftar Kode Sampel</div>
+              <div className="d-flex flex-wrap gap-2">
+                {sampleCodeList.length > 0 ? sampleCodeList.map((code, idx) => (
+                  <span key={idx} className="badge bg-light text-dark border fw-normal">{code}</span>
+                )) : <span className="text-muted fst-italic">Tidak ada kode sampel</span>}
+              </div>
+            </div>
             <textarea
               className="form-control mb-4"
               rows="6"

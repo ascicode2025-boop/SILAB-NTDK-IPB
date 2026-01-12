@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import { Calendar, ConfigProvider, DatePicker, Button, Modal, Spin, message } from "antd";
 import idID from "antd/locale/id_ID";
@@ -29,6 +29,9 @@ export default function BookingCalenderKlien() {
   // Pastikan inisialisasi sebagai Array kosong
   const [quotaData, setQuotaData] = useState([]); 
   const [loading, setLoading] = useState(false);
+  
+  // Cache untuk menghindari fetch berulang
+  const [cache, setCache] = useState({});
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState("");
@@ -42,44 +45,65 @@ export default function BookingCalenderKlien() {
     }
   }, []);
 
-  // FUNGSI FETCH DATA (PERBAIKAN: Memastikan data Array)
-  const fetchData = useCallback(async () => {
+  // FUNGSI FETCH DATA (OPTIMASI: Caching untuk menghindari request berulang)
+  const fetchData = useCallback(async (forceRefresh = false) => {
+    const month = viewDate.month() + 1;
+    const year = viewDate.year();
+    const cacheKey = `${year}-${month}-${category}`;
+    
+    // Gunakan cache jika ada dan tidak force refresh
+    if (!forceRefresh && cache[cacheKey]) {
+      setQuotaData(cache[cacheKey]);
+      return;
+    }
+    
     setLoading(true);
     try {
-      const month = viewDate.month() + 1;
-      const year = viewDate.year();
       const response = await getMonthlyQuota(month, year, category);
       
       // Safety check: Pastikan response.data adalah Array
       if (Array.isArray(response.data)) {
-          setQuotaData(response.data);
+        setQuotaData(response.data);
+        // Simpan ke cache
+        setCache(prev => ({ ...prev, [cacheKey]: response.data }));
       } else {
-          // Jika backend tidak sengaja kirim object, jadikan array atau kosong
-          setQuotaData([]); 
-          console.warn("Format data backend bukan array:", response.data);
+        setQuotaData([]); 
+        console.warn("Format data backend bukan array:", response.data);
       }
     } catch (error) {
       console.error("Gagal ambil data:", error);
-      setQuotaData([]); // Fallback ke array kosong agar tidak error .find
+      setQuotaData([]);
     } finally {
       setLoading(false);
     }
-  }, [viewDate, category]);
+  }, [viewDate, category, cache]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-  useEffect(() => { fetchData(); }, [location.pathname]);
+  useEffect(() => { fetchData(); }, [viewDate, category]);
+  
+  // Refresh data saat kembali ke halaman (dengan debounce)
+  useEffect(() => { 
+    const timer = setTimeout(() => fetchData(true), 500);
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
 
   useEffect(() => {
-    const onFocus = () => fetchData();
+    const onFocus = () => fetchData(true);
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [fetchData]);
 
   useEffect(() => {
-    const handleVisibilityChange = () => { if (!document.hidden) fetchData(); };
+    const handleVisibilityChange = () => { if (!document.hidden) fetchData(true); };
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [fetchData]);
+
+  // Memoize quotaData lookup untuk performa
+  const quotaMap = useMemo(() => {
+    const map = {};
+    quotaData.forEach(item => { map[item.date] = item; });
+    return map;
+  }, [quotaData]);
 
   const isStandardHoliday = (date, type) => {
     const day = date.day();
@@ -96,8 +120,8 @@ export default function BookingCalenderKlien() {
 
     const dateStr = value.format("YYYY-MM-DD");
     
-    // AMAN: quotaData dijamin Array
-    const dayData = quotaData.find((item) => item.date === dateStr);
+    // Gunakan quotaMap untuk lookup cepat
+    const dayData = quotaMap[dateStr];
 
     let isAvailable = true;
     let remaining = 15;
@@ -175,7 +199,7 @@ export default function BookingCalenderKlien() {
 
   const getSelectedDayData = () => {
     const dateStr = selectedDate.format("YYYY-MM-DD");
-    return quotaData.find((item) => item.date === dateStr);
+    return quotaMap[dateStr];
   };
 
   const getSelectedUsed = () => {
@@ -236,8 +260,8 @@ export default function BookingCalenderKlien() {
                     if (info.type !== "date") return info.originNode;
 
                     const dateStr = date.format("YYYY-MM-DD");
-                    // .find() AMAN karena quotaData dijamin Array
-                    const dayData = quotaData.find((item) => item.date === dateStr);
+                    // Gunakan quotaMap untuk lookup cepat
+                    const dayData = quotaMap[dateStr];
 
                     let isAvailable = true;
                     let displayQuota = getDefaultQuota();
@@ -258,7 +282,6 @@ export default function BookingCalenderKlien() {
 
                     // Logika Visual
                     const isFull = isAvailable && isStrict && displayQuota === 0;
-                    // Warning (Kuning) jika Soft Limit terlampaui (hanya visual di sini, logic klik di handleDateSelect)
                     const isWarning = isAvailable && !isStrict && displayQuota === 0;
 
                     const isCurrentMonth = date.isSame(viewDate, "month");
@@ -271,8 +294,8 @@ export default function BookingCalenderKlien() {
                     else if (isPast) cellClass += " past-date";
                     else if (isSelected) cellClass += " selected";
                     else if (isToday) cellClass += " today";
-                    else if (isFull) cellClass += " fully-booked";     // Merah
-                    else if (!isAvailable) cellClass += " not-available"; // Abu/Merah
+                    else if (isFull) cellClass += " fully-booked";
+                    else if (!isAvailable) cellClass += " not-available";
                     else cellClass += " available";
 
                     return (
@@ -296,6 +319,34 @@ export default function BookingCalenderKlien() {
                 />
               </div>
             </Spin>
+
+            {/* KETERANGAN WARNA - Horizontal, rapi */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '32px',
+              marginTop: '24px',
+              marginBottom: '16px',
+              flexWrap: 'wrap',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 16, height: 16, borderRadius: 4, backgroundColor: '#52c41a', border: '1px solid #389e0d' }}></div>
+                <span style={{ fontSize: 14, color: '#595959', fontWeight: 500 }}>Tersedia</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 16, height: 16, borderRadius: 4, backgroundColor: '#fa8c16', border: '1px solid #d46b08' }}></div>
+                <span style={{ fontSize: 14, color: '#595959', fontWeight: 500 }}>Penuh</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 16, height: 16, borderRadius: 4, backgroundColor: '#ff4d4f', border: '1px solid #cf1322' }}></div>
+                <span style={{ fontSize: 14, color: '#595959', fontWeight: 500 }}>Tutup / Libur</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 16, height: 16, borderRadius: 4, backgroundColor: '#d9d9d9', border: '1px solid #bfbfbf' }}></div>
+                <span style={{ fontSize: 14, color: '#595959', fontWeight: 500 }}>Lewat</span>
+              </div>
+            </div>
           </div>
 
           {/* QUOTA INFO CARD */}
