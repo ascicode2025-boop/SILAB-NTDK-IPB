@@ -4,6 +4,7 @@ import { useHistory } from "react-router-dom";
 import NavbarLoginKepala from "./NavbarLoginKepala";
 import FooterSetelahLogin from "../FooterSetelahLogin";
 import { getAllBookings, updateBookingStatus } from "../../services/BookingService";
+import CustomPopup from "../Common/CustomPopup";
 
 const VerifikasiKepala = () => {
   const history = useHistory();
@@ -21,6 +22,7 @@ const VerifikasiKepala = () => {
   
   // Price Map State
   const [priceMap, setPriceMap] = useState({});
+  const [popup, setPopup] = useState({ show: false, title: '', message: '', type: 'info' });
   
 
   const parseKodeSampel = (kodeSampel) => {
@@ -113,7 +115,7 @@ const VerifikasiKepala = () => {
       fetchBookings(); // Refresh tabel
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan saat menyetujui hasil analisis.");
+      setPopup({ show: true, title: 'Gagal', message: 'Terjadi kesalahan saat menyetujui hasil analisis.', type: 'error' });
     } finally {
       setProcessing(false);
     }
@@ -132,7 +134,7 @@ const VerifikasiKepala = () => {
       fetchBookings();
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan saat menolak hasil analisis.");
+      setPopup({ show: true, title: 'Gagal', message: 'Terjadi kesalahan saat menolak hasil analisis.', type: 'error' });
     } finally {
       setProcessing(false);
     }
@@ -245,6 +247,14 @@ const VerifikasiKepala = () => {
         </Container>
 
         <FooterSetelahLogin />
+
+        <CustomPopup
+          show={popup.show}
+          title={popup.title}
+          message={popup.message}
+          type={popup.type}
+          onClose={() => setPopup((p) => ({ ...p, show: false }))}
+        />
 
         {/* Modal Konfirmasi */}
         <Modal show={showModal} onHide={() => setShowModal(false)} centered>

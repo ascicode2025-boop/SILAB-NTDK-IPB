@@ -785,15 +785,56 @@ const ManajemenPembayaran = () => {
                 <Button
                   variant="outline-success"
                   onClick={async () => {
-                    if (!selectedInvoice || !selectedInvoice.invoiceIdRaw) return alert('Tidak ada invoice untuk dikirim.');
-                    if (!window.confirm('Kirim invoice ke email klien sekarang?')) return;
+                    if (!selectedInvoice || !selectedInvoice.invoiceIdRaw) {
+                      if (window.showAppPopup) {
+                        window.showAppPopup({ title: 'Gagal', message: 'Tidak ada invoice untuk dikirim.', type: 'error' });
+                      } else {
+                        alert('Tidak ada invoice untuk dikirim.');
+                      }
+                      return;
+                    }
+
                     try {
+                        // Inform user (non-blocking info) — CustomPopup is modal, so we keep it minimal
+                        if (window.showAppPopup) {
+                          window.showAppPopup({ title: 'Mengirim Invoice', message: 'Sedang mengirim invoice ke email klien. Mohon tunggu…', type: 'info' });
+                        }
+
                         const resp = await sendInvoiceEmail(selectedInvoice.invoiceIdRaw);
-                        alert(resp.message || 'Invoice dikirim.');
+                        // Log full backend response to help debugging when popup behavior is unexpected
+                        console.debug('sendInvoiceEmail response:', resp);
+
+                        // Determine success message robustly
+                        const successMsg = (resp && (resp.message || resp.msg || resp.data || resp.success)) ? (resp.message || resp.msg || (typeof resp.data === 'string' ? resp.data : 'Invoice dikirim.')) : 'Invoice dikirim.';
+
+                        if (window.showAppPopup) {
+                          window.showAppPopup({ title: 'Sukses', message: String(successMsg), type: 'success' });
+                        } else {
+                          alert(String(successMsg));
+                        }
                       } catch (e) {
-                        console.error('Gagal kirim invoice', e);
-                        const serverMsg = e?.response?.data?.message || e.message || null;
-                        alert(serverMsg ? `Gagal mengirim invoice: ${serverMsg}` : 'Gagal mengirim invoice. Cek console.');
+                        // Log full error to console for debugging
+                        console.error('Gagal kirim invoice -- full error:', e);
+
+                        // Try to extract server message from multiple shapes
+                        let serverMsg = null;
+                        try {
+                          if (e && e.response && e.response.data) {
+                            serverMsg = e.response.data.message || e.response.data.msg || JSON.stringify(e.response.data);
+                          } else if (e && e.message) {
+                            serverMsg = e.message;
+                          } else {
+                            serverMsg = String(e);
+                          }
+                        } catch (ex) {
+                          serverMsg = 'Gagal mengirim invoice. Cek console.';
+                        }
+
+                        if (window.showAppPopup) {
+                          window.showAppPopup({ title: 'Gagal mengirim invoice', message: serverMsg, type: 'error' });
+                        } else {
+                          alert(serverMsg ? `Gagal mengirim invoice: ${serverMsg}` : 'Gagal mengirim invoice. Cek console.');
+                        }
                       }
                   }}
                 >

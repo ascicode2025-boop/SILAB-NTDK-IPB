@@ -13,6 +13,7 @@ import ForgetPassword from "./components/ForgetPassword";
 import Galeri from "./components/Galeri";
 import PanduanSampel from "./components/PanduanSampel";
 import PrivateRoute from "./components/PrivateRoute"; // Pastikan file ini sudah diupdate dengan logika Role!
+import PopupProvider from "./components/Common/PopupProvider";
 
 // --- IMPORT FITUR DASHBOARD KLIEN ---
 import PanduanSampelKlien from "./components/Klien/PanduanSampelKlien";
@@ -159,6 +160,7 @@ function AppLayoutWithoutNavbar() {
 function App() {
   return (
     <Router>
+      <PopupProvider />
       <Switch>
         {/* A. Rute yang masuk ke Layout Tanpa Navbar (Login & Dashboard) */}
         <Route path="/login" component={AppLayoutWithoutNavbar} />
