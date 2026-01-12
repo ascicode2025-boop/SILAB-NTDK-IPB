@@ -59,7 +59,7 @@ function EditProfileTeknisi() {
           name: user.name || "",
           full_name: user.full_name || "",
           email: user.email || "",
-          institusi: "Teknisi Lab IPB", // Selalu set ke "Teknisi Lab IPB"
+          institusi: user.institusi || "Teknisi Lab IPB",
           nomor_telpon: user.nomor_telpon || "",
           role: user.role || "",
           bio: user.bio || "",
@@ -118,7 +118,7 @@ function EditProfileTeknisi() {
     const dataToSend = new FormData();
     dataToSend.append("name", formData.name);
     dataToSend.append("full_name", formData.full_name);
-    dataToSend.append("institusi", "Teknisi Lab IPB"); // Selalu kirim "Teknisi Lab IPB"
+    dataToSend.append("institusi", formData.institusi || "");
     dataToSend.append("nomor_telpon", formData.nomor_telpon);
     dataToSend.append("bio", formData.bio || "");
     dataToSend.append("email", formData.email);
@@ -327,7 +327,7 @@ function EditProfileTeknisi() {
                     type="text"
                     className="form-control bg-light"
                     name="institusi"
-                    value="Teknisi Lab IPB"
+                    value={formData.institusi}
                     disabled
                     style={{cursor: 'not-allowed'}}
                   />

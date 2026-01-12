@@ -190,9 +190,9 @@ function NavbarLoginKoordinator({ children }) {
             </Dropdown.Toggle>
 
             <Dropdown.Menu className="shadow-lg border-0 mt-2" style={{ borderRadius: "10px" }}>
-              <Dropdown.Item className="py-2" onClick={() => history.push("/dashboard/ProfileAkunKlien")}>
-                <i className="bi bi-person me-2"></i> Profil Akun
-              </Dropdown.Item>
+                <Dropdown.Item className="py-2" onClick={() => history.push("/kepala/dashboard/profile")}>
+                  <i className="bi bi-person me-2"></i> Profil Akun
+                </Dropdown.Item>
               <hr className="dropdown-divider opacity-50" />
               <Dropdown.Item className="py-2 text-danger" onClick={handleLogout}>
                 <i className="bi bi-box-arrow-right me-2"></i> Logout

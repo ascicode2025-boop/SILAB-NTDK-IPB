@@ -1,24 +1,23 @@
-
 import React, { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { Image, Spinner } from "react-bootstrap";
 import FooterSetelahLogin from "../FooterSetelahLogin";
-import NavbarProfileKoordinator from "./NavbarProfileKoordinator";
+import NavbarProfileKepala from "./NavbarProfileKepala";
 import CustomPopup from "../Common/CustomPopup";
 import { FaUserCircle, FaCamera } from "react-icons/fa";
 import { useHistory } from "react-router-dom";
 import axios from "axios";
 import "@fontsource/poppins";
 
-function EditProfileKoordinator() {
+function EditProfileKepala() {
   const history = useHistory();
   const token = localStorage.getItem("token");
 
   const [formData, setFormData] = useState({
-    name: "",      
-    full_name: "", 
+    name: "",
+    full_name: "",
     email: "",
-    institusi: "Koordinator Lab IPB",
+    institusi: "Kepala Lab IPB",
     nomor_telpon: "",
     role: "",
     bio: "",
@@ -44,7 +43,7 @@ function EditProfileKoordinator() {
       .then((res) => {
         const user = res.data.user;
         if (!user.full_name) {
-            setIsFirstTime(true); 
+            setIsFirstTime(true);
         } else {
             setIsFirstTime(false);
         }
@@ -52,7 +51,7 @@ function EditProfileKoordinator() {
           name: user.name || "",
           full_name: user.full_name || "",
           email: user.email || "",
-          institusi: user.institusi || "Koordinator Lab IPB",
+          institusi: user.institusi || "Kepala Lab IPB",
           nomor_telpon: user.nomor_telpon || "",
           role: user.role || "",
           bio: user.bio || "",
@@ -78,7 +77,7 @@ function EditProfileKoordinator() {
     const file = e.target.files[0];
     if (file) {
       setAvatarFile(file);
-      setPreviewAvatar(URL.createObjectURL(file)); 
+      setPreviewAvatar(URL.createObjectURL(file));
     }
   };
 
@@ -135,7 +134,7 @@ function EditProfileKoordinator() {
           type: "success",
           onClose: () => {
             setPopup((p) => ({ ...p, show: false }));
-            history.push("/koordinator/dashboard");
+            history.push("/kepala/dashboard");
           }
         });
       } else {
@@ -146,7 +145,7 @@ function EditProfileKoordinator() {
           type: "success",
           onClose: () => {
             setPopup((p) => ({ ...p, show: false }));
-            history.push("/koordinator/dashboard/profile");
+            history.push("/kepala/dashboard/profile");
           }
         });
       }
@@ -175,14 +174,14 @@ function EditProfileKoordinator() {
   }
 
   const userForNavbar = {
-      name: formData.name, 
+      name: formData.name,
       role: formData.role,
-      avatar: previewAvatar 
+      avatar: previewAvatar
   };
 
   return (
     <>
-      <NavbarProfileKoordinator user={userForNavbar} />
+      <NavbarProfileKepala user={userForNavbar} />
       <div className="container mt-5 mb-5 font-poppins">
         <div className="row justify-content-center">
           <div className="col-md-8">
@@ -230,7 +229,7 @@ function EditProfileKoordinator() {
                     type="text"
                     className="form-control"
                     name="name"
-                    value={formData.name} 
+                    value={formData.name}
                     onChange={handleChange}
                     required
                   />
@@ -243,7 +242,7 @@ function EditProfileKoordinator() {
                     type="text"
                     className="form-control"
                     name="full_name"
-                    value={formData.full_name} 
+                    value={formData.full_name}
                     onChange={handleChange}
                     placeholder="Contoh: Dr. Aryanto Pratama, M.Si"
                     required
@@ -274,7 +273,7 @@ function EditProfileKoordinator() {
                     disabled
                     style={{cursor: 'not-allowed'}}
                   />
-                  <small className="text-muted">Institusi tidak dapat diubah untuk akun koordinator.</small>
+                  <small className="text-muted">Institusi tidak dapat diubah untuk akun kepala.</small>
                 </div>
                 <div className="mb-3">
                   <label className="form-label fw-semibold">
@@ -347,4 +346,4 @@ function EditProfileKoordinator() {
   );
 }
 
-export default EditProfileKoordinator;
+export default EditProfileKepala;

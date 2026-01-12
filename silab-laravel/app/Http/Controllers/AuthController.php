@@ -191,7 +191,9 @@ class AuthController extends Controller
             ],
 
             // Institusi & No Telpon tetap divalidasi (data dari register akan otomatis terisi)
-            'institusi' => 'required|string|in:Umum,Dosen IPB,Mahasiswa IPB,Tendik IPB,Teknisi Lab IPB,Koordinator Lab IPB',
+            // Allow any string for institusi here because some existing users use values
+            // like 'Internal Lab' or other lab names that are not part of the limited list.
+            'institusi' => 'required|string',
             'nomor_telpon' => 'required|string|max:20',
 
             'bio' => 'nullable|string|max:500',

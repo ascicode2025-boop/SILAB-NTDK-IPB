@@ -57,6 +57,8 @@ import LaporanKepala from "./components/Kepala/LaporanKepala";
 import DashboardKepala from "./components/Kepala/DashboardKepala";
 import VerifikasiKepala from "./components/Kepala/VerifikasiKepala";
 import LihatHasilPdfKepala from "./components/Kepala/LihatHasilPdfKepala";
+import ProfileAkunKepala from "./components/Kepala/ProfileAkunKepala";
+import EditProfileKepala from "./components/Kepala/EditProfileKepala";
 
 // ====================================================================
 // 1. Layout dengan Navbar (Untuk Landing Page - PUBLIK)
@@ -107,6 +109,8 @@ function AppLayoutWithoutNavbar() {
 
       {/* 2. Kepala (Hanya role 'kepala' yang boleh masuk) */}
       <PrivateRoute path="/kepala/dashboard/verifikasiKepala/lihatHasilPdfKepala/:id" component={LihatHasilPdfKepala} allowedRoles={["kepala"]} />
+      <PrivateRoute path="/kepala/dashboard/profile/edit" component={EditProfileKepala} allowedRoles={["kepala"]} />
+      <PrivateRoute path="/kepala/dashboard/profile" component={ProfileAkunKepala} allowedRoles={["kepala"]} />
       <PrivateRoute path="/kepala/dashboard/verifikasiKepala" component={VerifikasiKepala} allowedRoles={["kepala"]} />
       <PrivateRoute path="/kepala/dashboard/laporanKepala" component={LaporanKepala} allowedRoles={["kepala"]} />
       <PrivateRoute path="/kepala/dashboard" component={DashboardKepala} allowedRoles={["kepala"]} />
