@@ -3,7 +3,8 @@ import { useHistory } from "react-router-dom";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
 import FooterSetelahLogin from "../FooterSetelahLogin";
 import { getAllBookings, updateBookingStatus } from "../../services/BookingService";
-import { Button, Spin, Table, Tag, Card, Typography, Empty } from "antd";
+import { Button, Table, Tag, Card, Typography, Empty } from "antd";
+import LoadingSpinner from "../Common/LoadingSpinner";
 import { EditOutlined, CheckCircleFilled } from "@ant-design/icons";
 import "@fontsource/poppins";
 
@@ -234,7 +235,7 @@ function InputNilaiAnalisis() {
           <Card bordered={false} className="shadow-sm" style={{ borderRadius: "12px", overflow: "hidden" }}>
             {loading ? (
               <div className="text-center py-5">
-                <Spin size="large" tip="Memuat data sampel..." />
+                <LoadingSpinner spinning={loading} tip="Memuat data sampel..." />
               </div>
             ) : (
               <Table 

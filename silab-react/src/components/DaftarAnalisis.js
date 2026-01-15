@@ -1,18 +1,27 @@
 import React, { useEffect, useState } from "react";
-import { Container, Row, Col, Card} from "react-bootstrap";
+import { Container, Row, Col, Card } from "react-bootstrap";
 import Footer from "./Footer";
+import LoadingSpinner from "./Common/LoadingSpinner";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "@fontsource/poppins";
 
 function DaftarAnalisis() {
   const [groupedAnalisis, setGroupedAnalisis] = useState({});
+  const [loading, setLoading] = useState(true);
   const API_URL = process.env.REACT_APP_API_BASE_URL;
+
   useEffect(() => {
     if (API_URL) {
       fetch(`${API_URL}/analysis-prices-grouped`)
-        .then(res => res.json())
-        .then(data => setGroupedAnalisis(data))
-        .catch(err => console.error('Gagal mengambil daftar analisis:', err));
+        .then((res) => res.json())
+        .then((data) => {
+          setGroupedAnalisis(data);
+          setLoading(false);
+        })
+        .catch((err) => {
+          console.error("Gagal mengambil daftar analisis:", err);
+          setLoading(false);
+        });
     }
   }, [API_URL]);
 
@@ -52,19 +61,10 @@ function DaftarAnalisis() {
                   e.currentTarget.style.boxShadow = "none";
                 }}
               >
-                <Card.Img
-                  variant="top"
-                  src={"/asset/daftarAnalisis/Rectangle19.png"}
-                  style={{
-                    objectFit: "cover",
-                    height: "180px",
-                  }}
-                />
+                <Card.Img variant="top" src="/asset/daftarAnalisis/Rectangle19.png" style={{ objectFit: "cover", height: "180px" }} />
                 <Card.Body className="text-white">
-                  <Card.Title style={{ fontSize: "1rem", fontWeight: "600" }}>
-                    {item.jenis_analisis}
-                  </Card.Title>
-                  <Card.Text style={{ fontSize: "0.9rem" }}>Rp. {item.harga.toLocaleString('id-ID')}</Card.Text>
+                  <Card.Title style={{ fontSize: "1rem", fontWeight: "600" }}>{item.jenis_analisis}</Card.Title>
+                  <Card.Text style={{ fontSize: "0.9rem" }}>Rp. {item.harga.toLocaleString("id-ID")}</Card.Text>
                 </Card.Body>
               </Card>
             </Col>
@@ -82,17 +82,18 @@ function DaftarAnalisis() {
           fontFamily: "Poppins, sans-serif",
           backgroundColor: "#FAF7F5",
           padding: "50px 0 0 0",
+          minHeight: "500px",
         }}
       >
-        {/* Render semua kategori dari API */}
-        {Object.keys(groupedAnalisis).length === 0 ? (
-          <div className="text-center">Memuat daftar analisis...</div>
+        {loading ? (
+          <LoadingSpinner />
+        ) : Object.keys(groupedAnalisis).length === 0 ? (
+          <div className="text-center py-5">Tidak ada data analisis tersedia.</div>
         ) : (
           Object.entries(groupedAnalisis).map(([kategori, data]) => renderKategori(kategori, data))
         )}
       </section>
 
-      {/* ✅ Footer dipanggil di bawah halaman */}
       <Footer />
     </>
   );

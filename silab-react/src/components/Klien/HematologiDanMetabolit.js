@@ -69,16 +69,16 @@ export default function HematologiDanMetabolit() {
         const month = targetDate.getMonth() + 1;
         const year = targetDate.getFullYear();
         try {
-          const response = await getMonthlyQuota(month, year, 'hematologi');
+          const response = await getMonthlyQuota(month, year, "hematologi");
           if (response && response.data) {
-            response.data.forEach(day => {
+            response.data.forEach((day) => {
               if (day.remaining_quota > 0 && !day.is_libur) {
                 dates.push(day.date);
               }
             });
           }
         } catch (err) {
-          console.error('Gagal mengambil data kuota:', err);
+          console.error("Gagal mengambil data kuota:", err);
         }
       }
       setAvailableDates(dates);
@@ -92,22 +92,30 @@ export default function HematologiDanMetabolit() {
   // Ambil harga analisis dari backend
   useEffect(() => {
     getAnalysisPrices().then((data) => {
-      // Gabungkan hematologi & metabolit
-      const options = [];
+      // Gabungkan hematologi & metabolit dengan deduplikasi
+      const uniqueMap = new Map();
       const priceMap = {};
+
       if (data && data.hematologi) {
-        data.hematologi.forEach(item => {
-          options.push({ kategori: 'Hematologi', ...item });
-          priceMap[item.jenis_analisis] = item.harga;
+        data.hematologi.forEach((item) => {
+          if (!uniqueMap.has(item.jenis_analisis)) {
+            uniqueMap.set(item.jenis_analisis, { kategori: "Hematologi", ...item });
+            priceMap[item.jenis_analisis] = item.harga;
+          }
         });
       }
+
       if (data && data.metabolit) {
-        data.metabolit.forEach(item => {
-          options.push({ kategori: 'Metabolit', ...item });
-          priceMap[item.jenis_analisis] = item.harga;
+        data.metabolit.forEach((item) => {
+          if (!uniqueMap.has(item.jenis_analisis)) {
+            uniqueMap.set(item.jenis_analisis, { kategori: "Metabolit", ...item });
+            priceMap[item.jenis_analisis] = item.harga;
+          }
         });
       }
-      setAnalysisOptions(options);
+
+      const uniqueAnalyses = Array.from(uniqueMap.values());
+      setAnalysisOptions(uniqueAnalyses);
       setAnalysisPrices(priceMap);
     });
   }, []);
@@ -121,7 +129,7 @@ export default function HematologiDanMetabolit() {
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setAnalyses(analysisOptions.map(opt => opt.jenis_analisis));
+      setAnalyses(analysisOptions.map((opt) => opt.jenis_analisis));
     } else {
       setAnalyses([]);
     }
@@ -355,27 +363,23 @@ export default function HematologiDanMetabolit() {
                   </h5>
                   <div className="p-3 bg-light rounded-3 shadow-sm">
                     {analysisOptions.length === 0 ? (
-                      <Alert variant="warning" className="mb-0">Data analisis tidak tersedia. Silakan cek koneksi atau hubungi admin.</Alert>
+                      <Alert variant="warning" className="mb-0">
+                        Data analisis tidak tersedia. Silakan cek koneksi atau hubungi admin.
+                      </Alert>
                     ) : (
                       <>
                         <Form.Check type="checkbox" label={<strong>Pilih Semua Item</strong>} checked={isAllSelected} onChange={handleSelectAll} className="mb-3 pb-2 border-bottom" />
-                        <Row>
-                          {analysisOptions.map((item, index) => (
-                            <Col md={6} lg={4} key={index}>
-                              <Form.Check
-                                type="checkbox"
-                                label={item.jenis_analisis}
-                                checked={analyses.includes(item.jenis_analisis)}
-                                onChange={() => handleCheckboxChange(item.jenis_analisis)}
-                                className="mb-2 small"
-                              />
-                            </Col>
-                          ))}
-                        </Row>
+                        {analysisOptions.map((item, index) => (
+                          <Form.Check key={index} type="checkbox" label={item.jenis_analisis} checked={analyses.includes(item.jenis_analisis)} onChange={() => handleCheckboxChange(item.jenis_analisis)} className="mb-2" />
+                        ))}
                         {/* Total Harga */}
                         <div className="mt-4 text-end">
-                          <span className="fw-bold" style={{fontSize:'1.1em'}}>Total Harga: </span>
-                          <span className="fw-bold text-success" style={{fontSize:'1.2em'}}>Rp{totalHarga.toLocaleString()}</span>
+                          <span className="fw-bold" style={{ fontSize: "1.1em" }}>
+                            Total Harga:{" "}
+                          </span>
+                          <span className="fw-bold text-success" style={{ fontSize: "1.2em" }}>
+                            Rp{totalHarga.toLocaleString()}
+                          </span>
                         </div>
                       </>
                     )}
@@ -397,7 +401,7 @@ export default function HematologiDanMetabolit() {
                       placeholderText="Klik untuk pilih tanggal"
                       minDate={new Date()}
                       filterDate={(date) => {
-                        const dateStr = dayjs(date).format('YYYY-MM-DD');
+                        const dateStr = dayjs(date).format("YYYY-MM-DD");
                         return availableDates.includes(dateStr);
                       }}
                       required
@@ -407,12 +411,12 @@ export default function HematologiDanMetabolit() {
 
                 {/* Action Buttons */}
                 <hr className="my-4" />
-                <div className="d-flex flex-column flex-md-row justify-content-between gap-3">
-                  <Button variant="outline-secondary" className="px-4 py-2 rounded-3 fw-bold" onClick={() => history.goBack()}>
+                <div className="d-grid gap-2 d-md-flex justify-content-md-between">
+                  <Button variant="outline-secondary" className="px-4 py-2 rounded-3 fw-bold order-md-1" onClick={() => history.goBack()}>
                     <i className="bi bi-chevron-left me-2"></i>Kembali
                   </Button>
 
-                  <Button type="submit" disabled={loading} className="px-5 py-2 rounded-3 border-0 shadow" style={{ background: "#5c3d35", fontWeight: "600" }}>
+                  <Button type="submit" disabled={loading} className="px-5 py-2 rounded-3 border-0 shadow order-md-2" style={{ background: "#5c3d35", fontWeight: "600" }}>
                     {loading ? (
                       <>
                         <span className="spinner-border spinner-border-sm me-2"></span>Mengirim...

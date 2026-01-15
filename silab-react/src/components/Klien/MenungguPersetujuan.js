@@ -3,8 +3,9 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import NavbarLogin from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
-import "../../css/MenungguPersetujuan.css"; 
+import "../../css/MenungguPersetujuan.css";
 import { getUserBookings, cancelBooking } from "../../services/BookingService";
+import LoadingSpinner from "../Common/LoadingSpinner";
 import { useHistory } from "react-router-dom";
 import dayjs from "dayjs";
 import { Spin, message, Modal } from "antd";
@@ -15,7 +16,7 @@ const MenungguPersetujuan = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(2);
-  const [fullName, setFullName] = useState(""); 
+  const [fullName, setFullName] = useState("");
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -30,12 +31,7 @@ const MenungguPersetujuan = () => {
 
         const filtered = bookings.filter((b) => {
           const status = (b.status || "").toLowerCase();
-          return (
-            status === "menunggu" ||
-            status === "menunggu persetujuan" ||
-            status === "disetujui" ||
-            status === "ditolak"
-          );
+          return status === "menunggu" || status === "menunggu persetujuan" || status === "disetujui" || status === "ditolak";
         });
 
         // PERBAIKAN DI SINI:
@@ -43,12 +39,8 @@ const MenungguPersetujuan = () => {
         if (bookings.length > 0) {
           const firstBooking = bookings[0];
           // Prioritas: user.full_name -> user.name -> user_fullname (legacy) -> localStorage
-          const detectedName = 
-            firstBooking.user?.full_name || 
-            firstBooking.user?.name || 
-            firstBooking.user_fullname || 
-            "Pelanggan";
-            
+          const detectedName = firstBooking.user?.full_name || firstBooking.user?.name || firstBooking.user_fullname || "Pelanggan";
+
           setFullName(detectedName);
         }
 
@@ -105,10 +97,14 @@ const MenungguPersetujuan = () => {
   const getStatusBadge = (status) => {
     const lowerStatus = (status || "").toLowerCase();
     switch (lowerStatus) {
-      case "proses": return "bg-info text-white";
-      case "disetujui": return "bg-success text-white";
-      case "ditolak": return "bg-danger text-white";
-      default: return "bg-warning text-dark";
+      case "proses":
+        return "bg-info text-white";
+      case "disetujui":
+        return "bg-success text-white";
+      case "ditolak":
+        return "bg-danger text-white";
+      default:
+        return "bg-warning text-dark";
     }
   };
 
@@ -159,7 +155,7 @@ const MenungguPersetujuan = () => {
     if (!selectedBooking) return "#";
     const phone = "6282111485562";
     const allCodes = generateSampleCodes(selectedBooking);
-    
+
     // Ambil nama spesifik dari booking yang dipilih (jika ada relasi user), atau gunakan state global
     const specificName = selectedBooking.user?.full_name || selectedBooking.user?.name || fullName || "Pelanggan";
 
@@ -196,9 +192,7 @@ const MenungguPersetujuan = () => {
           </div>
           <div className="progress-line big-line filled"></div>
           <div className="step">
-            <div className={`icon-wrapper active ${currentStep === 2 ? "pulse-active" : ""} big-step`}>
-              {isRejected ? <i className="bi bi-x-lg"></i> : <i className="bi bi-clock"></i>}
-            </div>
+            <div className={`icon-wrapper active ${currentStep === 2 ? "pulse-active" : ""} big-step`}>{isRejected ? <i className="bi bi-x-lg"></i> : <i className="bi bi-clock"></i>}</div>
             <p className="label active-text">{isRejected ? "Ditolak" : "Verifikasi"}</p>
           </div>
           <div className={`progress-line big-line ${currentStep >= 3 ? "filled" : ""}`}></div>
@@ -217,7 +211,7 @@ const MenungguPersetujuan = () => {
             <div className="text-center mb-3">
               {isRejected ? (
                 <div className="text-danger mb-2">
-                  <i className="bi bi-x-circle-fill" style={{ fontSize: "2.5rem" }}></i> 
+                  <i className="bi bi-x-circle-fill" style={{ fontSize: "2.5rem" }}></i>
                   <h4 className="fw-bold mb-0">Pesanan Ditolak</h4>
                 </div>
               ) : isApproved ? (
@@ -305,17 +299,70 @@ const MenungguPersetujuan = () => {
         )}
 
         {loading ? (
-          <div className="d-flex flex-column justify-content-center align-items-center" style={{ height: "50vh" }}>
-            <Spin size="large" />
-            <p className="mt-3 text-muted">Memproses data...</p>
+          <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "100vh" }}>
+            <LoadingSpinner text="Memuat data Pesanan..." />
           </div>
         ) : bookingList.length === 0 ? (
-          <div className="text-center py-5 bg-white shadow-sm rounded-4">
-            <i className="bi bi-box-seam text-light" style={{ fontSize: "5rem" }}></i>
-            <h5 className="mt-3 text-secondary">Belum ada pesanan aktif</h5>
-            <button className="btn btn-primary px-4 py-2 mt-3 rounded-pill" onClick={() => history.push("/dashboard/pemesananSampelKlien")}>
-              Buat Pesanan Baru
-            </button>
+          <div className="container">
+            <div
+              className="text-center py-5 px-4 shadow-sm mt-4"
+              style={{
+                backgroundColor: "#ffffff",
+                borderRadius: "24px",
+                border: "1px dashed #dee2e6",
+              }}
+            >
+              {/* Visual Element */}
+              <div className="mb-4">
+                <div
+                  className="d-inline-flex align-items-center justify-content-center mb-3"
+                  style={{
+                    width: "120px",
+                    height: "120px",
+                    backgroundColor: "#FDFBF7",
+                    borderRadius: "50%",
+                    color: "#8D6E63",
+                  }}
+                >
+                  <i className="bi bi-clipboard2-x" style={{ fontSize: "3.5rem" }}></i>
+                </div>
+              </div>
+
+              {/* Text Content */}
+              <h4 className="fw-bold mb-2" style={{ color: "#4E342E" }}>
+                Belum Ada Riwayat Pesanan
+              </h4>
+              <p className="text-muted mx-auto mb-4" style={{ maxWidth: "400px", fontSize: "0.95rem" }}>
+                Sepertinya Anda belum mengajukan permohonan analisis sampel. Mulai pemesanan pertama Anda dengan menekan tombol di bawah ini.
+              </p>
+
+              {/* Action Button */}
+              <button
+                className="btn px-5 py-3 text-white shadow-sm fw-bold"
+                style={{
+                  backgroundColor: "#8D6E63",
+                  borderRadius: "16px",
+                  transition: "all 0.3s ease",
+                  border: "none",
+                }}
+                onMouseEnter={(e) => (e.target.style.backgroundColor = "#A1887F")}
+                onMouseLeave={(e) => (e.target.style.backgroundColor = "#8D6E63")}
+                onClick={() => history.push("/dashboard/pemesananSampelKlien")}
+              >
+                <i className="bi bi-plus-lg me-2"></i>
+                Buat Pesanan Sekarang
+              </button>
+
+              {/* Help Link (Optional) */}
+              <div className="mt-4">
+                <small className="text-muted">
+                  Butuh bantuan?{" "}
+                  <a href="#" className="text-decoration-none" style={{ color: "#8D6E63" }}>
+                    Baca panduan layanan
+                  </a>
+                </small>
+              </div>
+            </div>
           </div>
         ) : selectedBooking ? (
           renderDetail()

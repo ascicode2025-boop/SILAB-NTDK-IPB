@@ -9,19 +9,19 @@ const PanduanSampelKlien = () => {
   const panduanSteps = [
     {
       title: "Persiapan Sampel",
-      text: "Pastikan sampel telah dikemas dalam wadah steril yang tertutup rapat untuk menghindari kontaminasi selama perjalanan."
+      text: "Pastikan sampel telah dikemas dalam wadah steril yang tertutup rapat untuk menghindari kontaminasi selama perjalanan. Pastikan sampel telah dikemas menggunakan wadah yang steril, bersih, dan tertutup rapat untuk mencegah terjadinya kontaminasi selama proses pengiriman. Wadah harus sesuai dengan jenis sampel dan tidak mudah bocor atau rusak agar kualitas sampel tetap terjaga hingga diterima oleh laboratorium."
     },
     {
       title: "Labeling",
-      text: "Berikan label yang jelas pada setiap botol/wadah sampel mencakup ID sampel, tanggal pengambilan, dan jenis analisis."
+      text: "Berikan label yang jelas dan mudah dibaca pada setiap botol atau wadah sampel. Label wajib mencantumkan informasi penting seperti ID sampel, tanggal dan waktu pengambilan, serta jenis analisis yang diminta. Pelabelan yang tepat bertujuan untuk menghindari kesalahan identifikasi dan memastikan akurasi hasil pengujian."
     },
     {
       title: "Suhu Penyimpanan",
-      text: "Gunakan ice pack dan thermal bag jika sampel memerlukan suhu dingin (4-8°C) untuk menjaga stabilitas zat metabolit."
+      text: "Gunakan ice pack dan thermal bag apabila sampel memerlukan kondisi suhu dingin, umumnya pada rentang 4–8°C. Pengendalian suhu selama pengiriman sangat penting untuk menjaga stabilitas zat metabolit dan mencegah terjadinya degradasi yang dapat memengaruhi hasil analisis."
     },
     {
       title: "Dokumen Pendukung",
-      text: "Sertakan formulir pemesanan yang telah dicetak dari sistem ini di dalam paket pengiriman Anda."
+      text: "Sertakan seluruh dokumen pendukung yang diperlukan, termasuk formulir pemesanan atau permintaan analisis yang telah dicetak dari sistem. Pastikan dokumen tersebut ditempatkan di dalam paket pengiriman dengan aman dan terlindungi agar dapat diperiksa dengan mudah oleh pihak laboratorium."
     }
   ];
 
@@ -87,8 +87,7 @@ const PanduanSampelKlien = () => {
                   <div className="pb-3">
                     <h5 style={{ fontWeight: "600", color: "#333" }}>{step.title}</h5>
                     <p style={{ textAlign: "justify", color: "#666", lineHeight: "1.6" }}>
-                      {step.text} Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
-                      Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+                      {step.text}
                     </p>
                   </div>
                 </div>

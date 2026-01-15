@@ -4,8 +4,9 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import NavbarLogin from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
 import "../../css/ProsesAnalisis.css";
+import LoadingSpinner from "../Common/LoadingSpinner";
 import { getUserBookings } from "../../services/BookingService";
-import { Spin, message } from "antd";
+import {message } from "antd";
 import dayjs from "dayjs";
 
 /* ================== STATUS → STEP ================== */
@@ -211,10 +212,6 @@ const ProsesAnalisis = () => {
 
   const renderList = () => (
     <div className="container" style={{ maxWidth: "800px", marginTop: "-3rem" }}>
-      <div className="text-center mb-4">
-        <h4 className="fw-bold text-dark">Daftar Proses Analisis</h4>
-        <p className="text-muted small">Pantau perkembangan analisis sampel laboratorium Anda</p>
-      </div>
 
       <div className="row g-3">
           {bookingList.map((item) => {
@@ -430,61 +427,150 @@ const ProsesAnalisis = () => {
     );
   };
 
-  if (loading) {
-    return (
-      <NavbarLogin>
-        <div className="d-flex justify-content-center align-items-center" style={{ height: "80vh" }}>
-          <Spin size="large" tip="Memuat proses analisis..." />
-        </div>
-      </NavbarLogin>
-    );
-  }
-
-  return (
-    <NavbarLogin>
-      <div className="container py-5 progress-container" style={{ marginTop: "5rem" }}>
-        {selectedBooking ? renderDetail() : renderList()}
-      </div>
-      
-      {/* ===== MODAL PREVIEW PDF (DIPERBAIKI) ===== */}
-      {showPreview && (
+  const renderEmptyState = () => (
+  <div className="d-flex justify-content-center">
+    <div
+      className="text-center py-5 px-4 shadow-sm mt-4"
+      style={{
+        backgroundColor: "#ffffff",
+        borderRadius: "24px",
+        border: "1px dashed #dee2e6",
+        maxWidth: "600px",
+        width: "100%",
+      }}
+    >
+      <div className="mb-4">
         <div
-          className="modal fade show d-block"
-          tabIndex="-1"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1055 }}
-          onClick={() => setShowPreview(false)}
+          className="d-inline-flex align-items-center justify-content-center"
+          style={{
+            width: "110px",
+            height: "110px",
+            backgroundColor: "#FDFBF7",
+            borderRadius: "50%",
+            color: "#8c6b60",
+          }}
         >
-          <div
-            className="modal-dialog modal-xl modal-dialog-centered"
-            role="document"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-content shadow-lg" style={{ borderRadius: '12px', border: 'none', overflow: 'hidden' }}>
-              <div className="modal-header border-bottom-0 py-3">
-                <h5 className="modal-title fw-bold">Preview Hasil Analisis</h5>
-                <button type="button" className="btn-close" aria-label="Close" onClick={() => setShowPreview(false)}></button>
-              </div>
-              <div className="modal-body p-0" style={{ height: '80vh', backgroundColor: '#f8f9fa' }}>
-                <iframe
-                  src={previewUrl}
-                  title="Preview PDF"
-                  style={{ width: '100%', height: '100%', border: 'none' }}
-                />
-              </div>
-              <div className="modal-footer border-top-0 py-3">
-                <a className="btn btn-primary rounded-pill px-4" href={previewUrl} target="_blank" rel="noreferrer">
-                  <i className="bi bi-box-arrow-up-right me-2"></i> Buka di Tab Baru
-                </a>
-                <button className="btn btn-secondary rounded-pill px-4" onClick={() => setShowPreview(false)}>Tutup</button>
-              </div>
-            </div>
-          </div>
+          <i className="bi bi-flask" style={{ fontSize: "3.2rem" }} />
+        </div>
+      </div>
+
+      <h4 className="fw-bold mb-2" style={{ color: "#4E342E" }}>
+        Belum Ada Proses Analisis
+      </h4>
+
+      <p className="text-muted mb-4" style={{ fontSize: "0.95rem" }}>
+        Anda belum memiliki sampel yang sedang dianalisis.  
+        Silakan ajukan pemesanan analisis sampel untuk memulai proses.
+      </p>
+
+      <button
+        className="btn text-white fw-bold px-5 py-3 shadow-sm"
+        style={{
+          backgroundColor: "#8c6b60",
+          borderRadius: "16px",
+        }}
+        onClick={() =>
+          (window.location.href = "/dashboard/pemesananSampelKlien")
+        }
+      >
+        <i className="bi bi-plus-circle me-2"></i>
+        Buat Pesanan Sampel
+      </button>
+
+      <div className="mt-4">
+        <small className="text-muted">
+          Butuh bantuan?{" "}
+          <span style={{ color: "#8c6b60", cursor: "pointer" }}>
+            Hubungi admin laboratorium
+          </span>
+        </small>
+      </div>
+    </div>
+  </div>
+);
+
+
+ return (
+  <NavbarLogin>
+    <div className="container py-5 progress-container mb-5">
+      
+      {/* ===== JUDUL ===== */}
+      {!selectedBooking && (
+        <div className="text-center">
+          <h2 className="fw-bold text-dark">Daftar Proses Analisis</h2>
+          <p className="text-muted">
+            Pantau perkembangan analisis sampel laboratorium Anda
+          </p>
         </div>
       )}
 
-      <FooterSetelahLogin />
-    </NavbarLogin>
-  );
+      {/* ===== CONTENT STATE ===== */}
+      {loading ? (
+        <div
+          className="d-flex flex-column justify-content-center align-items-center"
+          style={{ minHeight: "50vh" }}
+        >
+          <LoadingSpinner text="Memuat data Analisis..." />
+        </div>
+      ) : selectedBooking ? (
+        renderDetail()
+      ) : bookingList.length === 0 ? (
+        renderEmptyState()
+      ) : (
+        renderList()
+      )}
+    </div>
+
+    {/* ===== MODAL PREVIEW PDF ===== */}
+    {showPreview && (
+      <div
+        className="modal fade show d-block"
+        tabIndex="-1"
+        style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1055 }}
+        onClick={() => setShowPreview(false)}
+      >
+        <div
+          className="modal-dialog modal-xl modal-dialog-centered"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="modal-content shadow-lg" style={{ borderRadius: "12px" }}>
+            <div className="modal-header border-bottom-0">
+              <h5 className="modal-title fw-bold">Preview Hasil Analisis</h5>
+              <button className="btn-close" onClick={() => setShowPreview(false)} />
+            </div>
+            <div className="modal-body p-0" style={{ height: "80vh" }}>
+              <iframe
+                src={previewUrl}
+                title="Preview PDF"
+                style={{ width: "100%", height: "100%", border: "none" }}
+              />
+            </div>
+            <div className="modal-footer border-top-0">
+              <a
+                className="btn btn-primary rounded-pill px-4"
+                href={previewUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <i className="bi bi-box-arrow-up-right me-2" />
+                Buka di Tab Baru
+              </a>
+              <button
+                className="btn btn-secondary rounded-pill px-4"
+                onClick={() => setShowPreview(false)}
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    <FooterSetelahLogin />
+  </NavbarLogin>
+);
+
 };
 
 export default ProsesAnalisis;

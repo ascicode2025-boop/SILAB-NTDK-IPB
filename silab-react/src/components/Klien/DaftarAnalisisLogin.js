@@ -6,6 +6,7 @@ import "@fontsource/poppins/600.css";
 import "@fontsource/poppins/700.css";
 import NavbarLogin from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
+import BrownSpinner from "../Common/LoadingSpinner"; // ⬅️ spinner custom
 import axios from "axios";
 
 function DaftarAnalisisLogin() {
@@ -14,14 +15,13 @@ function DaftarAnalisisLogin() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Mengambil data analisis dari backend
-    axios.get("http://localhost:8000/api/analysis-prices-grouped")
+    axios
+      .get("http://localhost:8000/api/analysis-prices-grouped")
       .then((res) => {
-        // Response: { Metabolit: [...], Hematologi: [...] }
         setDataAnalisis(res.data);
         setLoading(false);
       })
-      .catch((err) => {
+      .catch(() => {
         setError("Gagal mengambil data analisis.");
         setLoading(false);
       });
@@ -47,32 +47,29 @@ function DaftarAnalisisLogin() {
         }}
       >
         <div style={{ position: "relative" }}>
-          <Card.Img
-            variant="top"
-            src={item.img || "/asset/daftarAnalisis/Rectangle19.png"}
-            style={{ height: "180px", objectFit: "cover" }}
-          />
-          <Badge 
-            bg="light" 
-            text="dark" 
-            className="position-absolute top-0 end-0 m-3 shadow-sm"
-            style={{ borderRadius: "8px", fontWeight: "500", opacity: "0.9" }}
-          >
+          <Card.Img variant="top" src={item.img || "/asset/daftarAnalisis/Rectangle19.png"} style={{ height: "180px", objectFit: "cover" }} />
+          <Badge bg="light" text="dark" className="position-absolute top-0 end-0 m-3 shadow-sm" style={{ borderRadius: "8px", fontWeight: "500", opacity: "0.9" }}>
             {kategori}
           </Badge>
         </div>
+
         <Card.Body className="p-4">
-          <Card.Title 
-            className="mb-2" 
-            style={{ fontSize: "1.1rem", fontWeight: "700", color: "#2D3436" }}
+          <Card.Title
+            className="mb-2"
+            style={{
+              fontSize: "1.1rem",
+              fontWeight: "700",
+              color: "#2D3436",
+            }}
           >
             {item.jenis_analisis || item.nama}
           </Card.Title>
-          <Card.Text 
-            style={{ 
-              color: "#8D6E63", 
-              fontSize: "1.15rem", 
-              fontWeight: "600" 
+
+          <Card.Text
+            style={{
+              color: "#8D6E63",
+              fontSize: "1.15rem",
+              fontWeight: "600",
             }}
           >
             Rp {Number(item.harga).toLocaleString("id-ID")}
@@ -92,25 +89,40 @@ function DaftarAnalisisLogin() {
           <p className="text-muted">Pilih jenis analisis laboratorium yang Anda butuhkan</p>
         </div>
 
+        {/* LOADING */}
         {loading ? (
-          <div className="text-center py-5">Memuat data analisis...</div>
+          <div
+            style={{
+              minHeight: "500px",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <BrownSpinner />
+          </div>
         ) : error ? (
+          /* ERROR */
           <div className="text-center text-danger py-5">{error}</div>
         ) : (
+          /* DATA */
           Object.entries(dataAnalisis).map(([kategori, items]) => (
             <div key={kategori} className="mb-5">
               <div className="d-flex align-items-center mb-4">
-                <div style={{
-                  width: "5px",
-                  height: "30px",
-                  backgroundColor: "#8D6E63",
-                  borderRadius: "10px",
-                  marginRight: "15px"
-                }}></div>
+                <div
+                  style={{
+                    width: "5px",
+                    height: "30px",
+                    backgroundColor: "#8D6E63",
+                    borderRadius: "10px",
+                    marginRight: "15px",
+                  }}
+                />
                 <h4 className="fw-bold m-0" style={{ color: "#4E342E" }}>
                   Kategori {kategori}
                 </h4>
               </div>
+
               <Row className="g-4">
                 {items.map((item, idx) => (
                   <CardAnalisis key={idx} item={item} kategori={kategori} />
@@ -120,6 +132,7 @@ function DaftarAnalisisLogin() {
           ))
         )}
       </Container>
+
       <FooterSetelahLogin />
     </NavbarLogin>
   );

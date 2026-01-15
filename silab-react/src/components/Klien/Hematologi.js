@@ -65,16 +65,16 @@ export default function Hematologi() {
         const month = targetDate.getMonth() + 1;
         const year = targetDate.getFullYear();
         try {
-          const response = await getMonthlyQuota(month, year, 'hematologi');
+          const response = await getMonthlyQuota(month, year, "hematologi");
           if (response && response.data) {
-            response.data.forEach(day => {
+            response.data.forEach((day) => {
               if (day.remaining_quota > 0 && !day.is_libur) {
                 dates.push(day.date);
               }
             });
           }
         } catch (err) {
-          console.error('Gagal mengambil data kuota:', err);
+          console.error("Gagal mengambil data kuota:", err);
         }
       }
       setAvailableDates(dates);
@@ -89,9 +89,18 @@ export default function Hematologi() {
   useEffect(() => {
     getAnalysisPrices().then((data) => {
       if (data && data.hematologi) {
-        setAnalysisOptions(data.hematologi);
+        // Deduplikasi berdasarkan jenis_analisis
+        const uniqueMap = new Map();
+        data.hematologi.forEach((item) => {
+          if (!uniqueMap.has(item.jenis_analisis)) {
+            uniqueMap.set(item.jenis_analisis, item);
+          }
+        });
+        const uniqueAnalyses = Array.from(uniqueMap.values());
+
+        setAnalysisOptions(uniqueAnalyses);
         const priceMap = {};
-        data.hematologi.forEach(item => {
+        uniqueAnalyses.forEach((item) => {
           priceMap[item.jenis_analisis] = item.harga;
         });
         setAnalysisPrices(priceMap);
@@ -104,7 +113,7 @@ export default function Hematologi() {
   };
 
   const handleSelectAll = (e) => {
-    setAnalyses(e.target.checked ? analysisOptions.map(opt => opt.jenis_analisis) : []);
+    setAnalyses(e.target.checked ? analysisOptions.map((opt) => opt.jenis_analisis) : []);
   };
 
   const isAllSelected = analysisOptions.length > 0 && analyses.length === analysisOptions.length;
@@ -194,11 +203,15 @@ export default function Hematologi() {
                   <Row className="g-4">
                     <Col md={6}>
                       <Form.Group>
-                        <Form.Label style={labelStyle} className="fw-bold">Jenis Hewan</Form.Label>
+                        <Form.Label style={labelStyle} className="fw-bold">
+                          Jenis Hewan
+                        </Form.Label>
                         <Form.Select className="py-2 px-3 shadow-sm border-0 bg-light" value={jenisHewan} onChange={(e) => setJenisHewan(e.target.value)} required>
                           <option value="">Pilih Hewan...</option>
                           {Object.keys(ANIMAL_CODES).map((h) => (
-                            <option key={h} value={h}>{h}</option>
+                            <option key={h} value={h}>
+                              {h}
+                            </option>
                           ))}
                         </Form.Select>
                       </Form.Group>
@@ -207,7 +220,9 @@ export default function Hematologi() {
                     {jenisHewan === "Lainnya" && (
                       <Col md={6}>
                         <Form.Group>
-                          <Form.Label style={labelStyle} className="fw-bold">Sebutkan Jenis Hewan</Form.Label>
+                          <Form.Label style={labelStyle} className="fw-bold">
+                            Sebutkan Jenis Hewan
+                          </Form.Label>
                           <Form.Control className="py-2 px-3 shadow-sm border-0 bg-light" value={jenisHewanLain} onChange={(e) => setJenisHewanLain(e.target.value)} required />
                         </Form.Group>
                       </Col>
@@ -215,7 +230,9 @@ export default function Hematologi() {
 
                     <Col md={6}>
                       <Form.Group>
-                        <Form.Label style={labelStyle} className="fw-bold">Jenis Kelamin</Form.Label>
+                        <Form.Label style={labelStyle} className="fw-bold">
+                          Jenis Kelamin
+                        </Form.Label>
                         <Form.Select className="py-2 px-3 shadow-sm border-0 bg-light" value={jenisKelamin} onChange={(e) => setJenisKelamin(e.target.value)} required>
                           <option value="">Pilih...</option>
                           <option>Jantan</option>
@@ -227,7 +244,9 @@ export default function Hematologi() {
 
                     <Col md={6}>
                       <Form.Group>
-                        <Form.Label style={labelStyle} className="fw-bold">Umur</Form.Label>
+                        <Form.Label style={labelStyle} className="fw-bold">
+                          Umur
+                        </Form.Label>
                         <InputGroup className="shadow-sm">
                           <Form.Control type="number" min="1" className="border-0 bg-light" value={umurAngka} onChange={(e) => setUmurAngka(e.target.value)} required />
                           <Form.Select className="border-0 bg-light" style={{ maxWidth: 120 }} value={umurSatuan} onChange={(e) => setUmurSatuan(e.target.value)}>
@@ -242,7 +261,9 @@ export default function Hematologi() {
 
                     <Col md={6}>
                       <Form.Group>
-                        <Form.Label style={labelStyle} className="fw-bold">Status Fisiologis</Form.Label>
+                        <Form.Label style={labelStyle} className="fw-bold">
+                          Status Fisiologis
+                        </Form.Label>
                         <Form.Select className="py-2 px-3 shadow-sm border-0 bg-light" value={statusFisiologis} onChange={(e) => setStatusFisiologis(e.target.value)} required>
                           <option value="">Pilih Status...</option>
                           <option>Bunting/Hamil</option>
@@ -263,7 +284,9 @@ export default function Hematologi() {
                   </h5>
 
                   <Form.Group className="mb-4">
-                    <Form.Label style={labelStyle} className="fw-bold">Jumlah Sampel</Form.Label>
+                    <Form.Label style={labelStyle} className="fw-bold">
+                      Jumlah Sampel
+                    </Form.Label>
                     <Form.Control
                       type="number"
                       min={1}
@@ -283,11 +306,15 @@ export default function Hematologi() {
                       <Col md={6} key={i} className="mb-2">
                         <InputGroup size="sm" className="shadow-sm">
                           <InputGroup.Text className="bg-secondary text-white border-0">{getCurrentPrefix()}-</InputGroup.Text>
-                          <Form.Control value={kode} onChange={(e) => {
-                            const arr = [...kodeSampel];
-                            arr[i] = e.target.value;
-                            setKodeSampel(arr);
-                          }} required />
+                          <Form.Control
+                            value={kode}
+                            onChange={(e) => {
+                              const arr = [...kodeSampel];
+                              arr[i] = e.target.value;
+                              setKodeSampel(arr);
+                            }}
+                            required
+                          />
                         </InputGroup>
                       </Col>
                     ))}
@@ -301,29 +328,26 @@ export default function Hematologi() {
                   </h5>
                   <div className="p-3 bg-light rounded-3 shadow-sm">
                     <Form.Check type="checkbox" label={<strong>Pilih Semua</strong>} checked={isAllSelected} onChange={handleSelectAll} className="mb-3 pb-2 border-bottom" />
-                    <Row>
-                      {analysisOptions.map((item, i) => (
-                        <Col md={6} key={i}>
-                          <Form.Check
-                            type="checkbox"
-                            label={item.jenis_analisis}
-                            checked={analyses.includes(item.jenis_analisis)}
-                            onChange={() => handleCheckboxChange(item.jenis_analisis)}
-                          />
-                        </Col>
-                      ))}
-                    </Row>
+                    {analysisOptions.map((item, i) => (
+                      <Form.Check key={i} type="checkbox" label={item.jenis_analisis} checked={analyses.includes(item.jenis_analisis)} onChange={() => handleCheckboxChange(item.jenis_analisis)} className="mb-2" />
+                    ))}
                     {/* Total Harga */}
                     <div className="mt-4 text-end">
-                      <span className="fw-bold" style={{fontSize:'1.1em'}}>Total Harga: </span>
-                      <span className="fw-bold text-success" style={{fontSize:'1.2em'}}>Rp{totalHarga.toLocaleString()}</span>
+                      <span className="fw-bold" style={{ fontSize: "1.1em" }}>
+                        Total Harga:{" "}
+                      </span>
+                      <span className="fw-bold text-success" style={{ fontSize: "1.2em" }}>
+                        Rp{totalHarga.toLocaleString()}
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Tanggal Kirim */}
                 <Form.Group className="mb-5">
-                  <Form.Label style={labelStyle} className="fw-bold">Tanggal Kirim Sampel</Form.Label>
+                  <Form.Label style={labelStyle} className="fw-bold">
+                    Tanggal Kirim Sampel
+                  </Form.Label>
                   <DatePicker
                     selected={tanggalKirim}
                     onChange={setTanggalKirim}
@@ -333,18 +357,18 @@ export default function Hematologi() {
                     placeholderText="Klik untuk pilih tanggal"
                     minDate={new Date()}
                     filterDate={(date) => {
-                      const dateStr = dayjs(date).format('YYYY-MM-DD');
+                      const dateStr = dayjs(date).format("YYYY-MM-DD");
                       return availableDates.includes(dateStr);
                     }}
                     required
                   />
                 </Form.Group>
 
-                <div className="d-flex justify-content-between gap-3">
-                  <Button variant="outline-secondary" onClick={() => history.goBack()}>
+                <div className="d-grid gap-2 d-md-flex justify-content-md-between">
+                  <Button variant="outline-secondary" onClick={() => history.goBack()} className="order-md-1">
                     <i className="bi bi-chevron-left me-2"></i>Kembali
                   </Button>
-                  <Button type="submit" disabled={loading} style={{ background: "#5c3d35" }}>
+                  <Button type="submit" disabled={loading} style={{ background: "#5c3d35" }} className="order-md-2">
                     {loading ? "Mengirim..." : "Kirim Permohonan"}
                   </Button>
                 </div>
@@ -358,7 +382,9 @@ export default function Hematologi() {
         <Modal.Body className="text-center p-5">
           <i className="bi bi-check-circle-fill text-success" style={{ fontSize: "4rem" }} />
           <h3 className="fw-bold mt-3">Pemesanan Berhasil!</h3>
-          <Button className="mt-3" onClick={handleCloseSuccess}>Lihat Status Pesanan</Button>
+          <Button className="mt-3" onClick={handleCloseSuccess}>
+            Lihat Status Pesanan
+          </Button>
         </Modal.Body>
       </Modal>
 

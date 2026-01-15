@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useParams, useHistory } from "react-router-dom";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
 import FooterSetelahLogin from "../FooterSetelahLogin";
+import LoadingSpinner from "../Common/LoadingSpinner";
 import { getAllBookings, getBookingById, updateAnalysisResult, finalizeAnalysis } from "../../services/BookingService";
-import { Button, Spin, message, Card, Input, Typography, Divider, Tag, Space, Alert, Checkbox, Modal } from "antd";
+import { Button, message, Card, Input, Typography, Tag, Space, Alert, Checkbox, Modal } from "antd";
 import { SaveOutlined, ExperimentOutlined, UserOutlined, BarcodeOutlined, SettingOutlined, CheckCircleFilled } from "@ant-design/icons";
 import "@fontsource/poppins";
 
@@ -22,12 +23,12 @@ function FormInputNilaiAnalisis() {
 
   // State untuk satuan per-item (independen)
   const [resultUnits, setResultUnits] = useState({});
-  
+
   // Helper untuk set satuan per item
   const setResultUnitForItem = (itemName, unit) => {
-    setResultUnits(prev => ({ ...prev, [itemName]: unit }));
+    setResultUnits((prev) => ({ ...prev, [itemName]: unit }));
   };
-  
+
   // Helper untuk get satuan per item (default mg/dL)
   const getResultUnitForItem = (itemName) => {
     return resultUnits[itemName] || "mg/dL";
@@ -73,7 +74,12 @@ function FormInputNilaiAnalisis() {
   };
 
   const hitungDiferensiasi = (v) => {
-    const toNum = (x) => Number(x) || 0;
+    // Convert koma ke titik untuk handle CSV format Indonesia (46,92 → 46.92)
+    const toNum = (x) => {
+      if (!x) return 0;
+      const str = String(x).replace(",", ".");
+      return Number(str) || 0;
+    };
 
     const Limfosit = toNum(v.Limfosit);
     const Heterofil = toNum(v.Heterofil);
@@ -83,18 +89,38 @@ function FormInputNilaiAnalisis() {
 
     const Total = Limfosit + Heterofil + Eosinofil + Monosit + Basofil;
 
-    const persen = (x) => (Total > 0 ? ((x / Total) * 100).toFixed(1) : "0.0");
+    // Hitung persentase tanpa pembulatan dulu
+    const persen = (x) => (Total > 0 ? (x / Total) * 100 : 0);
+
+    // Hanya bulatkan saat display (untuk format output saja)
+    const formatPersen = (x) => {
+      const val = persen(x);
+      // Jika angka asli memiliki 2 desimal, tampilkan 2 desimal
+      // Jika 1 desimal, tampilkan 1 desimal
+      if (String(val).includes(".")) {
+        return val.toFixed(2).replace(/\.?0+$/, ""); // hapus trailing zeros
+      }
+      return val.toFixed(2);
+    };
+
+    const LimfositPersen = formatPersen(Limfosit);
+    const HeterofilPersen = formatPersen(Heterofil);
+    const EosinofilPersen = formatPersen(Eosinofil);
+    const MonositPersen = formatPersen(Monosit);
+    const BasofilPersen = formatPersen(Basofil);
+
+    // Hitung total dengan akurasi penuh
+    const totalPersen = persen(Limfosit) + persen(Heterofil) + persen(Eosinofil) + persen(Monosit) + persen(Basofil);
+    const TotalPersen = Total > 0 ? totalPersen.toFixed(2).replace(/\.?0+$/, "") : "0";
 
     return {
       Total,
-      LimfositPersen: persen(Limfosit),
-      HeterofilPersen: persen(Heterofil),
-      EosinofilPersen: persen(Eosinofil),
-      MonositPersen: persen(Monosit),
-      BasofilPersen: persen(Basofil),
-
-      // 🔴 TOTAL %
-      TotalPersen: Total > 0 ? (persen(Limfosit) * 1 + persen(Heterofil) * 1 + persen(Eosinofil) * 1 + persen(Monosit) * 1 + persen(Basofil) * 1).toFixed(1) : "0.0",
+      LimfositPersen,
+      HeterofilPersen,
+      EosinofilPersen,
+      MonositPersen,
+      BasofilPersen,
+      TotalPersen,
     };
   };
 
@@ -167,7 +193,7 @@ function FormInputNilaiAnalisis() {
         console.log(`Skipping ${item.nama_item} - no hasil`);
         return;
       }
-      
+
       console.log(`Parsing ${item.nama_item}: "${item.hasil}"`);
 
       const parts = item.hasil.split(" | ");
@@ -229,7 +255,7 @@ function FormInputNilaiAnalisis() {
           // Format baru: STD=0.123 SPL=0.456 HASIL=78.9 mg/dL
           const stdMatch = value.match(/STD=([\d.]+)/);
           const splMatch = value.match(/SPL=([\d.]+)/);
-          
+
           if (stdMatch && splMatch) {
             parsed[`${item.nama_item}-std-${code}`] = stdMatch[1];
             parsed[`${item.nama_item}-spl-${code}`] = splMatch[1];
@@ -273,14 +299,14 @@ function FormInputNilaiAnalisis() {
       // Parse kode_sampel dari booking
       let codes = [];
       try {
-        if (typeof detail.kode_sampel === 'string') {
+        if (typeof detail.kode_sampel === "string") {
           const maybe = JSON.parse(detail.kode_sampel);
           codes = Array.isArray(maybe) ? maybe : [detail.kode_sampel];
         } else if (Array.isArray(detail.kode_sampel)) {
           codes = detail.kode_sampel;
         }
       } catch (e) {
-        codes = typeof detail.kode_sampel === 'string' ? [detail.kode_sampel] : [];
+        codes = typeof detail.kode_sampel === "string" ? [detail.kode_sampel] : [];
       }
 
       detail.analysis_items.forEach((item) => {
@@ -291,14 +317,14 @@ function FormInputNilaiAnalisis() {
           parts.forEach((p, idx) => {
             const num = p.match(/[\d.,]+/);
             if (!num) return;
-            const cleaned = num[0].replace(/,/g, '.');
+            const cleaned = num[0].replace(/,/g, ".");
             const code = codes[idx];
             if (stdConc[item.nama_item] !== undefined) {
               // assign to sample value
               fallback[`${item.nama_item}-spl-${code}`] = cleaned;
-            } else if (item.nama_item === 'BDM') {
+            } else if (item.nama_item === "BDM") {
               fallback[`BDM-jumlah-${code}`] = cleaned;
-            } else if (item.nama_item === 'BDP') {
+            } else if (item.nama_item === "BDP") {
               fallback[`BDP-jumlah-${code}`] = cleaned;
             } else {
               fallback[`${item.nama_item}-${code}`] = cleaned;
@@ -308,7 +334,7 @@ function FormInputNilaiAnalisis() {
       });
 
       if (Object.keys(fallback).length > 0) {
-        console.log('Applying fallback parsed values:', fallback);
+        console.log("Applying fallback parsed values:", fallback);
         setNilaiAnalisis(fallback);
       }
     }
@@ -324,12 +350,12 @@ function FormInputNilaiAnalisis() {
     try {
       let codes = [];
 
-      if (typeof booking.kode_sampel === 'string') {
+      if (typeof booking.kode_sampel === "string") {
         try {
           const parsed = JSON.parse(booking.kode_sampel);
           if (Array.isArray(parsed)) {
             codes = parsed;
-          } else if (typeof parsed === 'string') {
+          } else if (typeof parsed === "string") {
             codes = [parsed];
           } else {
             codes = [booking.kode_sampel];
@@ -360,7 +386,7 @@ function FormInputNilaiAnalisis() {
       const merged = Array.from(new Set([...(Array.isArray(codes) ? codes : []), ...fromItems]));
       return merged;
     } catch (error) {
-      console.error('Error parsing kode_sampel:', error);
+      console.error("Error parsing kode_sampel:", error);
       return [];
     }
   };
@@ -371,14 +397,14 @@ function FormInputNilaiAnalisis() {
 
   const handleResetForm = () => {
     Modal.confirm({
-      title: 'Reset Semua Input?',
-      content: 'Data yang belum disimpan akan hilang. Lanjutkan reset form?',
-      okText: 'Ya, Reset',
-      okType: 'danger',
-      cancelText: 'Batal',
+      title: "Reset Semua Input?",
+      content: "Data yang belum disimpan akan hilang. Lanjutkan reset form?",
+      okText: "Ya, Reset",
+      okType: "danger",
+      cancelText: "Batal",
       onOk: () => {
         setNilaiAnalisis({});
-        message.info('Form telah direset');
+        message.info("Form telah direset");
       },
     });
   };
@@ -397,16 +423,12 @@ function FormInputNilaiAnalisis() {
           .map((code) => {
             const valStd = nilaiAnalisis[`${namaItem}-std-${code}`] || "";
             const valSpl = nilaiAnalisis[`${namaItem}-spl-${code}`] || "";
-            
+
             // Skip jika tidak ada input sama sekali
             if (!valStd && !valSpl) return null;
-            
+
             const hasilMg = calculateResult(namaItem, valStd, valSpl);
-            const hasilFinal = hasilMg === "-" || hasilMg === "" 
-              ? hasilMg 
-              : itemUnit === "g/dL" 
-              ? (parseFloat(hasilMg) / 1000).toFixed(3) 
-              : hasilMg;
+            const hasilFinal = hasilMg === "-" || hasilMg === "" ? hasilMg : itemUnit === "g/dL" ? (parseFloat(hasilMg) / 1000).toFixed(3) : hasilMg;
             // Format: [CODE]: STD=valStd SPL=valSpl HASIL=hasilFinal unit
             return `[${code}]: STD=${valStd} SPL=${valSpl} HASIL=${hasilFinal} ${itemUnit}`;
           })
@@ -418,10 +440,10 @@ function FormInputNilaiAnalisis() {
         const results = codes
           .map((code) => {
             const rawVal = nilaiAnalisis[`BDM-jumlah-${code}`] || "";
-            
+
             // Skip jika tidak ada input
             if (!rawVal) return null;
-            
+
             const akhr = ((parseFloat(rawVal) * 10000) / 1_000_000).toFixed(2);
             // Format: [CODE]: INPUT=rawVal HASIL=akhr (unit)
             return `[${code}]: INPUT=${rawVal} HASIL=${akhr} (10⁶/µL)`;
@@ -434,10 +456,10 @@ function FormInputNilaiAnalisis() {
         const results = codes
           .map((code) => {
             const rawVal = nilaiAnalisis[`BDP-jumlah-${code}`] || "";
-            
+
             // Skip jika tidak ada input
             if (!rawVal) return null;
-            
+
             const factor = jenisBDP === "unggas" ? 125 : 50;
             const akhr = ((parseFloat(rawVal) * factor) / 1000).toFixed(2);
             // Format: [CODE]: INPUT=rawVal HASIL=akhr (unit)
@@ -458,10 +480,10 @@ function FormInputNilaiAnalisis() {
               Monosit: nilaiAnalisis[`${base}-Monosit`] || "",
               Basofil: nilaiAnalisis[`${base}-Basofil`] || "",
             };
-            
+
             // Skip jika tidak ada input sama sekali
             if (!v.Limfosit && !v.Heterofil && !v.Eosinofil && !v.Monosit && !v.Basofil) return null;
-            
+
             const h = hitungDiferensiasi(v);
             const jenis = jenisDL === "ruminansia" ? "Neutrofil" : "Heterofil";
             return `[${code}]: Lim:${h.LimfositPersen}%, Het:${h.HeterofilPersen}%, Eos:${h.EosinofilPersen}%, Mon:${h.MonositPersen}%, Bas:${h.BasofilPersen}% (${jenis})`;
@@ -501,22 +523,22 @@ function FormInputNilaiAnalisis() {
       setLoading(true);
 
       const itemsPayload = buildItemsPayload();
-      
+
       console.log("=== SIMPAN DRAFT ===");
       console.log("Items payload:", itemsPayload);
       console.log("Jumlah items:", itemsPayload.length);
-      
+
       // Hitung berapa banyak yang terisi
-      const filledItems = itemsPayload.filter(item => item.hasil && item.hasil.trim() !== "");
+      const filledItems = itemsPayload.filter((item) => item.hasil && item.hasil.trim() !== "");
       console.log("Items terisi:", filledItems.length);
 
       const response = await updateAnalysisResult(booking.id, { items: itemsPayload });
-      
+
       console.log("Response dari backend:", response);
-      
+
       // Update timestamp simpanan terakhir
       setLastSaved(new Date());
-      
+
       message.success(`Draft berhasil disimpan! ${filledItems.length} item tersimpan.`);
 
       // Redirect ke daftar input nilai analisis setelah simpan draft
@@ -534,11 +556,11 @@ function FormInputNilaiAnalisis() {
       setLoading(true);
 
       // Cek apakah ada token
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
         message.error("Sesi Anda telah berakhir. Silakan login kembali.");
         setTimeout(() => {
-          history.push('/login');
+          history.push("/login");
         }, 2000);
         return;
       }
@@ -548,20 +570,20 @@ function FormInputNilaiAnalisis() {
 
       console.log("=== SELESAIKAN ANALISIS ===");
       console.log("Payload yang akan dikirim:", itemsPayload);
-      
+
       // Validasi: pastikan ada data yang terisi
-      const filledItems = itemsPayload.filter(item => item.hasil && item.hasil.trim() !== "");
+      const filledItems = itemsPayload.filter((item) => item.hasil && item.hasil.trim() !== "");
       if (filledItems.length === 0) {
         message.warning("Tidak ada data yang tersimpan. Silakan isi minimal satu sampel.");
         return;
       }
-      
+
       console.log("Items terisi:", filledItems.length);
 
       // Simpan data dulu
       const saveResponse = await updateAnalysisResult(booking.id, { items: itemsPayload });
       console.log("Save response:", saveResponse);
-      
+
       // 2. Lalu finalize dan refresh data dari server untuk memastikan hasil tersimpan
       await finalizeAnalysis(booking.id);
 
@@ -583,7 +605,7 @@ function FormInputNilaiAnalisis() {
         }
       } catch (e) {
         // Jika fetch by-id gagal, swallow and continue — user tetap berada di form
-        console.warn('Gagal memuat booking terbaru setelah finalize:', e);
+        console.warn("Gagal memuat booking terbaru setelah finalize:", e);
       }
 
       // Tampilkan pesan sukses dan arahkan ke generator PDF untuk meng-generate file
@@ -593,17 +615,17 @@ function FormInputNilaiAnalisis() {
       // Redirect ke halaman generate PDF (preview only, tidak otomatis download atau kirim)
       history.push({
         pathname: "/teknisi/dashboard/generatePdfAnalysis",
-        state: { booking: { id: booking.id }, autoGenerate: false }
+        state: { booking: { id: booking.id }, autoGenerate: false },
       });
     } catch (error) {
       console.error("Gagal menyelesaikan:", error);
-      
+
       // Handle 401 specifically
-      if (error?.status === 401 || error?.message?.includes('401')) {
+      if (error?.status === 401 || error?.message?.includes("401")) {
         message.error("Sesi Anda telah berakhir. Silakan login kembali.");
         setTimeout(() => {
           localStorage.clear();
-          history.push('/login');
+          history.push("/login");
         }, 2000);
       } else {
         message.error("Terjadi kesalahan saat menyelesaikan analisis. Silakan coba lagi.");
@@ -619,7 +641,7 @@ function FormInputNilaiAnalisis() {
     return (
       <NavbarLoginTeknisi>
         <div className="py-5 text-center">
-          <Spin size="large" />
+          <LoadingSpinner spinning={loading} tip="Memuat data..." />
         </div>
       </NavbarLoginTeknisi>
     );
@@ -638,10 +660,7 @@ function FormInputNilaiAnalisis() {
                 </Title>
                 <Text type="secondary">Silakan masukkan data mentah laboratorium di bawah ini.</Text>
               </div>
-              {lastSaved && (
-                <div className="text-end">
-                </div>
-              )}
+              {lastSaved && <div className="text-end"></div>}
             </div>
           </div>
         </div>
@@ -656,7 +675,7 @@ function FormInputNilaiAnalisis() {
                     <BarcodeOutlined /> Kode Batch
                   </Text>
                   <Title level={5} className="m-0 text-primary">
-                    {booking.kode_batch || '-'}
+                    {booking.kode_batch || "-"}
                   </Title>
                 </Space>
               </div>
@@ -717,17 +736,11 @@ function FormInputNilaiAnalisis() {
 
                     {/* === PILIHAN SATUAN === */}
                     <div className="d-flex gap-4 mb-3">
-                      <Checkbox 
-                        checked={getResultUnitForItem(item.nama_item) === "mg/dL"} 
-                        onChange={() => setResultUnitForItem(item.nama_item, "mg/dL")}
-                      >
+                      <Checkbox checked={getResultUnitForItem(item.nama_item) === "mg/dL"} onChange={() => setResultUnitForItem(item.nama_item, "mg/dL")}>
                         Hasil (mg/dL)
                       </Checkbox>
 
-                      <Checkbox 
-                        checked={getResultUnitForItem(item.nama_item) === "g/dL"} 
-                        onChange={() => setResultUnitForItem(item.namaItem, "g/dL")}
-                      >
+                      <Checkbox checked={getResultUnitForItem(item.nama_item) === "g/dL"} onChange={() => setResultUnitForItem(item.namaItem, "g/dL")}>
                         Hasil (g/dL)
                       </Checkbox>
                     </div>
@@ -774,7 +787,7 @@ function FormInputNilaiAnalisis() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Case 2: Hematologi (BDM) */}
                 {item.nama_item === "BDM" && (
                   <div className="table-responsive">
@@ -1004,9 +1017,9 @@ function FormInputNilaiAnalisis() {
             ))}
 
           {/* Action Footer */}
-          <div 
-            className="d-flex justify-content-between align-items-center mt-5 p-4 bg-white shadow-sm" 
-            style={{ 
+          <div
+            className="d-flex justify-content-between align-items-center mt-5 p-4 bg-white shadow-sm"
+            style={{
               borderRadius: "12px",
               position: "sticky",
               bottom: 0,
@@ -1027,7 +1040,7 @@ function FormInputNilaiAnalisis() {
               Kembali
             </Button>
 
-            <div className="d-flex" style={{ gap: '12px' }}>
+            <div className="d-flex" style={{ gap: "12px" }}>
               <Button
                 type="default"
                 size="large"

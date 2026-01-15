@@ -4,6 +4,7 @@ import { useHistory, useLocation } from "react-router-dom";
 import { FaTachometerAlt, FaFileAlt, FaCalendarAlt, FaClipboardList, FaClock, FaFlask, FaCreditCard, FaHistory, FaBars, FaUserCircle, FaBell } from "react-icons/fa";
 import { getUnreadNotifications, getAllNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "../../services/NotificationService";
 import "@fontsource/poppins";
+import ConfirmModal from "../Common/ConfirmModal";
 
 function NavbarLogin({ children }) {
   const history = useHistory();
@@ -77,6 +78,8 @@ function NavbarLogin({ children }) {
       console.error("Error marking all as read:", error);
     }
   };
+
+  const [showLogout, setShowLogout] = useState(false);
 
   // ============================================================
   // 🔥 FITUR PROTEKSI: PAKSA LENGKAPI PROFIL 🔥
@@ -253,7 +256,7 @@ function NavbarLogin({ children }) {
                 <i className="bi bi-person me-2"></i> Profil Akun
               </Dropdown.Item>
               <hr className="dropdown-divider opacity-50" />
-              <Dropdown.Item className="py-2 text-danger" onClick={handleLogout}>
+              <Dropdown.Item className="py-2 text-danger" onClick={() => setShowLogout(true)}>
                 <i className="bi bi-box-arrow-right me-2"></i> Logout
               </Dropdown.Item>
             </Dropdown.Menu>
@@ -327,6 +330,16 @@ function NavbarLogin({ children }) {
           .dashboard-sidebar .nav-link { font-size: 0.9rem; }
         }
       `}</style>
+      <ConfirmModal
+        show={showLogout}
+        title="Konfirmasi Logout"
+        message="Anda yakin ingin keluar dari akun?"
+        onConfirm={() => {
+          handleLogout();
+          setShowLogout(false);
+        }}
+        onCancel={() => setShowLogout(false)}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useHistory, useLocation } from "react-router-dom";
 import { FaTachometerAlt, FaClipboardCheck, FaMoneyBill, FaPenFancy, FaFileAlt, FaCog, FaBars, FaUserCircle, FaBell } from "react-icons/fa";
 import { getUnreadNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "../../services/NotificationService";
 import "@fontsource/poppins";
+import ConfirmModal from "../Common/ConfirmModal";
 
 function NavbarLoginKoordinator({ children }) {
   const history = useHistory();
@@ -89,6 +90,8 @@ function NavbarLoginKoordinator({ children }) {
     localStorage.removeItem("token");
     history.push("/LandingPage");
   };
+
+  const [showLogout, setShowLogout] = useState(false);
 
   const avatarSrc = user?.avatar ? (user.avatar.startsWith("http") || user.avatar.startsWith("blob") ? user.avatar : `http://localhost:8000/storage/${user.avatar}`) : null;
 
@@ -196,7 +199,7 @@ function NavbarLoginKoordinator({ children }) {
                 <i className="bi bi-person me-2"></i> Profil Akun
               </Dropdown.Item>
               <hr className="dropdown-divider opacity-50" />
-              <Dropdown.Item className="py-2 text-danger" onClick={handleLogout}>
+              <Dropdown.Item className="py-2 text-danger" onClick={() => setShowLogout(true)}>
                 <i className="bi bi-box-arrow-right me-2"></i> Logout
               </Dropdown.Item>
             </Dropdown.Menu>
@@ -243,6 +246,17 @@ function NavbarLoginKoordinator({ children }) {
 
         <div className="dashboard-inner">{children}</div>
       </main>
+
+      <ConfirmModal
+        show={showLogout}
+        title="Konfirmasi Logout"
+        message="Anda yakin ingin keluar dari akun?"
+        onConfirm={() => {
+          handleLogout();
+          setShowLogout(false);
+        }}
+        onCancel={() => setShowLogout(false)}
+      />
 
       {/* CSS */}
       <style>{`

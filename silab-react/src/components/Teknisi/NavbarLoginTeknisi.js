@@ -4,6 +4,7 @@ import { useHistory, useLocation } from "react-router-dom";
 import { FaTachometerAlt, FaFileAlt, FaCalendarAlt, FaClipboardList, FaClock, FaFlask, FaHistory, FaBars, FaUserCircle, FaBell } from "react-icons/fa";
 import { getUnreadNotifications, getAllNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "../../services/NotificationService";
 import "@fontsource/poppins";
+import ConfirmModal from "../Common/ConfirmModal";
 
 function NavbarLoginTeknisi({ children }) {
   const history = useHistory();
@@ -103,6 +104,8 @@ function NavbarLoginTeknisi({ children }) {
     localStorage.removeItem("token");
     history.push("/LandingPage");
   };
+
+  const [showLogout, setShowLogout] = useState(false);
 
   return (
     <div className="dashboard-layout" style={{ fontFamily: "Poppins, sans-serif" }}>
@@ -204,9 +207,11 @@ function NavbarLoginTeknisi({ children }) {
             </Dropdown.Toggle>
 
             <Dropdown.Menu className="shadow-lg border-0 mt-2" style={{ borderRadius: "10px" }}>
-              <Dropdown.Item className="py-2" onClick={() => history.push("/teknisi/dashboard/profile")}>Profil Akun</Dropdown.Item>
+              <Dropdown.Item className="py-2" onClick={() => history.push("/teknisi/dashboard/profile")}>
+                Profil Akun
+              </Dropdown.Item>
               <hr className="dropdown-divider opacity-50" />
-              <Dropdown.Item className="py-2 text-danger" onClick={handleLogout}>
+              <Dropdown.Item className="py-2 text-danger" onClick={() => setShowLogout(true)}>
                 <i className="bi bi-box-arrow-right me-2"></i> Logout
               </Dropdown.Item>
             </Dropdown.Menu>
@@ -223,7 +228,7 @@ function NavbarLoginTeknisi({ children }) {
               onClick={() => {
                 setActiveMenu(menu.key);
                 // Khusus menu riwayat, arahkan ke /teknisi/dashboard/riwayat
-                if(menu.key === "riwayat") {
+                if (menu.key === "riwayat") {
                   history.push("/teknisi/dashboard/riwayat");
                 } else {
                   history.push(`/teknisi/dashboard/${menu.key}`);
@@ -258,6 +263,16 @@ function NavbarLoginTeknisi({ children }) {
 
         <div className="dashboard-inner">{children}</div>
       </main>
+      <ConfirmModal
+        show={showLogout}
+        title="Konfirmasi Logout"
+        message="Anda yakin ingin keluar dari akun?"
+        onConfirm={() => {
+          handleLogout();
+          setShowLogout(false);
+        }}
+        onCancel={() => setShowLogout(false)}
+      />
 
       {/* CSS */}
       <style>{`

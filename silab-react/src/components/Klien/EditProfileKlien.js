@@ -15,8 +15,8 @@ function EditProfileKlien() {
 
   // State Form
   const [formData, setFormData] = useState({
-    name: "",      
-    full_name: "", 
+    name: "",
+    full_name: "",
     email: "",
     institusi: "",
     nomor_telpon: "",
@@ -46,12 +46,12 @@ function EditProfileKlien() {
       })
       .then((res) => {
         const user = res.data.user;
-        
+
         // Deteksi User Baru (Jika Nama Lengkap / Institusi masih kosong)
         if (!user.full_name || !user.institusi) {
-            setIsFirstTime(true); 
+          setIsFirstTime(true);
         } else {
-            setIsFirstTime(false);
+          setIsFirstTime(false);
         }
 
         // Isi form dengan data yang ada (Username & Email dari Register pasti masuk sini)
@@ -66,7 +66,7 @@ function EditProfileKlien() {
         });
 
         if (user.avatar) {
-            setPreviewAvatar(`http://localhost:8000/storage/${user.avatar}`);
+          setPreviewAvatar(`http://localhost:8000/storage/${user.avatar}`);
         }
       })
       .catch((err) => {
@@ -84,7 +84,7 @@ function EditProfileKlien() {
     const file = e.target.files[0];
     if (file) {
       setAvatarFile(file);
-      setPreviewAvatar(URL.createObjectURL(file)); 
+      setPreviewAvatar(URL.createObjectURL(file));
     }
   };
 
@@ -97,7 +97,7 @@ function EditProfileKlien() {
         title: "Nama Lengkap wajib diisi!",
         message: "Mohon isi nama lengkap Anda sebelum menyimpan profil.",
         type: "error",
-        onClose: () => setPopup((p) => ({ ...p, show: false }))
+        onClose: () => setPopup((p) => ({ ...p, show: false })),
       });
       return;
     }
@@ -107,7 +107,7 @@ function EditProfileKlien() {
         title: "Institusi wajib dipilih!",
         message: "Silakan pilih institusi Anda sebelum menyimpan profil.",
         type: "error",
-        onClose: () => setPopup((p) => ({ ...p, show: false }))
+        onClose: () => setPopup((p) => ({ ...p, show: false })),
       });
       return;
     }
@@ -117,7 +117,7 @@ function EditProfileKlien() {
         title: "Nomor Telepon wajib diisi!",
         message: "Mohon isi nomor telepon Anda sebelum menyimpan profil.",
         type: "error",
-        onClose: () => setPopup((p) => ({ ...p, show: false }))
+        onClose: () => setPopup((p) => ({ ...p, show: false })),
       });
       return;
     }
@@ -126,6 +126,7 @@ function EditProfileKlien() {
     const dataToSend = new FormData();
     dataToSend.append("name", formData.name);
     dataToSend.append("full_name", formData.full_name);
+    dataToSend.append("email", formData.email);
     dataToSend.append("institusi", formData.institusi);
     dataToSend.append("nomor_telpon", formData.nomor_telpon);
     dataToSend.append("bio", formData.bio || "");
@@ -155,7 +156,7 @@ function EditProfileKlien() {
           onClose: () => {
             setPopup((p) => ({ ...p, show: false }));
             history.push("/dashboard");
-          }
+          },
         });
       } else {
         setPopup({
@@ -166,10 +167,9 @@ function EditProfileKlien() {
           onClose: () => {
             setPopup((p) => ({ ...p, show: false }));
             history.push("/dashboard/ProfileAkunKlien");
-          }
+          },
         });
       }
-
     } catch (error) {
       console.error("Gagal update:", error.response);
       const msg = error.response?.data?.message || "Terjadi kesalahan saat menyimpan.";
@@ -182,7 +182,7 @@ function EditProfileKlien() {
             title: "Gagal upload avatar",
             message: `${validationErrors.avatar[0]}\nPastikan file adalah gambar (JPG, PNG, GIF, BMP, WEBP, TIFF)`,
             type: "error",
-            onClose: () => setPopup((p) => ({ ...p, show: false }))
+            onClose: () => setPopup((p) => ({ ...p, show: false })),
           });
         } else if (validationErrors.name) {
           setPopup({
@@ -190,7 +190,7 @@ function EditProfileKlien() {
             title: "Gagal menyimpan profil",
             message: validationErrors.name[0],
             type: "error",
-            onClose: () => setPopup((p) => ({ ...p, show: false }))
+            onClose: () => setPopup((p) => ({ ...p, show: false })),
           });
         } else if (validationErrors.full_name) {
           setPopup({
@@ -198,7 +198,7 @@ function EditProfileKlien() {
             title: "Gagal menyimpan profil",
             message: validationErrors.full_name[0],
             type: "error",
-            onClose: () => setPopup((p) => ({ ...p, show: false }))
+            onClose: () => setPopup((p) => ({ ...p, show: false })),
           });
         } else {
           setPopup({
@@ -206,7 +206,7 @@ function EditProfileKlien() {
             title: "Gagal menyimpan profil",
             message: msg,
             type: "error",
-            onClose: () => setPopup((p) => ({ ...p, show: false }))
+            onClose: () => setPopup((p) => ({ ...p, show: false })),
           });
         }
       } else {
@@ -215,7 +215,7 @@ function EditProfileKlien() {
           title: "Gagal menyimpan profil",
           message: msg,
           type: "error",
-          onClose: () => setPopup((p) => ({ ...p, show: false }))
+          onClose: () => setPopup((p) => ({ ...p, show: false })),
         });
       }
     } finally {
@@ -225,16 +225,16 @@ function EditProfileKlien() {
 
   if (loading) {
     return (
-      <div className="text-center mt-5" style={{height: '100vh', display:'flex', alignItems:'center', justifyContent:'center'}}>
+      <div className="text-center mt-5" style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Spinner animation="border" variant="primary" />
       </div>
     );
   }
 
   const userForNavbar = {
-      name: formData.name, 
-      role: formData.role,
-      avatar: previewAvatar 
+    name: formData.name,
+    role: formData.role,
+    avatar: previewAvatar,
   };
 
   return (
@@ -247,104 +247,57 @@ function EditProfileKlien() {
             {/* FOTO PROFIL (Opsional) */}
             <div className="text-center mb-4">
               <div className="position-relative d-inline-block">
-                {previewAvatar ? (
-                  <Image
-                    src={previewAvatar}
-                    roundedCircle
-                    width={150}
-                    height={150}
-                    className="shadow-sm border"
-                    style={{ objectFit: "cover" }}
-                  />
-                ) : (
-                  <FaUserCircle size={150} className="text-secondary" />
-                )}
-                <label 
-                    htmlFor="avatarInput" 
-                    className="position-absolute bottom-0 end-0 bg-primary text-white p-2 rounded-circle shadow"
-                    style={{cursor: 'pointer'}}
-                >
-                    <FaCamera size={18} />
+                {previewAvatar ? <Image src={previewAvatar} roundedCircle width={150} height={150} className="shadow-sm border" style={{ objectFit: "cover" }} /> : <FaUserCircle size={150} className="text-secondary" />}
+                <label htmlFor="avatarInput" className="position-absolute bottom-0 end-0 bg-primary text-white p-2 rounded-circle shadow" style={{ cursor: "pointer" }}>
+                  <FaCamera size={18} />
                 </label>
               </div>
               <div className="mt-3">
                 <h4 className="fw-bold mb-0">{formData.full_name || formData.name}</h4>
                 <p className="text-muted small">@{formData.name}</p>
               </div>
-              <input
-                type="file"
-                accept="image/*"
-                id="avatarInput"
-                style={{ display: "none" }}
-                onChange={handleAvatarChange}
-              />
+              <input type="file" accept="image/*" id="avatarInput" style={{ display: "none" }} onChange={handleAvatarChange} />
             </div>
             {/* FORM DATA */}
-            <div className="card shadow-sm border-0" style={{borderRadius: '15px'}}>
+            <div className="card shadow-sm border-0" style={{ borderRadius: "15px" }}>
               <div className="card-body p-4">
                 {/* USERNAME (Wajib, Unik) */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold">
                     Username <span className="text-danger">*</span> <small className="text-muted">(Unik)</small>
                   </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    name="name"
-                    value={formData.name} 
-                    onChange={handleChange}
-                    required
-                  />
+                  <input type="text" className="form-control" name="name" value={formData.name} onChange={handleChange} required />
                 </div>
                 {/* NAMA LENGKAP (Wajib) */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold">
                     Nama Lengkap <span className="text-danger">*</span>
                   </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    name="full_name"
-                    value={formData.full_name} 
-                    onChange={handleChange}
-                    placeholder="Contoh: Aryanto Pratama, S.Kom"
-                    required
-                  />
+                  <input type="text" className="form-control" name="full_name" value={formData.full_name} onChange={handleChange} placeholder="Contoh: Aryanto Pratama, S.Kom" required />
                 </div>
                 {/* EMAIL (Read Only - Dari Register) */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold">
                     Email <span className="text-danger">*</span>
                   </label>
-                  <input
-                    type="email"
-                    className="form-control bg-light"
-                    name="email"
-                    value={formData.email}
-                    disabled
-                    style={{cursor: 'not-allowed'}}
-                  />
+                  <input type="email" className="form-control bg-light" name="email" value={formData.email} disabled style={{ cursor: "not-allowed" }} />
                 </div>
                 {/* INSTITUSI (Wajib) */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold">
                     Institusi <span className="text-danger">*</span>
                   </label>
-                  <select
-                    className="form-select"
-                    name="institusi"
-                    value={formData.institusi}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="" disabled>-- Pilih Jenis Institusi --</option>
+                  <select className="form-select" name="institusi" value={formData.institusi} onChange={handleChange} required>
+                    <option value="" disabled>
+                      -- Pilih Jenis Institusi --
+                    </option>
                     <optgroup label="Eksternal">
-                        <option value="Umum">Umum / Instansi Luar</option>
+                      <option value="Umum">Umum / Instansi Luar</option>
                     </optgroup>
                     <optgroup label="Internal IPB">
-                        <option value="Mahasiswa IPB">Mahasiswa IPB</option>
-                        <option value="Dosen IPB">Dosen IPB</option>
-                        <option value="Tendik IPB">Tendik IPB</option>
+                      <option value="Mahasiswa IPB">Mahasiswa IPB</option>
+                      <option value="Dosen IPB">Dosen IPB</option>
+                      <option value="Tendik IPB">Tendik IPB</option>
                     </optgroup>
                   </select>
                 </div>
@@ -353,56 +306,27 @@ function EditProfileKlien() {
                   <label className="form-label fw-semibold">
                     Nomor Telepon <span className="text-danger">*</span>
                   </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    name="nomor_telpon"
-                    value={formData.nomor_telpon}
-                    onChange={handleChange}
-                    placeholder="Contoh: 08123456789"
-                    required
-                  />
+                  <input type="text" className="form-control" name="nomor_telpon" value={formData.nomor_telpon} onChange={handleChange} placeholder="Contoh: 08123456789" required />
                 </div>
                 {/* ROLE (Read Only) */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold">Role</label>
-                  <input
-                    type="text"
-                    className="form-control bg-light"
-                    name="role"
-                    value={formData.role ? formData.role.toUpperCase() : ""}
-                    disabled
-                  />
+                  <input type="text" className="form-control bg-light" name="role" value={formData.role ? formData.role.toUpperCase() : ""} disabled />
                 </div>
                 {/* BIO (Opsional - Tidak ada tanda bintang) */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold">Bio</label>
-                  <textarea
-                    className="form-control"
-                    name="bio"
-                    value={formData.bio}
-                    onChange={handleChange}
-                    rows={4}
-                    placeholder="Tulis bio singkat (opsional)..."
-                  />
+                  <textarea className="form-control" name="bio" value={formData.bio} onChange={handleChange} rows={4} placeholder="Tulis bio singkat (opsional)..." />
                 </div>
                 <div className="d-flex gap-2 mt-4">
-                  <button 
-                    className="btn btn-primary px-4 fw-bold" 
-                    onClick={handleSave}
-                    disabled={saving}
-                  >
+                  <button className="btn btn-primary px-4 fw-bold" onClick={handleSave} disabled={saving}>
                     {saving ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> : "Simpan Profil"}
                   </button>
                   {/* Tombol Batal disembunyikan jika User Baru agar mereka fokus mengisi */}
                   {!isFirstTime && (
-                      <button
-                        className="btn btn-outline-secondary px-4 fw-bold"
-                        onClick={() => history.goBack()}
-                        disabled={saving}
-                      >
-                        Batal
-                      </button>
+                    <button className="btn btn-outline-secondary px-4 fw-bold" onClick={() => history.goBack()} disabled={saving}>
+                      Batal
+                    </button>
                   )}
                 </div>
               </div>
@@ -410,14 +334,7 @@ function EditProfileKlien() {
           </div>
         </div>
       </div>
-      <CustomPopup
-        show={popup.show}
-        title={popup.title}
-        message={popup.message}
-        type={popup.type}
-        buttonText="OK"
-        onClose={popup.onClose}
-      />
+      <CustomPopup show={popup.show} title={popup.title} message={popup.message} type={popup.type} buttonText="OK" onClose={popup.onClose} />
       <FooterSetelahLogin />
     </>
   );
