@@ -1180,73 +1180,88 @@ class BookingController extends Controller
 
     public function verifikasiKoordinator(Request $request, $id)
     {
-        $booking = Booking::with('analysisItems', 'user')->findOrFail($id);
-
-        // Setelah Koordinator memverifikasi, tandai selesai agar klien dapat mengakses hasil
-        $booking->status = 'selesai';
-        $booking->status_updated_at = Carbon::now();
-        $booking->save();
-
-        // Notifikasi ke Kepala bahwa ada hasil untuk diverifikasi
-        $kepalaUsers = \App\Models\User::where('role', 'kepala')->get();
-        foreach ($kepalaUsers as $kepala) {
-            Notification::create([
-                'user_id' => $kepala->id,
-                'type' => 'permintaan_verifikasi_kepala',
-                'title' => 'Permintaan Verifikasi oleh Koordinator',
-                'message' => 'Hasil analisis telah diverifikasi oleh Koordinator dan menunggu persetujuan Kepala Lab.',
-                'booking_id' => $booking->id
-            ]);
-        }
-
-        // Also notify the client that the result is verified by coordinator and now available
-        Notification::create([
-            'user_id' => $booking->user_id,
-            'type' => 'hasil_terverifikasi',
-            'title' => 'Hasil Diverifikasi oleh Koordinator',
-            'message' => 'Hasil analisis Anda telah diverifikasi oleh Koordinator. Anda dapat mengunduh hasil dan status pembayaran telah diperbarui.',
-            'booking_id' => $booking->id
-        ]);
-
-        // Additionally: send email to client with the uploaded PDF (if available)
         try {
-            if (!empty($booking->pdf_path) && !empty($booking->user) && !empty($booking->user->email)) {
-                $pdfFullPath = storage_path('app/public/' . $booking->pdf_path);
-                if (file_exists($pdfFullPath)) {
-                    Mail::send([], [], function ($message) use ($booking, $pdfFullPath) {
-                        $to = $booking->user->email;
-                        $message->to($to)
-                            ->subject('Hasil Analisis Anda - ' . ($booking->kode_batch ?? ''))
-                            ->setBody('Halo,\n\nHasil analisis Anda telah diverifikasi oleh Koordinator. Terlampir file hasil analisis.\n\nTerima kasih.','text/plain');
-                        $message->attach($pdfFullPath, ['as' => 'Hasil-Analisis.pdf', 'mime' => 'application/pdf']);
-                    });
-                }
-            }
-        } catch (\Exception $e) {
-            Log::error('Failed to send verifikasi email to client for booking ' . $booking->id . ': ' . $e->getMessage());
-        }
+            $booking = Booking::with('analysisItems', 'user')->findOrFail($id);
 
-        // If an invoice exists for this booking, mark it as PAID and set paid_at; also mark booking as paid
-        try {
-            $invoice = Invoice::where('booking_id', $booking->id)->first();
-            if ($invoice) {
-                $invoice->status = 'PAID';
-                $invoice->paid_at = Carbon::now();
-                $invoice->save();
-            }
-            $booking->is_paid = 1;
+            // Setelah Koordinator memverifikasi, tandai selesai agar klien dapat mengakses hasil
+            $booking->status = 'selesai';
+            $booking->status_updated_at = Carbon::now();
             $booking->save();
+
+            // Notifikasi ke Kepala bahwa ada hasil untuk diverifikasi
+            try {
+                $kepalaUsers = \App\Models\User::where('role', 'kepala')->get();
+                foreach ($kepalaUsers as $kepala) {
+                    Notification::create([
+                        'user_id' => $kepala->id,
+                        'type' => 'permintaan_verifikasi_kepala',
+                        'title' => 'Permintaan Verifikasi oleh Koordinator',
+                        'message' => 'Hasil analisis telah diverifikasi oleh Koordinator dan menunggu persetujuan Kepala Lab.',
+                        'booking_id' => $booking->id
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to create notification for kepala during verifikasiKoordinator for booking ' . $booking->id . ': ' . $e->getMessage());
+            }
+
+            // Also notify the client that the result is verified by coordinator and now available
+            try {
+                Notification::create([
+                    'user_id' => $booking->user_id,
+                    'type' => 'hasil_terverifikasi',
+                    'title' => 'Hasil Diverifikasi oleh Koordinator',
+                    'message' => 'Hasil analisis Anda telah diverifikasi oleh Koordinator. Anda dapat mengunduh hasil dan status pembayaran telah diperbarui.',
+                    'booking_id' => $booking->id
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to create notification for client during verifikasiKoordinator for booking ' . $booking->id . ': ' . $e->getMessage());
+            }
+
+            // Additionally: send email to client with the uploaded PDF (if available)
+            try {
+                if (!empty($booking->pdf_path) && !empty($booking->user) && !empty($booking->user->email)) {
+                    $pdfFullPath = storage_path('app/public/' . $booking->pdf_path);
+                    if (file_exists($pdfFullPath)) {
+                        Mail::send([], [], function ($message) use ($booking, $pdfFullPath) {
+                            $to = $booking->user->email;
+                            $message->to($to)
+                                ->subject('Hasil Analisis Anda - ' . ($booking->kode_batch ?? ''))
+                                ->setBody('Halo,\n\nHasil analisis Anda telah diverifikasi oleh Koordinator. Terlampir file hasil analisis.\n\nTerima kasih.','text/plain');
+                            $message->attach($pdfFullPath, ['as' => 'Hasil-Analisis.pdf', 'mime' => 'application/pdf']);
+                        });
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send verifikasi email to client for booking ' . $booking->id . ': ' . $e->getMessage());
+            }
+
+            // If an invoice exists for this booking, mark it as PAID and set paid_at; also mark booking as paid
+            try {
+                $invoice = Invoice::where('booking_id', $booking->id)->first();
+                if ($invoice) {
+                    $invoice->status = 'PAID';
+                    $invoice->paid_at = Carbon::now();
+                    $invoice->save();
+                }
+                $booking->is_paid = 1;
+                $booking->save();
+            } catch (\Exception $e) {
+                Log::warning('Failed to mark invoice/booking as paid during verifikasiKoordinator for booking ' . $booking->id . ': ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Hasil analisis berhasil diverifikasi',
+                'data' => $booking
+            ]);
         } catch (\Exception $e) {
-            Log::warning('Failed to mark invoice/booking as paid during verifikasiKoordinator for booking ' . $booking->id . ': ' . $e->getMessage());
+            Log::error('Exception in verifikasiKoordinator for booking ' . $id . ': ' . $e->getMessage());
+            return response()->json([
+
+                'message' => 'Terjadi kesalahan saat memverifikasi hasil analisis.'
+            ], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Hasil analisis berhasil diverifikasi',
-            'data' => $booking
-        ]);
     }
-
     /**
      * Send (or resend) analysis PDF to client via email (triggered by Koordinator)
      */

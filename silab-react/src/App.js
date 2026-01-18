@@ -2,64 +2,64 @@ import React from "react";
 import { BrowserRouter as Router, Switch, Route, Redirect } from "react-router-dom";
 
 // --- IMPORT COMPONENT ---
-import NavbarLandingPage from "./components/NavbarLandingPage";
-import LandingPage from "./components/LandingPage";
-import LoginPage from "./components/LoginPage";
-import RegisterPage from "./components/RegisterPage";
-import Profile from "./components/Profile";
-import DaftarAnalisis from "./components/DaftarAnalisis";
-import Dashboard from "./components/Klien/Dashboard"; // Dashboard Klien
-import ForgetPassword from "./components/ForgetPassword";
-import Galeri from "./components/Galeri";
-import PanduanSampel from "./components/PanduanSampel";
-import PrivateRoute from "./components/PrivateRoute"; // Pastikan file ini sudah diupdate dengan logika Role!
+import NavbarLandingPage from "./pages/tamu/NavbarLandingPage";
+import LandingPage from "./pages/tamu/LandingPage";
+import LoginPage from "./pages/tamu/LoginPage";
+import RegisterPage from "./pages/tamu/RegisterPage";
+import Profile from "./pages/tamu/Profile";
+import DaftarAnalisis from "./pages/tamu/DaftarAnalisis";
+import ForgetPassword from "./pages/tamu/ForgetPassword";
+import Galeri from "./pages/tamu/Galeri";
+import PanduanSampel from "./pages/tamu/PanduanSampel";
+import PrivateRoute from "./pages/tamu/PrivateRoute"; // Pastikan file ini sudah diupdate dengan logika Role!
 import PopupProvider from "./components/Common/PopupProvider";
 
 // --- IMPORT FITUR DASHBOARD KLIEN ---
-import PanduanSampelKlien from "./components/Klien/PanduanSampelKlien";
-import BookingCalenderKlien from "./components/Klien/BookingCalenderKlien";
-import PemesananSampelKlien from "./components/Klien/PemesananSampelKlien";
-import Metabolit from "./components/Klien/Metabolit";
-import Hematologi from "./components/Klien/Hematologi";
-import HematologiDanMetabolit from "./components/Klien/HematologiDanMetabolit";
-import MenungguPersetujuan from "./components/Klien/MenungguPersetujuan";
-import ProsesAnalisis from "./components/Klien/ProsesAnalisis";
-import ProfileAkunKlien from "./components/Klien/ProfileAkunKlien";
-import EditProfileKlien from "./components/Klien/EditProfileKlien";
-import DaftarAnalisisLogin from "./components/Klien/DaftarAnalisisLogin";
-import PembayaranKlien from "./components/Klien/PembayaranKlien";
-import RiwayatAnalisisKlien from "./components/Klien/RiwayatAnalisisKlien";
+import Dashboard from "./pages/Klien/Dashboard"; // Dashboard Klien
+import PanduanSampelKlien from "./pages/Klien/PanduanSampelKlien";
+import BookingCalenderKlien from "./pages/Klien/BookingCalenderKlien";
+import PemesananSampelKlien from "./pages/Klien/PemesananSampelKlien";
+import Metabolit from "./pages/Klien/Metabolit";
+import Hematologi from "./pages/Klien/Hematologi";
+import HematologiDanMetabolit from "./pages/Klien/HematologiDanMetabolit";
+import MenungguPersetujuan from "./pages/Klien/MenungguPersetujuan";
+import ProsesAnalisis from "./pages/Klien/ProsesAnalisis";
+import ProfileAkunKlien from "./pages/Klien/ProfileAkunKlien";
+import EditProfileKlien from "./pages/Klien/EditProfileKlien";
+import DaftarAnalisisLogin from "./pages/Klien/DaftarAnalisisLogin";
+import PembayaranKlien from "./pages/Klien/PembayaranKlien";
+import RiwayatAnalisisKlien from "./pages/Klien/RiwayatAnalisisKlien";
 
 // --- IMPORT FITUR DASHBOARD TEKNISI ---
-import DashboardTeknisi from "./components/Teknisi/DashboardTeknisi";
-import AturTanggalTeknisi from "./components/Teknisi/AturTanggalTeknisi";
-import JadwalSampel from "./components/Teknisi/JadwalSampel";
-import VerifikasiSampel from "./components/Teknisi/VerifikasiSampel";
-import AlasanMenolak from "./components/Teknisi/AlasanMenolak";
-import InputNilaiAnalisis from "./components/Teknisi/InputNilaiAnalisis";
-import FormInputNilaiAnalisis from "./components/Teknisi/FormInputNilaiAnalisis";
-import GeneratePdfAnalysis from "./components/Teknisi/GeneratePdfAnalysis";
-import ProfileAkunTeknisi from "./components/Teknisi/ProfileAkunTeknisi";
-import EditProfileTeknisi from "./components/Teknisi/EditProfileTeknisi";
+import DashboardTeknisi from "./pages/Teknisi/DashboardTeknisi";
+import AturTanggalTeknisi from "./pages/Teknisi/AturTanggalTeknisi";
+import JadwalSampel from "./pages/Teknisi/JadwalSampel";
+import VerifikasiSampel from "./pages/Teknisi/VerifikasiSampel";
+import AlasanMenolak from "./pages/Teknisi/AlasanMenolak";
+import InputNilaiAnalisis from "./pages/Teknisi/InputNilaiAnalisis";
+import FormInputNilaiAnalisis from "./pages/Teknisi/FormInputNilaiAnalisis";
+import GeneratePdfAnalysis from "./pages/Teknisi/GeneratePdfAnalysis";
+import ProfileAkunTeknisi from "./pages/Teknisi/ProfileAkunTeknisi";
+import EditProfileTeknisi from "./pages/Teknisi/EditProfileTeknisi";
 
 // --- IMPORT FITUR DASHBOARD Koordinator ---
-import DashboardKoordinator from "./components/Koordinator/DashboardKoordinator";
-import VerifikasiSampelKoordinator from "./components/Koordinator/VerifikasiSampelKoordinator";
-import LihatHasilPdfKoordinator from "./components/Koordinator/LihatHasilPdfKoordinator";
-import TandaTanganKoordinator from "./components/Koordinator/TandaTanganKoordinator"; 
-import ManajemenPembayaran from "./components/Koordinator/ManajemenPembayaran";
-import LaporanKoordinator from "./components/Koordinator/LaporanKoordinator";
-import ManajemenAkun from "./components/Koordinator/ManajemenRole";
-import ProfileAkunKoordinator from "./components/Koordinator/ProfileAkunKoordinator";
-import EditProfileKoordinator from "./components/Koordinator/EditProfileKoordinator";
+import DashboardKoordinator from "./pages/Koordinator/DashboardKoordinator";
+import VerifikasiSampelKoordinator from "./pages/Koordinator/VerifikasiSampelKoordinator";
+import LihatHasilPdfKoordinator from "./pages/Koordinator/LihatHasilPdfKoordinator";
+import TandaTanganKoordinator from "./pages/Koordinator/TandaTanganKoordinator";
+import ManajemenPembayaran from "./pages/Koordinator/ManajemenPembayaran";
+import LaporanKoordinator from "./pages/Koordinator/LaporanKoordinator";
+import ManajemenAkun from "./pages/Koordinator/ManajemenRole";
+import ProfileAkunKoordinator from "./pages/Koordinator/ProfileAkunKoordinator";
+import EditProfileKoordinator from "./pages/Koordinator/EditProfileKoordinator";
 
 // --- IMPORT FITUR DASHBOARD Kepala ---
-import LaporanKepala from "./components/Kepala/LaporanKepala";
-import DashboardKepala from "./components/Kepala/DashboardKepala";
-import VerifikasiKepala from "./components/Kepala/VerifikasiKepala";
-import LihatHasilPdfKepala from "./components/Kepala/LihatHasilPdfKepala";
-import ProfileAkunKepala from "./components/Kepala/ProfileAkunKepala";
-import EditProfileKepala from "./components/Kepala/EditProfileKepala";
+import LaporanKepala from "./pages/Kepala/LaporanKepala";
+import DashboardKepala from "./pages/Kepala/DashboardKepala";
+import VerifikasiKepala from "./pages/Kepala/VerifikasiKepala";
+import LihatHasilPdfKepala from "./pages/Kepala/LihatHasilPdfKepala";
+import ProfileAkunKepala from "./pages/Kepala/ProfileAkunKepala";
+import EditProfileKepala from "./pages/Kepala/EditProfileKepala";
 
 // ====================================================================
 // 1. Layout dengan Navbar (Untuk Landing Page - PUBLIK)
@@ -88,7 +88,7 @@ function AppLayoutWithoutNavbar() {
   return (
     <Switch>
       {/* Alias route untuk /teknisi/dashboard/riwayat agar menampilkan RiwayatAnalisisTeknisi */}
-      <PrivateRoute path="/teknisi/dashboard/riwayat" component={require("./components/Teknisi/RiwayatAnalisisTeknisi").default} allowedRoles={["teknisi"]} />
+      <PrivateRoute path="/teknisi/dashboard/riwayat" component={require("./pages/Teknisi/RiwayatAnalisisTeknisi").default} allowedRoles={["teknisi"]} />
       {/* --- HALAMAN AKSES PUBLIK (Login/Register) --- */}
       {/* Tetap Route biasa, karena user belum login di sini */}
       <Route path="/login" component={LoginPage} />
@@ -127,7 +127,7 @@ function AppLayoutWithoutNavbar() {
       <PrivateRoute path="/teknisi/dashboard/profile/edit" component={EditProfileTeknisi} allowedRoles={["teknisi"]} />
       <PrivateRoute path="/teknisi/dashboard/profile" component={ProfileAkunTeknisi} allowedRoles={["teknisi"]} />
       {/* Route baru untuk Riwayat Analisis Teknisi */}
-      <PrivateRoute path="/teknisi/dashboard/riwayat-analisis" component={require("./components/Teknisi/RiwayatAnalisisTeknisi").default} allowedRoles={["teknisi"]} />
+      <PrivateRoute path="/teknisi/dashboard/riwayat-analisis" component={require("./pages/Teknisi/RiwayatAnalisisTeknisi").default} allowedRoles={["teknisi"]} />
       <PrivateRoute path="/teknisi/dashboard" component={DashboardTeknisi} allowedRoles={["teknisi"]} />
 
       {/* 4. Klien / Umum (Hanya role 'klien' yang boleh masuk) */}
