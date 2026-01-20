@@ -2,11 +2,15 @@ import React, { useEffect, useState } from "react";
 import { Table, Button, Spinner, Card, Badge, Container, Row, Col, Modal, Form } from "react-bootstrap";
 import { useHistory } from "react-router-dom";
 import NavbarLoginKepala from "./NavbarLoginKepala";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import { getAllBookings, updateBookingStatus } from "../../services/BookingService";
 import CustomPopup from "../../components/Common/CustomPopup";
 
 const VerifikasiKepala = () => {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Verifikasi Kepala";
+  }, []);
+
   const history = useHistory();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);

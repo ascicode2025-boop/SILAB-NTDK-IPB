@@ -1,13 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Form, Button, InputGroup } from "react-bootstrap";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
 import axios from "axios";
-import "../../css/RegisterPage.css";
+import "../css/RegisterPage.css";
 
 const API_URL = process.env.REACT_APP_API_BASE_URL;
 
 function RegisterPage() {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Daftar";
+  }, []);
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -57,15 +61,9 @@ function RegisterPage() {
       const errors = err.response?.data?.errors || {};
       const message = err.response?.data?.message || "";
 
-      if (
-        errors.email?.includes("The email has already been taken.") ||
-        message.includes("email")
-      ) {
+      if (errors.email?.includes("The email has already been taken.") || message.includes("email")) {
         setError("Email sudah terdaftar, silakan login.");
-      } else if (
-        errors.name?.includes("The name has already been taken.") ||
-        message.includes("username")
-      ) {
+      } else if (errors.name?.includes("The name has already been taken.") || message.includes("username")) {
         setError("Username sudah digunakan, silakan pilih username lain.");
       } else if (Object.keys(errors).length > 0) {
         const allErrors = Object.values(errors).flat().join(" ");
@@ -97,18 +95,10 @@ function RegisterPage() {
         }}
       >
         {/* Logo */}
-        <img
-          src="/asset/gambarLogo.png"
-          alt="IPB University"
-          className="login-logo mb-4"
-          style={{ width: "200px", maxWidth: "80%" }}
-        />
+        <img src="/asset/gambarLogo.png" alt="IPB University" className="login-logo mb-4" style={{ width: "200px", maxWidth: "80%" }} />
 
         {/* Judul */}
-        <h5
-          className="login-title fw-semibold mb-3"
-          style={{ fontSize: "14px", color: "#8D6E63" }}
-        >
+        <h5 className="login-title fw-semibold mb-3" style={{ fontSize: "14px", color: "#8D6E63" }}>
           Sistem Informasi Laboratorium Nutrisi Ternak Daging dan Kerja
         </h5>
 
@@ -148,87 +138,45 @@ function RegisterPage() {
         <Form onSubmit={handleSubmit}>
           <Form.Group className="mb-3 text-start">
             <Form.Label className="fw-medium">Username</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="Masukkan username"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              style={{ borderRadius: "8px", padding: "10px" }}
-            />
+            <Form.Control type="text" placeholder="Masukkan username" name="name" value={formData.name} onChange={handleChange} required style={{ borderRadius: "8px", padding: "10px" }} />
           </Form.Group>
 
           <Form.Group className="mb-3 text-start">
             <Form.Label className="fw-medium">Email</Form.Label>
-            <Form.Control
-              type="email"
-              placeholder="Masukkan email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              style={{ borderRadius: "8px", padding: "10px" }}
-            />
+            <Form.Control type="email" placeholder="Masukkan email" name="email" value={formData.email} onChange={handleChange} required style={{ borderRadius: "8px", padding: "10px" }} />
           </Form.Group>
 
-         <Form.Group className="mb-3 text-start">
-          <Form.Label className="fw-medium">Institusi</Form.Label>
-              <Form.Select
-                  name="institusi"
-                   value={formData.institusi}
-                  onChange={handleChange}
-                 required
-                style={{ borderRadius: "8px", padding: "10px" }}
->
-                  <option value="" disabled>-- Pilih Jenis Institusi --</option>
+          <Form.Group className="mb-3 text-start">
+            <Form.Label className="fw-medium">Institusi</Form.Label>
+            <Form.Select name="institusi" value={formData.institusi} onChange={handleChange} required style={{ borderRadius: "8px", padding: "10px" }}>
+              <option value="" disabled>
+                -- Pilih Jenis Institusi --
+              </option>
 
-                {/* GROUP EKSTERNAL */}
-                  <optgroup label="Eksternal">
-                  <option value="Umum">Umum / Instansi Luar</option>
-                  </optgroup>
+              {/* GROUP EKSTERNAL */}
+              <optgroup label="Eksternal">
+                <option value="Umum">Umum / Instansi Luar</option>
+              </optgroup>
 
-                 {/* GROUP INTERNAL IPB */}
-                   <optgroup label="Internal IPB">
-                    <option value="Mahasiswa IPB">Mahasiswa IPB</option>
-                    <option value="Dosen IPB">Dosen IPB</option>
-                    <option value="Tendik IPB">Tendik IPB</option>
-                    </optgroup>
-
-</Form.Select>
-</Form.Group>
+              {/* GROUP INTERNAL IPB */}
+              <optgroup label="Internal IPB">
+                <option value="Mahasiswa IPB">Mahasiswa IPB</option>
+                <option value="Dosen IPB">Dosen IPB</option>
+                <option value="Tendik IPB">Tendik IPB</option>
+              </optgroup>
+            </Form.Select>
+          </Form.Group>
 
           <Form.Group className="mb-3 text-start">
             <Form.Label className="fw-medium">Nomor Telpon</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="Masukkan nomor telpon"
-              name="nomor_telpon"
-              value={formData.nomor_telpon}
-              onChange={handleChange}
-              required
-              style={{ borderRadius: "8px", padding: "10px" }}
-            />
+            <Form.Control type="text" placeholder="Masukkan nomor telpon" name="nomor_telpon" value={formData.nomor_telpon} onChange={handleChange} required style={{ borderRadius: "8px", padding: "10px" }} />
           </Form.Group>
 
           <Form.Group className="mb-4 text-start">
             <Form.Label className="fw-medium">Password</Form.Label>
             <InputGroup>
-              <Form.Control
-                type={showPassword ? "text" : "password"}
-                placeholder="Masukkan password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                style={{ borderRadius: "8px", padding: "10px" }}
-              />
-              <Button
-                variant="light"
-                onClick={() => setShowPassword(!showPassword)}
-                className="border"
-                style={{ borderRadius: "0 8px 8px 0" }}
-              >
+              <Form.Control type={showPassword ? "text" : "password"} placeholder="Masukkan password" name="password" value={formData.password} onChange={handleChange} required style={{ borderRadius: "8px", padding: "10px" }} />
+              <Button variant="light" onClick={() => setShowPassword(!showPassword)} className="border" style={{ borderRadius: "0 8px 8px 0" }}>
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </Button>
             </InputGroup>
@@ -246,14 +194,7 @@ function RegisterPage() {
                 required
                 style={{ borderRadius: "8px", padding: "10px" }}
               />
-              <Button
-                variant="light"
-                onClick={() =>
-                  setShowConfirmPassword(!showConfirmPassword)
-                }
-                className="border"
-                style={{ borderRadius: "0 8px 8px 0" }}
-              >
+              <Button variant="light" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="border" style={{ borderRadius: "0 8px 8px 0" }}>
                 {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
               </Button>
             </InputGroup>
@@ -272,12 +213,8 @@ function RegisterPage() {
               borderRadius: "8px",
               transition: "all 0.3s",
             }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.filter = "brightness(1.1)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.filter = "brightness(1)")
-            }
+            onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(1.1)")}
+            onMouseLeave={(e) => (e.currentTarget.style.filter = "brightness(1)")}
           >
             {loading ? "Mendaftar..." : "Register"}
           </Button>

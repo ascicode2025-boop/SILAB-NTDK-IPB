@@ -4,6 +4,10 @@ import "../css/Galeri.css";
 import Footer from "./Footer";
 
 function Galeri() {
+  React.useEffect(() => {
+    document.title = "SILAB-NTDK - Galeri";
+  }, []);
+
   const images = [
     { src: "/asset/Galeri_Landing_Page/galeriLandingPage1.png", text: "Laboratorium modern dengan teknologi terbaru" },
     { src: "/asset/Galeri_Landing_Page/galeriLandingPage6.png", text: "Proses analisis sampel yang cepat dan akurat" },

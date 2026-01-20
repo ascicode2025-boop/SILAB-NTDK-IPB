@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import NavbarLogin from "./NavbarLoginKlien";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import "../../css/ProsesAnalisis.css";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import { getUserBookings } from "../../services/BookingService";
@@ -71,6 +71,10 @@ const getStatusBadge = (status) => {
 };
 
 const ProsesAnalisis = () => {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Proses Analisis";
+  }, []);
+
   const [bookingList, setBookingList] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [currentStep, setCurrentStep] = useState(0);
@@ -204,7 +208,7 @@ const ProsesAnalisis = () => {
   };
 
   const renderList = () => (
-    <div className="container" style={{ maxWidth: "800px", marginTop: "-3rem" }}>
+    <div className="container" style={{ maxWidth: "800px", marginTop: "2rem" }}>
       <div className="row g-3">
         {bookingList.map((item) => {
           const hasPaid = item.is_paid || item.paid || item.paid_at || (item.invoice && (item.invoice.status || "").toLowerCase().includes("paid")) || false;
@@ -212,43 +216,43 @@ const ProsesAnalisis = () => {
           const isFinished = hasPaid && hasPdf;
           // Default: tampilkan kartu aktif
           return (
-              <div key={item.id} className="col-12">
-                <div
-                  className="card border-0 shadow-sm transition-all hover-card-modern"
-                  style={{
-                    cursor: "pointer",
-                    borderRadius: "12px",
-                    borderLeft: `5px solid ${item.status.toLowerCase() === "proses" ? "#0dcaf0" : "#0d6efd"}`,
-                  }}
-                  onClick={() => refreshBooking(item.id)}
-                >
-                  <div className="card-body p-3">
-                    <div className="d-flex justify-content-between align-items-center">
-                      <div className="d-flex align-items-center">
-                        <div className="bg-light rounded-3 p-2 me-3 d-none d-sm-block">
-                          <i className="bi bi-flask text-primary" style={{ fontSize: "1.2rem" }}></i>
-                        </div>
-                        <div>
-                          <h6 className="fw-bold mb-1 text-dark">{item.kode_batch || "-"}</h6>
-                          <div className="text-muted small">
-                            <i className="bi bi-calendar-event me-1"></i> {dayjs(item.tanggal_kirim).format("DD MMM YYYY")}
-                            <span className="mx-2">|</span>
-                            <i className="bi bi-gear me-1"></i> {item.jenis_analisis}
-                          </div>
+            <div key={item.id} className="col-12">
+              <div
+                className="card border-0 shadow-sm transition-all hover-card-modern"
+                style={{
+                  cursor: "pointer",
+                  borderRadius: "12px",
+                  borderLeft: `5px solid ${item.status.toLowerCase() === "proses" ? "#0dcaf0" : "#0d6efd"}`,
+                }}
+                onClick={() => refreshBooking(item.id)}
+              >
+                <div className="card-body p-3">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div className="d-flex align-items-center">
+                      <div className="bg-light rounded-3 p-2 me-3 d-none d-sm-block">
+                        <i className="bi bi-flask text-primary" style={{ fontSize: "1.2rem" }}></i>
+                      </div>
+                      <div>
+                        <h6 className="fw-bold mb-1 text-dark">{item.kode_batch || "-"}</h6>
+                        <div className="text-muted small">
+                          <i className="bi bi-calendar-event me-1"></i> {dayjs(item.tanggal_kirim).format("DD MMM YYYY")}
+                          <span className="mx-2">|</span>
+                          <i className="bi bi-gear me-1"></i> {item.jenis_analisis}
                         </div>
                       </div>
-                      <div className="text-end">
-                        <span className={`badge ${isFinished ? "bg-success" : getStatusBadge(item.status)} px-3 py-2 rounded-pill shadow-sm`} style={{ fontSize: "0.75rem" }}>
-                          {isFinished ? "Selesai" : formatStatus(item.status)}
-                        </span>
-                        <div className="text-primary mt-1 d-none d-md-block" style={{ fontSize: "0.7rem", fontWeight: "600" }}>
-                          Lihat Progress <i className="bi bi-chevron-right small"></i>
-                        </div>
+                    </div>
+                    <div className="text-end">
+                      <span className={`badge ${isFinished ? "bg-success" : getStatusBadge(item.status)} px-3 py-2 rounded-pill shadow-sm`} style={{ fontSize: "0.75rem" }}>
+                        {isFinished ? "Selesai" : formatStatus(item.status)}
+                      </span>
+                      <div className="text-primary mt-1 d-none d-md-block" style={{ fontSize: "0.7rem", fontWeight: "600" }}>
+                        Lihat Progress <i className="bi bi-chevron-right small"></i>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
           );
         })}
       </div>
@@ -265,7 +269,7 @@ const ProsesAnalisis = () => {
     const canViewResult = isPaid && isVerified;
 
     return (
-      <div className="fade-in" style={{ marginTop: "-6rem" }}>
+      <div className="fade-in" style={{ marginTop: "1rem" }}>
         <button className="btn btn-outline-secondary btn-sm mb-4" onClick={() => setSelectedBooking(null)}>
           <i className="bi bi-arrow-left me-2" /> Kembali ke Daftar
         </button>

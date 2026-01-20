@@ -7,7 +7,7 @@ import "dayjs/locale/id";
 import updateLocale from "dayjs/plugin/updateLocale";
 import "antd/dist/reset.css";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import "../../css/AturTanggalTeknisi.css";
 
 // IMPORT SERVICE API
@@ -22,6 +22,10 @@ dayjs.updateLocale("id", {
 dayjs.locale("id");
 
 export default function AturTanggalTeknisi() {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Atur Tanggal Teknisi";
+  }, []);
+
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [viewDate, setViewDate] = useState(dayjs());
   const [category, setCategory] = useState("metabolit");
@@ -121,10 +125,7 @@ export default function AturTanggalTeknisi() {
 
             {/* Container Kalender dengan Efek Blur */}
             <div style={{ position: "relative" }}>
-              <div 
-                className="calendar-wrapper mt-1" 
-                style={loading ? { filter: "blur(2px)", pointerEvents: "none" } : {}}
-              >
+              <div className="calendar-wrapper mt-1" style={loading ? { filter: "blur(2px)", pointerEvents: "none" } : {}}>
                 <Calendar
                   fullscreen={true}
                   value={viewDate}
@@ -221,11 +222,7 @@ export default function AturTanggalTeknisi() {
                           <>
                             {isFull && <div className="full-badge">PENUH</div>}
                             {!isAvailable && !isFull && <div className="tutup-badge">TUTUP</div>}
-                            {isAvailable && !isFull && (
-                              <div className="quota-badge">
-                                {isUnlimitedService(category) ? "Tersedia" : `Sisa: ${remaining}`}
-                              </div>
-                            )}
+                            {isAvailable && !isFull && <div className="quota-badge">{isUnlimitedService(category) ? "Tersedia" : `Sisa: ${remaining}`}</div>}
                           </>
                         )}
                       </div>
@@ -265,56 +262,37 @@ export default function AturTanggalTeknisi() {
 
           {/* Bagian Input Kuota (Tetap Ada) */}
           <div className="w-full max-w-6xl quota-container mt-8 bg-white shadow-lg rounded-2xl p-8 mb-10 border border-gray-200">
-             <h2 className="text-center font-bold text-xl mb-6 text-gray-800">Atur Kuota Harian</h2>
-             {/* ... Form input Anda tetap sama seperti sebelumnya ... */}
-             <div className="quota-form grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Tanggal</label>
-                  <DatePicker
-                    disabled={applyAll}
-                    value={selectedDate}
-                    disabledDate={(c) => c && c < dayjs().endOf("day").subtract(1, "day")}
-                    onChange={(d) => d && (setSelectedDate(d), setViewDate(d))}
-                    format="DD/MM/YYYY"
-                    allowClear={false}
-                    className="w-full p-2 border rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Jumlah Kuota</label>
-                  <input 
-                    type="number" 
-                    min="0" 
-                    className="w-full p-2 border rounded-lg" 
-                    placeholder={isUnlimitedService(formCategory) ? "999 (Tersedia)" : "30 (Default)"} 
-                    value={kuota} 
-                    onChange={(e) => setKuota(e.target.value)} 
-                  />
-                </div>
-                {/* Sisanya sesuaikan dengan preferensi UI Anda */}
-             </div>
-             <div className="mt-6 flex flex-col items-center">
-                <Button 
-                  type="primary" 
-                  size="large" 
-                  className="bg-blue-600 w-full md:w-64" 
-                  onClick={handleSaveKuota}
-                  loading={loading}
-                >
-                  Simpan Kuota
-                </Button>
-             </div>
+            <h2 className="text-center font-bold text-xl mb-6 text-gray-800">Atur Kuota Harian</h2>
+            {/* ... Form input Anda tetap sama seperti sebelumnya ... */}
+            <div className="quota-form grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Tanggal</label>
+                <DatePicker
+                  disabled={applyAll}
+                  value={selectedDate}
+                  disabledDate={(c) => c && c < dayjs().endOf("day").subtract(1, "day")}
+                  onChange={(d) => d && (setSelectedDate(d), setViewDate(d))}
+                  format="DD/MM/YYYY"
+                  allowClear={false}
+                  className="w-full p-2 border rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Jumlah Kuota</label>
+                <input type="number" min="0" className="w-full p-2 border rounded-lg" placeholder={isUnlimitedService(formCategory) ? "999 (Tersedia)" : "30 (Default)"} value={kuota} onChange={(e) => setKuota(e.target.value)} />
+              </div>
+              {/* Sisanya sesuaikan dengan preferensi UI Anda */}
+            </div>
+            <div className="mt-6 flex flex-col items-center">
+              <Button type="primary" size="large" className="bg-blue-600 w-full md:w-64" onClick={handleSaveKuota} loading={loading}>
+                Simpan Kuota
+              </Button>
+            </div>
           </div>
           <FooterSetelahLogin />
         </div>
 
-        <Modal
-          title={modalIsError ? "Terjadi Kesalahan" : modalTitle || "Berhasil"}
-          open={modalOpen}
-          onOk={() => setModalOpen(false)}
-          onCancel={() => setModalOpen(false)}
-          centered
-        >
+        <Modal title={modalIsError ? "Terjadi Kesalahan" : modalTitle || "Berhasil"} open={modalOpen} onOk={() => setModalOpen(false)} onCancel={() => setModalOpen(false)} centered>
           <p style={{ whiteSpace: "pre-wrap" }}>{modalContent}</p>
         </Modal>
       </ConfigProvider>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import NavbarLogin from "./NavbarLoginKlien";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import "../../css/MenungguPersetujuan.css";
 import { getUserBookings, cancelBooking } from "../../services/BookingService";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
@@ -11,6 +11,10 @@ import dayjs from "dayjs";
 import { Spin, message, Modal } from "antd";
 
 const MenungguPersetujuan = () => {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Menunggu Persetujuan";
+  }, []);
+
   const history = useHistory();
   const [bookingList, setBookingList] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -357,7 +361,7 @@ const MenungguPersetujuan = () => {
               <div className="mt-4">
                 <small className="text-muted">
                   Butuh bantuan?{" "}
-                  <a href="#" className="text-decoration-none" style={{ color: "#8D6E63" }}>
+                  <a href="#" className="text-decoration-none" style={{ color: "#8D6E63" }} onClick={() => (window.location.href = "/dashboard/panduanSampelKlien")}>
                     Baca panduan layanan
                   </a>
                 </small>

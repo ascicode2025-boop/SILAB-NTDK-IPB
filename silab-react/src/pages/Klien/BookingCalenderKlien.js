@@ -8,7 +8,7 @@ import "dayjs/locale/id";
 import updateLocale from "dayjs/plugin/updateLocale";
 import "antd/dist/reset.css";
 import NavbarLoginKlien from "./NavbarLoginKlien";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import "../../css/BookingCalenderKlien.css";
 
 import { getMonthlyQuota } from "../../services/QuotaService";
@@ -22,6 +22,10 @@ dayjs.updateLocale("id", {
 dayjs.locale("id");
 
 export default function BookingCalenderKlien() {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Kalender Pemesanan";
+  }, []);
+
   const location = useLocation();
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [viewDate, setViewDate] = useState(dayjs());
@@ -68,7 +72,7 @@ export default function BookingCalenderKlien() {
         setLoading(false);
       }
     },
-    [viewDate, category, cache]
+    [viewDate, category, cache],
   );
 
   useEffect(() => {

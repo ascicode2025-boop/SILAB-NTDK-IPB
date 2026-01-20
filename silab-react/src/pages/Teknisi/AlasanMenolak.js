@@ -1,16 +1,18 @@
-
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import { Modal } from "react-bootstrap";
-import { useHistory, useLocation } from "react-router-dom"; 
-import { updateBookingStatus } from "../../services/BookingService"; 
+import { useHistory, useLocation } from "react-router-dom";
+import { updateBookingStatus } from "../../services/BookingService";
 
 export default function AlasanMenolak() {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Alasan Menolak";
+  }, []);
+
   const history = useHistory();
   const location = useLocation();
-
 
   // 1. AMBIL DATA (TERMASUK NO TELPON, KODE BATCH, KODE SAMPEL ARRAY)
   const { bookingId, kodeSampel, kodeBatch, sampleCodes, namaKlien, nomorTelpon } = location.state || {};
@@ -67,9 +69,9 @@ export default function AlasanMenolak() {
 
   const handleSaveClick = () => {
     if (!alasan.trim()) {
-      setShowEmptyModal(true); 
+      setShowEmptyModal(true);
     } else {
-      setShowConfirmModal(true); 
+      setShowConfirmModal(true);
     }
   };
 
@@ -79,7 +81,7 @@ export default function AlasanMenolak() {
       // Update status dengan lowercase dan kirim alasan
       await updateBookingStatus(bookingId, {
         status: "ditolak",
-        alasan_penolakan: alasan
+        alasan_penolakan: alasan,
       });
       setShowConfirmModal(false);
       setShowSuccessModal(true); // Tampilkan modal sukses + Tombol WA
@@ -97,7 +99,6 @@ export default function AlasanMenolak() {
     history.push("/teknisi/dashboard/verifikasiSampel");
   };
 
-
   // Fallback for kodeBatch and sampleCodes if not passed (for backward compatibility)
   const kodeBatchDisplay = kodeBatch || "-";
   let sampleCodeList = [];
@@ -114,17 +115,18 @@ export default function AlasanMenolak() {
     }
   }
 
-  if (!bookingId) return null; 
+  if (!bookingId) return null;
 
   return (
     <NavbarLoginTeknisi>
-
       <div className="min-h-screen bg-[#eee9e6] font-poppins container py-5 justify-content-center d-flex">
         <div className="card shadow-lg p-0" style={{ width: "650px", borderRadius: "25px" }}>
           {/* Header: Kode Batch as Title */}
           <div className="card-header text-center text-white" style={{ background: "#4b3a34", borderTopLeftRadius: "25px", borderTopRightRadius: "25px" }}>
             <div className="d-flex flex-column align-items-center gap-1">
-              <span className="badge bg-primary bg-opacity-10 text-primary fw-bold px-4 py-2 rounded-pill shadow-sm mb-2" style={{ fontSize: '1.2rem', letterSpacing: '1px' }}>{kodeBatchDisplay}</span>
+              <span className="badge bg-primary bg-opacity-10 text-primary fw-bold px-4 py-2 rounded-pill shadow-sm mb-2" style={{ fontSize: "1.2rem", letterSpacing: "1px" }}>
+                {kodeBatchDisplay}
+              </span>
               <h5 className="m-0">Alasan Penolakan Sampel</h5>
               <p className="m-0 small opacity-75">Klien: {namaKlien}</p>
             </div>
@@ -135,9 +137,15 @@ export default function AlasanMenolak() {
             <div className="mb-3">
               <div className="text-muted small text-uppercase fw-bold mb-1">Daftar Kode Sampel</div>
               <div className="d-flex flex-wrap gap-2">
-                {sampleCodeList.length > 0 ? sampleCodeList.map((code, idx) => (
-                  <span key={idx} className="badge bg-light text-dark border fw-normal">{code}</span>
-                )) : <span className="text-muted fst-italic">Tidak ada kode sampel</span>}
+                {sampleCodeList.length > 0 ? (
+                  sampleCodeList.map((code, idx) => (
+                    <span key={idx} className="badge bg-light text-dark border fw-normal">
+                      {code}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-muted fst-italic">Tidak ada kode sampel</span>
+                )}
               </div>
             </div>
             <textarea
@@ -173,20 +181,28 @@ export default function AlasanMenolak() {
           <div className="popup-icon error">✖</div>
           <div className="popup-title">Alasan Kosong</div>
           <div className="popup-message">Wajib diisi agar klien tahu penyebab penolakan.</div>
-          <button className="popup-button" onClick={() => setShowEmptyModal(false)}>Tutup</button>
+          <button className="popup-button" onClick={() => setShowEmptyModal(false)}>
+            Tutup
+          </button>
         </div>
       </Modal>
 
       {/* 2. Modal Konfirmasi */}
       <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered dialogClassName="custom-popup">
         <div className="popup-body">
-          <div className="popup-icon" style={{ background: "#6c5b4c" }}>?</div>
+          <div className="popup-icon" style={{ background: "#6c5b4c" }}>
+            ?
+          </div>
           <div className="popup-title">Konfirmasi Penolakan</div>
           <div className="popup-message">Yakin ingin menolak sampel ini?</div>
           <div className="p-3 mb-3 rounded bg-light border text-start fst-italic">"{alasan}"</div>
           <div className="d-flex justify-content-center gap-3">
-            <button className="popup-button bg-secondary" onClick={() => setShowConfirmModal(false)} disabled={isProcessing}>Batal</button>
-            <button className="popup-button" onClick={handleConfirm} disabled={isProcessing}>{isProcessing ? "Menyimpan..." : "Ya, Tolak"}</button>
+            <button className="popup-button bg-secondary" onClick={() => setShowConfirmModal(false)} disabled={isProcessing}>
+              Batal
+            </button>
+            <button className="popup-button" onClick={handleConfirm} disabled={isProcessing}>
+              {isProcessing ? "Menyimpan..." : "Ya, Tolak"}
+            </button>
           </div>
         </div>
       </Modal>
@@ -197,23 +213,19 @@ export default function AlasanMenolak() {
           <div className="popup-icon success">✔</div>
           <div className="popup-title">Berhasil Ditolak</div>
           <div className="popup-message">Status diperbarui. Beritahu klien via WhatsApp?</div>
-          
+
           <div className="d-flex flex-column gap-2 mt-4">
             {/* Tombol WA */}
             {nomorTelpon ? (
-                <button 
-                    className="btn text-white fw-bold py-2" 
-                    style={{background: "#25D366", borderRadius: "12px"}}
-                    onClick={handleWAConfirmation}
-                >
-                    <i className="bi bi-whatsapp me-2"></i> Kirim Alasan ke WA
-                </button>
+              <button className="btn text-white fw-bold py-2" style={{ background: "#25D366", borderRadius: "12px" }} onClick={handleWAConfirmation}>
+                <i className="bi bi-whatsapp me-2"></i> Kirim Alasan ke WA
+              </button>
             ) : (
-                <div className="alert alert-warning py-1 small">No. HP Klien tidak tersedia.</div>
+              <div className="alert alert-warning py-1 small">No. HP Klien tidak tersedia.</div>
             )}
 
-            <button className="btn btn-outline-secondary py-2" style={{borderRadius: "12px"}} onClick={handleCloseSuccess}>
-                Kembali ke Tabel
+            <button className="btn btn-outline-secondary py-2" style={{ borderRadius: "12px" }} onClick={handleCloseSuccess}>
+              Kembali ke Tabel
             </button>
           </div>
         </div>
@@ -225,7 +237,9 @@ export default function AlasanMenolak() {
           <div className="popup-icon error">!</div>
           <div className="popup-title">Gagal</div>
           <div className="popup-message">Terjadi kesalahan koneksi.</div>
-          <button className="popup-button" onClick={() => setShowErrorModal(false)}>Tutup</button>
+          <button className="popup-button" onClick={() => setShowErrorModal(false)}>
+            Tutup
+          </button>
         </div>
       </Modal>
 

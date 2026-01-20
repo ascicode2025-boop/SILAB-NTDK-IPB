@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from "react";
+import { useHistory } from "react-router-dom";
 import NavbarLoginKlien from "./NavbarLoginKlien";
 import "@fontsource/poppins";
 import { getUser } from "../../services/AuthService";
 import { getUserBookings } from "../../services/BookingService";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 
 function Dashboard() {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Dashboard Klien";
+  }, []);
+
+  const history = useHistory();
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ total: 0, inProgress: 0, completed: 0 });
@@ -32,16 +38,12 @@ function Dashboard() {
         const res = await getUserBookings();
         const data = Array.isArray(res) ? res : res?.data || [];
 
-        const valid = data.filter(
-          (b) => !["ditolak", "dibatalkan"].includes((b.status || "").toLowerCase())
-        );
+        const valid = data.filter((b) => !["ditolak", "dibatalkan"].includes((b.status || "").toLowerCase()));
 
         setStats({
           total: valid.length,
-          inProgress: valid.filter((b) => ((b.status || "").toLowerCase() === "proses")).length,
-          completed: valid.filter((b) =>
-            ["selesai", "ditandatangani"].includes((b.status || "").toLowerCase())
-          ).length,
+          inProgress: valid.filter((b) => (b.status || "").toLowerCase() === "proses").length,
+          completed: valid.filter((b) => ["selesai", "ditandatangani"].includes((b.status || "").toLowerCase())).length,
         });
       } catch (e) {
         console.error(e);
@@ -144,6 +146,7 @@ function Dashboard() {
                 }}
                 onMouseEnter={(e) => (e.target.style.background = colors.accent)}
                 onMouseLeave={(e) => (e.target.style.background = colors.primary)}
+                onClick={() => (window.location.href = "/dashboard/pemesananSampelKlien")}
               >
                 + Buat Pesanan Baru
               </button>
@@ -164,25 +167,59 @@ function Dashboard() {
                 Alur Pemesanan Analisis
               </h5>
 
-              <Step
-                number="01"
-                title="Isi Formulir Pemesanan"
-                desc="Lengkapi data sampel melalui tombol Buat Pemesanan Baru."
-              />
-              <Step
-                number="02"
-                title="Kirim Sampel ke Laboratorium"
-                desc="Kirim sampel fisik beserta kode pendaftaran."
-              />
-              <Step
-                number="03"
-                title="Pantau & Unduh Hasil"
-                desc="Hasil tersedia setelah pengujian selesai."
-              />
+              <Step number="01" title="Isi Formulir Pemesanan" desc="Lengkapi data sampel melalui tombol Buat Pemesanan Baru." />
+              <Step number="02" title="Kirim Sampel ke Laboratorium" desc="Kirim sampel fisik beserta kode pendaftaran." />
+              <Step number="03" title="Pantau & Unduh Hasil" desc="Hasil tersedia setelah pengujian selesai." />
             </div>
           </div>
         </div>
       </div>
+
+      <div
+        onClick={() => window.open("https://wa.me/6282111485562?text=Halo%2C%20saya%20ingin%20bertanya%20tentang%20layanan%20laboratorium", "_blank")}
+        style={{
+          position: "fixed",
+          bottom: "30px",
+          right: "30px",
+          width: "70px",
+          height: "70px",
+          borderRadius: "50%",
+          color: "#fff",
+          fontSize: "32px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          boxShadow: "0 6px 20px rgba(141, 110, 99, 0.35)",
+          transition: "all 0.3s ease",
+          zIndex: 999,
+          border: "none",
+        }}
+        title="Hubungi Kami via WhatsApp"
+      >
+        ❓
+      </div>
+
+      <style>{`
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-15px);
+          }
+        }
+        
+        @media (max-width: 768px) {
+          .floating-faq {
+            bottom: 20px !important;
+            right: 20px !important;
+            width: 60px !important;
+            height: 60px !important;
+            font-size: 28px !important;
+          }
+        }
+      `}</style>
       <FooterSetelahLogin />
     </NavbarLoginKlien>
   );

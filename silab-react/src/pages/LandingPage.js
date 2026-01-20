@@ -16,6 +16,7 @@ function LandingPage() {
 
   // Tes koneksi API
   useEffect(() => {
+    document.title = "SILAB-NTDK - Beranda";
     if (!API_URL) {
       console.error("PERHATIAN: REACT_APP_API_BASE_URL belum diatur di file .env.local");
     } else {
@@ -35,39 +36,40 @@ function LandingPage() {
   };
 
   const images = [
-  {
-    src: "/asset/Galeri_Landing_Page/galeriLandingPage1.png",
-    text: "Laboratorium modern dengan teknologi terbaru"
-  },
-  {
-    src: "/asset/Galeri_Landing_Page/galeriLandingPage6.png",
-    text: "Proses analisis sampel yang cepat dan akurat"
-  },
-  {
-    src: "/asset/Galeri_Landing_Page/galeriLandingPage2.png",
-    text: "Layanan pemeriksaan lengkap untuk berbagai kebutuhan"
-  },
-  {
-    src: "/asset/Galeri_Landing_Page/galeriLandingPage3.png",
-    text: "Tenaga ahli profesional dan berpengalaman"
-  },
-  {
-    src: "/asset/Galeri_Landing_Page/galeriLandingPage5.png",
-    text: "Standar kualitas internasional dalam setiap pengujian"
-  },
-  {
-    src: "/asset/Galeri_Landing_Page/galeriLandingPage4.png",
-    text: "Fasilitas laboratorium yang nyaman dan aman"
-  },
-];
+    {
+      src: "/asset/Galeri_Landing_Page/galeriLandingPage1.png",
+      text: "Laboratorium modern dengan teknologi terbaru",
+    },
+    {
+      src: "/asset/Galeri_Landing_Page/galeriLandingPage6.png",
+      text: "Proses analisis sampel yang cepat dan akurat",
+    },
+    {
+      src: "/asset/Galeri_Landing_Page/galeriLandingPage2.png",
+      text: "Layanan pemeriksaan lengkap untuk berbagai kebutuhan",
+    },
+    {
+      src: "/asset/Galeri_Landing_Page/galeriLandingPage3.png",
+      text: "Tenaga ahli profesional dan berpengalaman",
+    },
+    {
+      src: "/asset/Galeri_Landing_Page/galeriLandingPage5.png",
+      text: "Standar kualitas internasional dalam setiap pengujian",
+    },
+    {
+      src: "/asset/Galeri_Landing_Page/galeriLandingPage4.png",
+      text: "Fasilitas laboratorium yang nyaman dan aman",
+    },
+  ];
 
   // State untuk daftar harga analisis dari API
   const [daftarAnalisis, setDaftarAnalisis] = useState([]);
   useEffect(() => {
     if (API_URL) {
-      axios.get(`${API_URL}/analysis-prices`)
-        .then(res => setDaftarAnalisis(res.data))
-        .catch(err => console.error('Gagal mengambil daftar harga:', err));
+      axios
+        .get(`${API_URL}/analysis-prices`)
+        .then((res) => setDaftarAnalisis(res.data))
+        .catch((err) => console.error("Gagal mengambil daftar harga:", err));
     }
   }, []);
 
@@ -103,21 +105,11 @@ function LandingPage() {
           </h4>
         </div>
 
-        <section
-          id="galeriHeader"
-          className="gallery-section no-overflow"
-          style={{ backgroundColor: "#A6887D", padding: "3rem 0" }}
-        >
+        <section id="galeriHeader" className="gallery-section no-overflow" style={{ backgroundColor: "#A6887D", padding: "3rem 0" }}>
           <Container>
             <Row className="g-4">
               {images.map((item, idx) => (
-                <Col
-                  key={idx}
-                  md={4}
-                  sm={6}
-                  xs={12}
-                  className="d-flex justify-content-center"
-                >
+                <Col key={idx} md={4} sm={6} xs={12} className="d-flex justify-content-center">
                   <div className="gallery-image-wrapper text-center">
                     <Image
                       src={item.src}
@@ -149,8 +141,6 @@ function LandingPage() {
           </Container>
         </section>
 
-
-
         {/* ======================= ANALISIS ======================= */}
         <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
           <h4 className="text-center mb-5 gallery-title" style={{ marginTop: "6rem" }}>
@@ -161,15 +151,17 @@ function LandingPage() {
         <Container className="py-4">
           <Row className="g-4 justify-content-start">
             {daftarAnalisis.length === 0 ? (
-              <Col><div>Memuat daftar harga...</div></Col>
+              <Col>
+                <div>Memuat daftar harga...</div>
+              </Col>
             ) : (
               daftarAnalisis.slice(0, 4).map((item, idx) => (
                 <Col key={idx} xs={12} sm={6} md={4} lg={3}>
-                  <Card className="h-100 text-center shadow-sm daftarAnalisis-card" style={{backgroundColor: ""}}>
+                  <Card className="h-100 text-center shadow-sm daftarAnalisis-card" style={{ backgroundColor: "" }}>
                     <Card.Img variant="top" src="/asset/daftarAnalisis/Rectangle19.png" className="img-fluid" />
                     <Card.Body>
                       <Card.Title className="text-black">{item.jenis_analisis}</Card.Title>
-                      <Card.Text className="text-black">Rp. {item.harga.toLocaleString('id-ID')}</Card.Text>
+                      <Card.Text className="text-black">Rp. {item.harga.toLocaleString("id-ID")}</Card.Text>
                     </Card.Body>
                   </Card>
                 </Col>

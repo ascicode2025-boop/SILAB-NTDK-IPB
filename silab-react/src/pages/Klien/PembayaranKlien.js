@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from "react";
 import NavbarLogin from "./NavbarLoginKlien";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import { motion } from "framer-motion";
 import { Copy, Clock, CheckCircle, Wallet, Upload, RefreshCcw } from "lucide-react";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 const PembayaranKlien = () => {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Pembayaran";
+  }, []);
+
   const [detailBooking, setDetailBooking] = useState(null);
   const [data, setData] = useState({
     vaNumber: "02835230893",

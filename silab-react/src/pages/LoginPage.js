@@ -1,17 +1,21 @@
-import React, { useState } from "react";
-import CustomPopup from "../../components/Common/CustomPopup";
+import React, { useState, useEffect } from "react";
+import CustomPopup from "../components/Common/CustomPopup";
 import { Form, Button, InputGroup } from "react-bootstrap";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { Link, useHistory } from "react-router-dom";
 import axios from "axios";
-import { setSession } from "../../services/AuthService";
+import { setSession } from "../services/AuthService";
 import "../css/LoginPage.css";
 
 // URL API
 const API_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
 
 function LoginPage() {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Login";
+  }, []);
+
   const history = useHistory();
   const [showPassword, setShowPassword] = useState(false);
 

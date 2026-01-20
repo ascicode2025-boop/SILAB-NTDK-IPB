@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useHistory } from "react-router-dom";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import { getAllBookings, updateBookingStatus } from "../../services/BookingService";
 import { Button, Table, Tag, Card, Typography, Empty } from "antd";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
@@ -11,6 +11,10 @@ import "@fontsource/poppins";
 const { Title, Text } = Typography;
 
 function InputNilaiAnalisis() {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Input Nilai Analisis";
+  }, []);
+
   const [approvedSamples, setApprovedSamples] = useState([]);
   const [loading, setLoading] = useState(false);
   const history = useHistory();
@@ -32,16 +36,8 @@ function InputNilaiAnalisis() {
 
       // Filter status untuk input/edit: "proses", "selesai_di_analisis", "menunggu_verifikasi", "draft", "ditolak" dan status yang menunjukkan dikembalikan ke teknisi (dikirim_ke_teknisi)
       const approved = allBookings.filter((booking) => {
-        const status = (booking.status || '').toLowerCase();
-        return (
-          status === "proses" ||
-          status === "selesai_di_analisis" ||
-          status === "menunggu_verifikasi" ||
-          status === "draft" ||
-          status === "ditolak" ||
-          status === "dikirim_ke_teknisi" ||
-          status === "dikirim ke teknisi"
-        );
+        const status = (booking.status || "").toLowerCase();
+        return status === "proses" || status === "selesai_di_analisis" || status === "menunggu_verifikasi" || status === "draft" || status === "ditolak" || status === "dikirim_ke_teknisi" || status === "dikirim ke teknisi";
       });
       setApprovedSamples(approved);
     } catch (error) {
@@ -54,11 +50,11 @@ function InputNilaiAnalisis() {
   // Helper function untuk parse kode_sampel JSON
   const generateSampleCodes = (booking) => {
     if (!booking) return [];
-    
+
     try {
       let codes = [];
-      
-      if (typeof booking.kode_sampel === 'string') {
+
+      if (typeof booking.kode_sampel === "string") {
         try {
           codes = JSON.parse(booking.kode_sampel);
           if (Array.isArray(codes)) {
@@ -70,10 +66,10 @@ function InputNilaiAnalisis() {
       } else if (Array.isArray(booking.kode_sampel)) {
         codes = booking.kode_sampel;
       }
-      
+
       return codes;
     } catch (error) {
-      console.error('Error parsing kode_sampel:', error);
+      console.error("Error parsing kode_sampel:", error);
       return [];
     }
   };
@@ -105,8 +101,8 @@ function InputNilaiAnalisis() {
       key: "kode_batch",
       width: 220, // Perlebar kolom agar kode batch tidak terpotong
       render: (text, record) => (
-        <Tag color="blue" style={{ marginBottom: '2px', fontWeight: 600, fontSize: '1rem', letterSpacing: '1px', whiteSpace: 'nowrap' }}>
-          {record.kode_batch || '-'}
+        <Tag color="blue" style={{ marginBottom: "2px", fontWeight: 600, fontSize: "1rem", letterSpacing: "1px", whiteSpace: "nowrap" }}>
+          {record.kode_batch || "-"}
         </Tag>
       ),
     },
@@ -130,20 +126,24 @@ function InputNilaiAnalisis() {
       key: "analysis_items",
       width: 200,
       render: (items) => (
-        <div style={{ 
-          display: 'flex', 
-          flexWrap: 'wrap', 
-          gap: '4px',
-          maxHeight: '80px',
-          overflowY: 'auto'
-        }}>
-          {Array.isArray(items) && items.length > 0
-            ? items.map((i) => (
-                <Tag color="blue" key={i.id} style={{ margin: 0, fontSize: '0.75rem' }}>
-                  {i.nama_item}
-                </Tag>
-              ))
-            : <Text type="secondary">-</Text>}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "4px",
+            maxHeight: "80px",
+            overflowY: "auto",
+          }}
+        >
+          {Array.isArray(items) && items.length > 0 ? (
+            items.map((i) => (
+              <Tag color="blue" key={i.id} style={{ margin: 0, fontSize: "0.75rem" }}>
+                {i.nama_item}
+              </Tag>
+            ))
+          ) : (
+            <Text type="secondary">-</Text>
+          )}
         </div>
       ),
     },
@@ -199,14 +199,7 @@ function InputNilaiAnalisis() {
           disabled = false; // Bisa edit jika ditolak
         }
         return (
-          <Button 
-            type="primary" 
-            icon={<EditOutlined />} 
-            size="middle"
-            loading={loading} 
-            disabled={disabled}
-            onClick={() => handleInputNilai(record)}
-          >
+          <Button type="primary" icon={<EditOutlined />} size="middle" loading={loading} disabled={disabled} onClick={() => handleInputNilai(record)}>
             {buttonText}
           </Button>
         );
@@ -224,9 +217,9 @@ function InputNilaiAnalisis() {
           padding: "30px 20px",
         }}
       >
-        <div className="container" style={{ maxWidth: '1400px' }}>
+        <div className="container" style={{ maxWidth: "1400px" }}>
           <div className="mb-4">
-            <Title level={3} style={{ marginBottom: '8px' }}>
+            <Title level={3} style={{ marginBottom: "8px" }}>
               Input Nilai Analisis <span style={{ fontSize: "16px", fontWeight: "400", color: "#8c8c8c" }}>| Manajemen Sampel</span>
             </Title>
             <Text type="secondary">Silahkan masukkan parameter nilai untuk sampel yang telah dikonfirmasi diterima.</Text>
@@ -238,12 +231,12 @@ function InputNilaiAnalisis() {
                 <LoadingSpinner spinning={loading} tip="Memuat data sampel..." />
               </div>
             ) : (
-              <Table 
-                dataSource={approvedSamples} 
-                columns={columns} 
-                rowKey="id" 
-                pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} sampel` }} 
-                locale={{ emptyText: <Empty description="Belum ada sampel yang disetujui" /> }} 
+              <Table
+                dataSource={approvedSamples}
+                columns={columns}
+                rowKey="id"
+                pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} sampel` }}
+                locale={{ emptyText: <Empty description="Belum ada sampel yang disetujui" /> }}
                 scroll={{ x: 1200 }}
                 size="middle"
               />

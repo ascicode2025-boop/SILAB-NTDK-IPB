@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useHistory } from "react-router-dom";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import { message } from "antd";
 import dayjs from "dayjs";
 import { Modal } from "react-bootstrap";
@@ -11,6 +11,10 @@ import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import { getAllBookings, updateBookingStatus, deleteBooking } from "../../services/BookingService";
 
 const VerifikasiSampel = () => {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Verifikasi Sampel";
+  }, []);
+
   const history = useHistory();
   const [dataBookings, setDataBookings] = useState([]);
   const [loading, setLoading] = useState(true);

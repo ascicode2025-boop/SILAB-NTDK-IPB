@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Form, Card, Row, Col, Button, Alert, Modal, InputGroup, Container } from "react-bootstrap";
 import DatePicker from "react-datepicker";
 import NavbarLogin from "./NavbarLoginKlien";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import "react-datepicker/dist/react-datepicker.css";
 import { createBooking } from "../../services/BookingService";
 import { getAnalysisPrices } from "../../services/AnalysisPriceService";
@@ -11,6 +11,10 @@ import dayjs from "dayjs";
 import { useHistory } from "react-router-dom";
 
 export default function Hematologi() {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Hematologi";
+  }, []);
+
   const history = useHistory();
   const [tanggalKirim, setTanggalKirim] = useState(null);
 

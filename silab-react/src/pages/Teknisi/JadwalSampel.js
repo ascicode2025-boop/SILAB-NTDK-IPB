@@ -6,7 +6,7 @@ import "dayjs/locale/id";
 import updateLocale from "dayjs/plugin/updateLocale";
 import "antd/dist/reset.css";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import "../../css/JadwalSampel.css";
 
@@ -21,14 +21,18 @@ dayjs.updateLocale("id", {
 dayjs.locale("id");
 
 export default function JadwalSampel() {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Jadwal Sampel";
+  }, []);
+
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [viewDate, setViewDate] = useState(dayjs());
   const [category, setCategory] = useState("metabolit");
-  
+
   const [quotaData, setQuotaData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
-  
+
   const [status, setStatus] = useState("Tersedia");
   const [isLocked, setIsLocked] = useState(false);
 
@@ -52,35 +56,35 @@ export default function JadwalSampel() {
   }, [fetchData]);
 
   const isStandardHolidayDay = (date) => {
-      const day = date.day();
-      if (category === "metabolit") return day === 6 || day === 0;
-      if (category === "hematologi") return day === 5 || day === 6 || day === 0;
-      return false;
+    const day = date.day();
+    if (category === "metabolit") return day === 6 || day === 0;
+    if (category === "hematologi") return day === 5 || day === 6 || day === 0;
+    return false;
   };
 
   const updatePanelInfo = (date) => {
     const dateStr = date.format("YYYY-MM-DD");
-    const dayData = quotaData.find(item => item.date === dateStr);
+    const dayData = quotaData.find((item) => item.date === dateStr);
     const isHoliday = isStandardHolidayDay(date);
 
     let currentStatus = "Tersedia";
     let locked = false;
 
     if (dayData) {
-        if (dayData.max_quota === 0 || !dayData.is_available) {
-            currentStatus = "Tak Tersedia";
-        } else {
-            currentStatus = "Tersedia";
-        }
-        if (isHoliday) {
-             currentStatus = "Tak Tersedia";
-             locked = true; 
-        }
+      if (dayData.max_quota === 0 || !dayData.is_available) {
+        currentStatus = "Tak Tersedia";
+      } else {
+        currentStatus = "Tersedia";
+      }
+      if (isHoliday) {
+        currentStatus = "Tak Tersedia";
+        locked = true;
+      }
     } else {
-        if (isHoliday) {
-            currentStatus = "Tak Tersedia";
-            locked = true; 
-        }
+      if (isHoliday) {
+        currentStatus = "Tak Tersedia";
+        locked = true;
+      }
     }
 
     setStatus(currentStatus);
@@ -93,25 +97,25 @@ export default function JadwalSampel() {
   };
 
   const handleSave = async () => {
-    if (isLocked) return; 
+    if (isLocked) return;
 
     setSaveLoading(true);
     try {
-        const finalQuota = status === "Tak Tersedia" ? 0 : (category === "hematologi" ? 30 : 999);
-        const payload = {
-            tanggal: selectedDate.format("YYYY-MM-DD"),
-            jenis_analisis: category,
-            kuota_maksimal: finalQuota,
-            terapkan_semua: false 
-        };
+      const finalQuota = status === "Tak Tersedia" ? 0 : category === "hematologi" ? 30 : 999;
+      const payload = {
+        tanggal: selectedDate.format("YYYY-MM-DD"),
+        jenis_analisis: category,
+        kuota_maksimal: finalQuota,
+        terapkan_semua: false,
+      };
 
-        await updateQuota(payload);
-        message.success(`Jadwal diperbarui!`);
-        fetchData(); 
+      await updateQuota(payload);
+      message.success(`Jadwal diperbarui!`);
+      fetchData();
     } catch (error) {
-        message.error("Gagal menyimpan.");
+      message.error("Gagal menyimpan.");
     } finally {
-        setSaveLoading(false);
+      setSaveLoading(false);
     }
   };
 
@@ -122,16 +126,15 @@ export default function JadwalSampel() {
     <NavbarLoginTeknisi>
       <ConfigProvider locale={idID}>
         <div className="min-h-screen bg-[#eee9e6] p-6 font-poppins flex justify-center gap-10 p-3">
-          
           {/* KIRI: KALENDER (Tampilan Disamakan dengan Klien) */}
           <div className="w-full max-w-4xl bg-white shadow-xl rounded-2xl p-8 border border-gray-200">
             <div className="flex justify-end mb-6 mt-5 m-lg-4">
-              <select 
-                className="custom-select-clean border-b border-gray-300" 
-                value={category} 
+              <select
+                className="custom-select-clean border-b border-gray-300"
+                value={category}
                 onChange={(e) => {
-                    setCategory(e.target.value);
-                    setViewDate(dayjs(viewDate)); 
+                  setCategory(e.target.value);
+                  setViewDate(dayjs(viewDate));
                 }}
               >
                 <option value="metabolit">Metabolit</option>
@@ -140,19 +143,16 @@ export default function JadwalSampel() {
             </div>
 
             <div style={{ position: "relative" }}>
-              <div 
-                className="calendar-wrapper mt-1" 
-                style={loading ? { filter: "blur(2px)", pointerEvents: "none" } : {}}
-              >
+              <div className="calendar-wrapper mt-1" style={loading ? { filter: "blur(2px)", pointerEvents: "none" } : {}}>
                 <Calendar
                   fullscreen={true}
                   value={viewDate}
                   onSelect={(date) => {
-                      if (!date.isSame(viewDate, 'month')) {
-                          setViewDate(date);
-                      } else {
-                          onSelectDate(date);
-                      }
+                    if (!date.isSame(viewDate, "month")) {
+                      setViewDate(date);
+                    } else {
+                      onSelectDate(date);
+                    }
                   }}
                   headerRender={({ value, onChange }) => {
                     const month = value.format("MMMM");
@@ -160,14 +160,14 @@ export default function JadwalSampel() {
                     return (
                       <div className="calendar-custom-header">
                         <div className="left-controls" style={{ display: "flex", alignItems: "center" }}>
-                          <Button 
+                          <Button
                             onClick={() => {
                               const t = dayjs();
                               onChange(t);
                               setViewDate(t);
                               setSelectedDate(t);
                               onSelectDate(t);
-                            }} 
+                            }}
                             className="btn-today"
                             style={{ marginRight: "10px" }}
                           >
@@ -178,21 +178,27 @@ export default function JadwalSampel() {
                           </div>
                         </div>
                         <div className="right-controls">
-                          <DatePicker 
-                              value={selectedDate} 
-                              onChange={(d) => { if(d) { setSelectedDate(d); setViewDate(d); onSelectDate(d); onChange(d); }}} 
-                              format="DD/MM/YYYY" 
-                              allowClear={false} 
-                              className="date-picker-header" 
+                          <DatePicker
+                            value={selectedDate}
+                            onChange={(d) => {
+                              if (d) {
+                                setSelectedDate(d);
+                                setViewDate(d);
+                                onSelectDate(d);
+                                onChange(d);
+                              }
+                            }}
+                            format="DD/MM/YYYY"
+                            allowClear={false}
+                            className="date-picker-header"
                           />
                         </div>
                       </div>
                     );
                   }}
-                  
                   fullCellRender={(date) => {
                     const dateStr = date.format("YYYY-MM-DD");
-                    const dayData = quotaData.find(item => item.date === dateStr);
+                    const dayData = quotaData.find((item) => item.date === dateStr);
                     const isHoliday = isStandardHolidayDay(date);
 
                     let isAvailable = true;
@@ -223,15 +229,7 @@ export default function JadwalSampel() {
                       <div className={cellClass}>
                         <div className="date-number">{date.date()}</div>
                         {isCurrentMonth && !isPast && (
-                          <div className="badge-container">
-                            {!isAvailable ? (
-                              <div className="tutup-badge">TUTUP</div>
-                            ) : (
-                              <div className="quota-badge">
-                                {category === "metabolit" ? "Tersedia" : `Sisa: ${remaining}`}
-                              </div>
-                            )}
-                          </div>
+                          <div className="badge-container">{!isAvailable ? <div className="tutup-badge">TUTUP</div> : <div className="quota-badge">{category === "metabolit" ? "Tersedia" : `Sisa: ${remaining}`}</div>}</div>
                         )}
                       </div>
                     );
@@ -246,7 +244,7 @@ export default function JadwalSampel() {
                 </div>
               )}
             </div>
-            
+
             {/* LEGENDA WARNA */}
             <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "32px", marginTop: "24px", flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -275,30 +273,15 @@ export default function JadwalSampel() {
 
               <div className="info-row">
                 <span className="info-label">Status</span>
-                <select 
-                    className="info-select" 
-                    value={status} 
-                    onChange={(e) => setStatus(e.target.value)}
-                    disabled={isLocked}
-                    style={isLocked ? { backgroundColor: '#f0f0f0', color: '#999', cursor: 'not-allowed' } : {}}
-                >
+                <select className="info-select" value={status} onChange={(e) => setStatus(e.target.value)} disabled={isLocked} style={isLocked ? { backgroundColor: "#f0f0f0", color: "#999", cursor: "not-allowed" } : {}}>
                   <option value="Tersedia">Tersedia</option>
                   <option value="Tak Tersedia">Tak Tersedia</option>
                 </select>
               </div>
 
-              {isLocked && (
-                  <div className="mb-3 text-center text-xs text-red-500 font-semibold">
-                      *Hari Libur Standar tidak dapat diubah.
-                  </div>
-              )}
+              {isLocked && <div className="mb-3 text-center text-xs text-red-500 font-semibold">*Hari Libur Standar tidak dapat diubah.</div>}
 
-              <button 
-                className="btn-save" 
-                onClick={handleSave}
-                disabled={saveLoading || isLocked}
-                style={isLocked ? { backgroundColor: '#ccc', cursor: 'not-allowed' } : {}}
-              >
+              <button className="btn-save" onClick={handleSave} disabled={saveLoading || isLocked} style={isLocked ? { backgroundColor: "#ccc", cursor: "not-allowed" } : {}}>
                 {saveLoading ? "Menyimpan..." : "Simpan Perubahan"}
               </button>
             </div>

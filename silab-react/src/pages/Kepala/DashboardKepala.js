@@ -7,6 +7,10 @@ import NavbarLoginKepala from "./NavbarLoginKepala";
 import { getAllBookings } from "../../services/BookingService";
 
 function DashboardKepala() {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Dashboard Kepala";
+  }, []);
+
   const history = useHistory();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({

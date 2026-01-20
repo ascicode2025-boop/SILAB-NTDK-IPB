@@ -4,10 +4,14 @@ import { FaFlask, FaClipboardCheck, FaCheckCircle, FaBell } from "react-icons/fa
 import { useHistory } from "react-router-dom";
 import NavbarLoginKoordinator from "./NavbarLoginKoordinator";
 import "@fontsource/poppins";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import { getAllBookings } from "../../services/BookingService";
 
 const DashboardKoordinator = () => {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Dashboard Koordinator";
+  }, []);
+
   const history = useHistory();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -47,38 +51,28 @@ const DashboardKoordinator = () => {
       // - menunggu_ttd (Sudah disetujui kepala, menunggu TTD koordinator)
       // - menunggu_ttd_koordinator (Variasi status TTD)
       // - menunggu_sign (Variasi status TTD)
-      const statusPending = [
-        "menunggu_verifikasi",
-        "menunggu_ttd",
-        "menunggu_ttd_koordinator",
-        "menunggu_sign"
-      ];
-      
-      // Catatan: 'menunggu_verifikasi_kepala' TIDAK dihitung di sini karena itu tugas Kepala Lab, 
+      const statusPending = ["menunggu_verifikasi", "menunggu_ttd", "menunggu_ttd_koordinator", "menunggu_sign"];
+
+      // Catatan: 'menunggu_verifikasi_kepala' TIDAK dihitung di sini karena itu tugas Kepala Lab,
       // bukan tugas aktif koordinator saat ini.
-      
-      const menungguTTD = all.filter((b) => 
-        statusPending.includes((b.status || "").toLowerCase())
-      ).length;
+
+      const menungguTTD = all.filter((b) => statusPending.includes((b.status || "").toLowerCase())).length;
 
       // 4. Hitung "Sampel Selesai"
       // Sampel yang proses analisis dan administrasinya sudah tuntas
       const statusDone = [
         "menunggu_pembayaran", // Biasanya setelah TTD selesai, masuk ke pembayaran
-        "selesai", 
+        "selesai",
         "disetujui", // Jika ini berarti final approval
-        "lunas"      // Jika sudah bayar
+        "lunas", // Jika sudah bayar
       ];
-      
-      const selesai = all.filter((b) => 
-        statusDone.includes((b.status || "").toLowerCase())
-      ).length;
+
+      const selesai = all.filter((b) => statusDone.includes((b.status || "").toLowerCase())).length;
 
       // Update State
       setTotalSampelMasukHariIni(masukHariIni);
       setTotalMenungguTTD(menungguTTD);
       setTotalSampelSelesai(selesai);
-
     } catch (err) {
       console.error("Gagal mengambil metrik:", err);
     } finally {
@@ -118,14 +112,14 @@ const DashboardKoordinator = () => {
               <Card className="h-100 border-0 shadow-sm" style={{ borderRadius: 22 }}>
                 <Card.Body>
                   <div className="d-flex align-items-center">
-                    <div className="p-3 rounded-circle me-3" style={{ backgroundColor: '#efebe9' }}>
-                        <FaFlask size={24} color="#6d4c41" />
+                    <div className="p-3 rounded-circle me-3" style={{ backgroundColor: "#efebe9" }}>
+                      <FaFlask size={24} color="#6d4c41" />
                     </div>
                     <div>
-                      <Card.Title className="mb-0 fw-bold" style={{ fontSize: '1.5rem' }}>
+                      <Card.Title className="mb-0 fw-bold" style={{ fontSize: "1.5rem" }}>
                         {loadingMetrics ? <Spinner size="sm" animation="border" /> : totalSampelMasukHariIni}
                       </Card.Title>
-                      <Card.Text style={{ color: "#8d6e63", fontSize: '0.9rem' }}>Sampel Baru Hari Ini</Card.Text>
+                      <Card.Text style={{ color: "#8d6e63", fontSize: "0.9rem" }}>Sampel Baru Hari Ini</Card.Text>
                     </div>
                   </div>
                 </Card.Body>
@@ -137,14 +131,14 @@ const DashboardKoordinator = () => {
               <Card className="h-100 border-0 shadow-sm" style={{ borderRadius: 22 }}>
                 <Card.Body>
                   <div className="d-flex align-items-center mb-3">
-                    <div className="p-3 rounded-circle me-3" style={{ backgroundColor: '#fff3e0' }}>
-                        <FaClipboardCheck size={24} color="#ef6c00" />
+                    <div className="p-3 rounded-circle me-3" style={{ backgroundColor: "#fff3e0" }}>
+                      <FaClipboardCheck size={24} color="#ef6c00" />
                     </div>
                     <div>
-                      <Card.Title className="mb-0 fw-bold" style={{ fontSize: '1.5rem' }}>
+                      <Card.Title className="mb-0 fw-bold" style={{ fontSize: "1.5rem" }}>
                         {loadingMetrics ? <Spinner size="sm" animation="border" /> : totalMenungguTTD}
                       </Card.Title>
-                      <Card.Text style={{ color: "#ef6c00", fontSize: '0.9rem' }}>Perlu Aksi Koordinator</Card.Text>
+                      <Card.Text style={{ color: "#ef6c00", fontSize: "0.9rem" }}>Perlu Aksi Koordinator</Card.Text>
                     </div>
                   </div>
                   <Button
@@ -167,14 +161,14 @@ const DashboardKoordinator = () => {
               <Card className="h-100 border-0 shadow-sm" style={{ borderRadius: 22 }}>
                 <Card.Body>
                   <div className="d-flex align-items-center">
-                    <div className="p-3 rounded-circle me-3" style={{ backgroundColor: '#e8f5e9' }}>
-                        <FaCheckCircle size={24} color="#2e7d32" />
+                    <div className="p-3 rounded-circle me-3" style={{ backgroundColor: "#e8f5e9" }}>
+                      <FaCheckCircle size={24} color="#2e7d32" />
                     </div>
                     <div>
-                      <Card.Title className="mb-0 fw-bold" style={{ fontSize: '1.5rem' }}>
+                      <Card.Title className="mb-0 fw-bold" style={{ fontSize: "1.5rem" }}>
                         {loadingMetrics ? <Spinner size="sm" animation="border" /> : totalSampelSelesai}
                       </Card.Title>
-                      <Card.Text style={{ color: "#2e7d32", fontSize: '0.9rem' }}>Sampel Selesai</Card.Text>
+                      <Card.Text style={{ color: "#2e7d32", fontSize: "0.9rem" }}>Sampel Selesai</Card.Text>
                     </div>
                   </div>
                 </Card.Body>
@@ -207,9 +201,7 @@ const DashboardKoordinator = () => {
                       <h6 className="fw-semibold mb-1" style={{ color: "#3e2723" }}>
                         Halo Koordinator!
                       </h6>
-                      <small style={{ color: "#5d4037" }}>
-                        Ada {totalMenungguTTD} dokumen yang memerlukan verifikasi atau tanda tangan Anda saat ini.
-                      </small>
+                      <small style={{ color: "#5d4037" }}>Ada {totalMenungguTTD} dokumen yang memerlukan verifikasi atau tanda tangan Anda saat ini.</small>
                     </div>
                   </div>
 
@@ -220,7 +212,7 @@ const DashboardKoordinator = () => {
                       border: "none",
                       borderRadius: 20,
                       padding: "10px 28px",
-                      fontWeight: "500"
+                      fontWeight: "500",
                     }}
                   >
                     Verifikasi Sekarang

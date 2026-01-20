@@ -3,7 +3,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useHistory, useLocation } from "react-router-dom";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import { formatDataForPDF } from "../../utils/pdfHelpers";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
 
@@ -12,6 +12,10 @@ import { EyeOutlined, SendOutlined, EditOutlined, DownloadOutlined, CheckCircleO
 import { getAllBookings, uploadPdfAndKirim } from "../../services/BookingService";
 
 export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "hasil_analisis.pdf", booking: propBooking = null }) {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Generate PDF Analisis";
+  }, []);
+
   // modal state and upload state for sending PDF to Koordinator
   const location = useLocation();
   const history = useHistory();
@@ -333,7 +337,7 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
     doc.line(signatureCenterPoint - 25, cursorY, signatureCenterPoint + 25, cursorY);
     cursorY += 4;
     doc.text("Prof. Dewi Apri Astuti, MS", signatureCenterPoint, cursorY, { align: "center" });
-    
+
     const blob = doc.output("blob");
     return new File([blob], customFilename, { type: "application/pdf" });
   }

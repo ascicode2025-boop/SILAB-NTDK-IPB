@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Card } from "react-bootstrap";
 import Footer from "./Footer";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
+import LoadingSpinner from "../components/Common/LoadingSpinner";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "@fontsource/poppins";
 
@@ -11,6 +11,7 @@ function DaftarAnalisis() {
   const API_URL = process.env.REACT_APP_API_BASE_URL;
 
   useEffect(() => {
+    document.title = "SILAB-NTDK - Daftar Analisis";
     if (API_URL) {
       fetch(`${API_URL}/analysis-prices-grouped`)
         .then((res) => res.json())

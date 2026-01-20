@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useHistory } from "react-router-dom";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import { getAllBookings, getBookingById, updateAnalysisResult, finalizeAnalysis } from "../../services/BookingService";
 import { Button, message, Card, Input, Typography, Tag, Space, Alert, Checkbox, Modal } from "antd";
@@ -11,6 +11,10 @@ import "@fontsource/poppins";
 const { Title, Text } = Typography;
 
 function FormInputNilaiAnalisis() {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Form Input Nilai Analisis";
+  }, []);
+
   const { id } = useParams();
   const history = useHistory();
   const [booking, setBooking] = useState(null);

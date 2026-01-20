@@ -1,17 +1,18 @@
 import React from "react";
 import { BrowserRouter as Router, Switch, Route, Redirect } from "react-router-dom";
+import { useAutoLogout } from "./hooks/useAutoLogout";
 
 // --- IMPORT COMPONENT ---
-import NavbarLandingPage from "./pages/tamu/NavbarLandingPage";
-import LandingPage from "./pages/tamu/LandingPage";
-import LoginPage from "./pages/tamu/LoginPage";
-import RegisterPage from "./pages/tamu/RegisterPage";
-import Profile from "./pages/tamu/Profile";
-import DaftarAnalisis from "./pages/tamu/DaftarAnalisis";
-import ForgetPassword from "./pages/tamu/ForgetPassword";
-import Galeri from "./pages/tamu/Galeri";
-import PanduanSampel from "./pages/tamu/PanduanSampel";
-import PrivateRoute from "./pages/tamu/PrivateRoute"; // Pastikan file ini sudah diupdate dengan logika Role!
+import NavbarLandingPage from "./pages/NavbarLandingPage";
+import LandingPage from "./pages/LandingPage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import Profile from "./pages/Profile";
+import DaftarAnalisis from "./pages/DaftarAnalisis";
+import ForgetPassword from "./pages/ForgetPassword";
+import Galeri from "./pages/Galeri";
+import PanduanSampel from "./pages/PanduanSampel";
+import PrivateRoute from "./pages/PrivateRoute"; // Pastikan file ini sudah diupdate dengan logika Role!
 import PopupProvider from "./components/Common/PopupProvider";
 
 // --- IMPORT FITUR DASHBOARD KLIEN ---
@@ -54,6 +55,7 @@ import ProfileAkunKoordinator from "./pages/Koordinator/ProfileAkunKoordinator";
 import EditProfileKoordinator from "./pages/Koordinator/EditProfileKoordinator";
 
 // --- IMPORT FITUR DASHBOARD Kepala ---
+import MentoringKepala from "./pages/Kepala/MentoringKepala";
 import LaporanKepala from "./pages/Kepala/LaporanKepala";
 import DashboardKepala from "./pages/Kepala/DashboardKepala";
 import VerifikasiKepala from "./pages/Kepala/VerifikasiKepala";
@@ -85,6 +87,11 @@ function AppLayoutWithNavbar() {
 // 2. Layout TANPA Navbar Landing Page (Login & Dashboard - PROTECTED)
 // ====================================================================
 function AppLayoutWithoutNavbar() {
+  // Setup auto logout: 15 menit inaktivitas
+  useAutoLogout(5, () => {
+    console.log("User telah di-logout karena inaktivitas");
+  });
+
   return (
     <Switch>
       {/* Alias route untuk /teknisi/dashboard/riwayat agar menampilkan RiwayatAnalisisTeknisi */}
@@ -109,6 +116,8 @@ function AppLayoutWithoutNavbar() {
       <PrivateRoute path="/koordinator/dashboard" component={DashboardKoordinator} allowedRoles={["koordinator"]} />
 
       {/* 2. Kepala (Hanya role 'kepala' yang boleh masuk) */}
+
+      <PrivateRoute path="/kepala/dashboard/mentoringKepala" component={MentoringKepala} allowedRoles={["kepala"]} />
       <PrivateRoute path="/kepala/dashboard/verifikasiKepala/lihatHasilPdfKepala/:id" component={LihatHasilPdfKepala} allowedRoles={["kepala"]} />
       <PrivateRoute path="/kepala/dashboard/profile/edit" component={EditProfileKepala} allowedRoles={["kepala"]} />
       <PrivateRoute path="/kepala/dashboard/profile" component={ProfileAkunKepala} allowedRoles={["kepala"]} />

@@ -5,11 +5,15 @@ import "@fontsource/poppins/400.css";
 import "@fontsource/poppins/600.css";
 import "@fontsource/poppins/700.css";
 import NavbarLogin from "./NavbarLoginKlien";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import BrownSpinner from "../../components/Common/LoadingSpinner"; // ⬅️ spinner custom
 import axios from "axios";
 
 function DaftarAnalisisLogin() {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Daftar Analisis";
+  }, []);
+
   const [dataAnalisis, setDataAnalisis] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

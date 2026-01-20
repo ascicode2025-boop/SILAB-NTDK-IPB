@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { Image, Spinner } from "react-bootstrap";
-import FooterSetelahLogin from "../tamu/FooterSetelahLogin";
+import FooterSetelahLogin from "../FooterSetelahLogin";
 import NavbarProfile from "./NavbarProfile";
 import CustomPopup from "../../components/Common/CustomPopup";
 import { FaUserCircle, FaCamera } from "react-icons/fa";
@@ -10,6 +10,10 @@ import axios from "axios";
 import "@fontsource/poppins";
 
 function EditProfileKlien() {
+  useEffect(() => {
+    document.title = "SILAB-NTDK - Edit Profil Klien";
+  }, []);
+
   const history = useHistory();
   const token = localStorage.getItem("token");
 

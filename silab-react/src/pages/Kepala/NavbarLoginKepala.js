@@ -65,7 +65,7 @@ function NavbarLoginKoordinator({ children }) {
     { key: "dashboard", label: "Dashboard", icon: <FaTachometerAlt /> },
     { key: "verifikasiKepala", label: "Verifikasi Akhir Hasil Analisis", icon: <FaClipboardCheck /> },
     { key: "laporanKepala", label: "Laporan & Arsip Hasil", icon: <FaFileAlt /> },
-    { key: "monitoring", label: "Monitoring Aktivitas Lab", icon: <FaChartLine /> },
+    { key: "mentoringKepala", label: "Monitoring Aktivitas Lab", icon: <FaChartLine /> },
   ];
 
   // sinkronkan activeMenu berdasarkan URL

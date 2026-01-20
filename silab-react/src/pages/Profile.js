@@ -9,14 +9,18 @@ const Profil = [
   { nama: "Prof. Dr. Ir. Dewi Apri Astuti, MS.", jabatan: "Kepala Divisi", img: "/asset/profil/profil1.png" },
   { nama: "Prof. Dr. Sri Suharti, S.Pt, M.Si.", jabatan: "Staff Divisi", img: "/asset/profil/profil2.png" },
   { nama: "Dr. Dilla Mareistia Fassah, S.Pt, M.Sc.", jabatan: "Staff Divisi", img: "/asset/profil/profil3.png" },
-  { nama: "Kokom Komalasari, S.Pt.,M.Si.", jabatan: "Staff Divisi", img: "/asset/profil/profil4.png" },
   { nama: "Dr. Ir. Lilis Khotijah, M.Si.", jabatan: "Staff Divisi", img: "/asset/profil/profil5.png" },
   { nama: "Prof.Dr.Ir. I Komang Gede Wiryawan.", jabatan: "Staff Divisi", img: "/asset/profil/profil6.png" },
   { nama: "Prof. Dr.Ir. Asep Sudarman, M.Rur.Sc.", jabatan: "Staff Divisi", img: "/asset/profil/profil7.png" },
   { nama: "Dr.Ir. Didid Diapari, M.Si.", jabatan: "Staff Divisi", img: "/asset/profil/profil8.png" },
+  { nama: "Kokom Komalasari, S.Pt.,M.Si.", jabatan: "Staff Divisi", img: "/asset/profil/profil4.png" },
+  { nama: "Muhammad Anugrah Yudha", jabatan: "Staff Divisi", img: "/asset/profil/profil9.jpg" },
 ];
 
 function Profile() {
+  React.useEffect(() => {
+    document.title = "SILAB-NTDK - Profil";
+  }, []);
   return (
     <section id="profil" style={{ fontFamily: "Poppins, sans-serif", padding: "50px 0 0 0" }}>
       <Container>
@@ -64,9 +68,9 @@ function Profile() {
         Struktur Organisasi Divisi NTDK
       </h4>
 
-      <Container style={{paddingBottom: "4rem"}}>
+      <Container style={{ paddingBottom: "4rem" }}>
         <Row className="g-5 justify-content-center">
-          {Profil.slice(0, 2).map((p, index) => (
+          {Profil.slice(0, 1).map((p, index) => (
             <Col key={index} xs={12} sm={6} md={4} lg={3}>
               <Card
                 className="text-center shadow-sm"
@@ -97,7 +101,7 @@ function Profile() {
                   />
                 </div>
 
-                <Card.Body style={{textAlign: "center"}}>
+                <Card.Body style={{ textAlign: "center" }}>
                   <Card.Title
                     title={p.nama}
                     style={{
@@ -128,7 +132,7 @@ function Profile() {
           ))}
         </Row>
         <Row className="g-5 justify-content-center" style={{ marginTop: "2rem" }}>
-          {Profil.slice(2, 5).map((p, index) => (
+          {Profil.slice(1, 4).map((p, index) => (
             <Col key={index} xs={12} sm={6} md={4} lg={3}>
               <Card
                 className="text-center shadow-sm"
@@ -188,7 +192,67 @@ function Profile() {
           ))}
         </Row>
         <Row className="g-5 justify-content-center" style={{ marginTop: "2rem" }}>
-          {Profil.slice(5, 8).map((p, index) => (
+          {Profil.slice(4, 7).map((p, index) => (
+            <Col key={index} xs={12} sm={6} md={4} lg={3}>
+              <Card
+                className="text-center shadow-sm"
+                style={{
+                  borderRadius: "18px",
+                  overflow: "hidden",
+                  transition: "0.3s",
+                  backgroundColor: "#8D6E63",
+                }}
+              >
+                {/* Gambar ter-crop rapi */}
+                <div
+                  style={{
+                    height: "300px",
+                    width: "100%",
+                    overflow: "hidden",
+                  }}
+                >
+                  <Card.Img
+                    src={p.img}
+                    alt={p.nama}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      objectPosition: "top",
+                    }}
+                  />
+                </div>
+
+                <Card.Body>
+                  <Card.Title
+                    title={p.nama}
+                    style={{
+                      fontWeight: "400",
+                      fontSize: "12px",
+                      color: "#fff",
+                      minHeight: "45px",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {p.nama}
+                  </Card.Title>
+
+                  <Card.Text
+                    style={{
+                      fontSize: "13px",
+                      color: "#fff",
+                      marginTop: "-1.7rem",
+                    }}
+                  >
+                    {p.jabatan}
+                  </Card.Text>
+                </Card.Body>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+        <Row className="g-5 justify-content-center" style={{ marginTop: "2rem" }}>
+          {Profil.slice(7, 9).map((p, index) => (
             <Col key={index} xs={12} sm={6} md={4} lg={3}>
               <Card
                 className="text-center shadow-sm"
