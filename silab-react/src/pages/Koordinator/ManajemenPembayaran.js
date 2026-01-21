@@ -28,6 +28,12 @@ const ManajemenPembayaran = () => {
   const [proofBlobUrl, setProofBlobUrl] = useState(null);
   const [proofMime, setProofMime] = useState(null);
 
+  // State untuk konfirmasi pembayaran modal
+  const [showConfirmPaymentModal, setShowConfirmPaymentModal] = useState(false);
+  const [paymentToConfirm, setPaymentToConfirm] = useState(null);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [paymentPopup, setPaymentPopup] = useState({ show: false, type: "", message: "" });
+
   const [formData, setFormData] = useState({
     namaKlien: "",
     institusi: "",
@@ -46,6 +52,7 @@ const ManajemenPembayaran = () => {
   const [summaryTotals, setSummaryTotals] = useState({ totalAll: 0, paid: 0, unpaid: 0 });
   const [pendingBookings, setPendingBookings] = useState([]);
   const [analysisSummary, setAnalysisSummary] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleShowDetail = (item) => {
     // Check if this is a pending booking or an invoice
@@ -403,9 +410,14 @@ const ManajemenPembayaran = () => {
             <Card.Body className="p-4 p-md-5 bg-white">
               <div className="mb-4" style={{ maxWidth: "400px" }}>
                 <InputGroup className="shadow-sm rounded-pill overflow-hidden border">
-                  <Form.Control placeholder="Cari klien..." className="border-0 ps-4" style={{ fontSize: "0.9rem" }} />
+                  <Form.Control placeholder="Cari klien, invoice, atau status..." className="border-0 ps-4" style={{ fontSize: "0.9rem" }} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                  {searchQuery && (
+                    <Button variant="white" className="border-0 px-3 text-muted" onClick={() => setSearchQuery("")}>
+                      <i className="bi bi-x-lg"></i>
+                    </Button>
+                  )}
                   <Button variant="white" className="border-0 px-3 text-muted">
-                    Cari
+                    <i className="bi bi-search"></i>
                   </Button>
                 </InputGroup>
               </div>
@@ -424,7 +436,7 @@ const ManajemenPembayaran = () => {
                   <tbody>
                     {(() => {
                       // Combine invoices and pending bookings into one list
-                      const combined = [
+                      let combined = [
                         ...invoices.map((inv) => ({ ...inv, type: "invoice" })),
                         ...pendingBookings.map((b) => ({
                           ...b,
@@ -435,11 +447,26 @@ const ManajemenPembayaran = () => {
                         })),
                       ];
 
+                      // Filter berdasarkan search query
+                      if (searchQuery.trim()) {
+                        const query = searchQuery.toLowerCase().trim();
+                        combined = combined.filter((item) => {
+                          const invoiceId = (item.invoiceId || "").toLowerCase();
+                          const namaKlien = (item.namaKlien || "").toLowerCase();
+                          const institusi = (item.institusi || "").toLowerCase();
+                          const status = (item.status || "").toLowerCase();
+                          const deskripsi = (item.deskripsi || "").toLowerCase();
+                          const total = (item.total || 0).toString();
+
+                          return invoiceId.includes(query) || namaKlien.includes(query) || institusi.includes(query) || status.includes(query) || deskripsi.includes(query) || total.includes(query);
+                        });
+                      }
+
                       if (combined.length === 0) {
                         return (
                           <tr>
                             <td colSpan={5} className="py-4 text-center text-muted">
-                              Belum ada invoice atau booking menunggu pembayaran
+                              {searchQuery.trim() ? `Tidak ditemukan hasil untuk "${searchQuery}"` : "Belum ada invoice atau booking menunggu pembayaran"}
                             </td>
                           </tr>
                         );
@@ -463,25 +490,15 @@ const ManajemenPembayaran = () => {
                                   size="sm"
                                   variant="success"
                                   style={{ borderRadius: "15px" }}
-                                  onClick={async () => {
-                                    if (!window.confirm("Konfirmasi pembayaran untuk invoice " + item.invoiceId + "?")) return;
-                                    try {
-                                      // Confirm invoice (backend should update invoice.status)
-                                      await confirmInvoicePayment(item.invoiceIdRaw);
-                                      // If invoice is linked to a booking, ensure booking-level verification runs too
-                                      if (item.bookingId) {
-                                        try {
-                                          await verifikasiKoordinator(item.bookingId);
-                                        } catch (innerErr) {
-                                          console.warn("verifikasiKoordinator failed after confirmInvoicePayment", innerErr);
-                                        }
-                                      }
-                                      await fetchInvoicesFromServer();
-                                      alert("Pembayaran berhasil dikonfirmasi.");
-                                    } catch (e) {
-                                      console.error("Gagal konfirmasi pembayaran", e);
-                                      alert("Gagal mengonfirmasi pembayaran. Cek console.");
-                                    }
+                                  onClick={() => {
+                                    setPaymentToConfirm({
+                                      type: "invoice",
+                                      invoiceId: item.invoiceId,
+                                      invoiceIdRaw: item.invoiceIdRaw,
+                                      bookingId: item.bookingId,
+                                      displayId: item.invoiceId,
+                                    });
+                                    setShowConfirmPaymentModal(true);
                                   }}
                                 >
                                   Konfirmasi Pembayaran
@@ -492,17 +509,13 @@ const ManajemenPembayaran = () => {
                                   size="sm"
                                   variant="success"
                                   style={{ borderRadius: "15px" }}
-                                  onClick={async () => {
-                                    if (!window.confirm("Konfirmasi pembayaran untuk booking " + (item.invoiceId || item.bookingId) + "?")) return;
-                                    try {
-                                      // Use coordinator verification endpoint which will set booking as paid and update related invoice if any
-                                      await verifikasiKoordinator(item.bookingId);
-                                      await fetchInvoicesFromServer();
-                                      alert("Pembayaran berhasil dikonfirmasi (booking).");
-                                    } catch (e) {
-                                      console.error("Gagal konfirmasi pembayaran booking", e);
-                                      alert("Gagal mengonfirmasi pembayaran. Cek console.");
-                                    }
+                                  onClick={() => {
+                                    setPaymentToConfirm({
+                                      type: "booking",
+                                      bookingId: item.bookingId,
+                                      displayId: item.invoiceId || item.bookingId,
+                                    });
+                                    setShowConfirmPaymentModal(true);
                                   }}
                                 >
                                   Konfirmasi
@@ -800,21 +813,15 @@ const ManajemenPembayaran = () => {
                 <Button
                   variant="success"
                   className="rounded-pill px-4 w-100 fw-bold mb-2"
-                  onClick={async () => {
-                    if (!window.confirm("Setujui pembayaran ini?")) return;
-                    try {
-                      const apiBase = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
-                      const token = localStorage.getItem("token");
-                      const headers = token ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` } : { "Content-Type": "application/json" };
-                      let id = selectedInvoice.booking ? selectedInvoice.booking.id : selectedInvoice.bookingId || selectedInvoice.id;
-                      const res = await fetch(`${apiBase}/bookings/${id}/verify-payment`, { method: "POST", headers });
-                      if (!res.ok) throw new Error("Gagal menyetujui pembayaran");
-                      alert("Pembayaran telah disetujui!");
-                      setShowDetailModal(false);
-                      fetchInvoicesFromServer();
-                    } catch (e) {
-                      alert("Gagal menyetujui pembayaran.");
-                    }
+                  onClick={() => {
+                    const id = selectedInvoice.booking ? selectedInvoice.booking.id : selectedInvoice.bookingId || selectedInvoice.id;
+                    setPaymentToConfirm({
+                      type: "detail",
+                      bookingId: id,
+                      displayId: selectedInvoice.booking?.kode_batch || selectedInvoice.invoiceId || `Booking #${id}`,
+                      namaKlien: selectedInvoice.booking?.user?.name || selectedInvoice.namaKlien || "-",
+                    });
+                    setShowConfirmPaymentModal(true);
                   }}
                 >
                   <i className="bi bi-check-circle me-2"></i>Setujui Pembayaran
@@ -905,6 +912,166 @@ const ManajemenPembayaran = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {/* MODAL KONFIRMASI PEMBAYARAN */}
+      <Modal
+        show={showConfirmPaymentModal}
+        onHide={() => {
+          if (!confirmingPayment) {
+            setShowConfirmPaymentModal(false);
+            setPaymentToConfirm(null);
+          }
+        }}
+        centered
+        style={{ zIndex: 1070 }}
+      >
+        <Modal.Header closeButton style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #198754" }}>
+          <Modal.Title style={{ color: "#198754" }}>
+            <i className="bi bi-check-circle me-2"></i>Konfirmasi Pembayaran
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4">
+          <div className="text-center mb-3">
+            <i className="bi bi-question-circle" style={{ fontSize: "3rem", color: "#198754" }}></i>
+          </div>
+          <p className="text-center fs-5 mb-3">
+            Apakah Anda yakin ingin <strong>menyetujui pembayaran</strong> ini?
+          </p>
+          {paymentToConfirm && (
+            <div className="bg-light p-3 rounded">
+              <p className="mb-1">
+                <strong>ID:</strong> {paymentToConfirm.displayId}
+              </p>
+              {paymentToConfirm.namaKlien && (
+                <p className="mb-1">
+                  <strong>Klien:</strong> {paymentToConfirm.namaKlien}
+                </p>
+              )}
+              <p className="mb-0">
+                <strong>Tipe:</strong> {paymentToConfirm.type === "invoice" ? "Invoice" : paymentToConfirm.type === "booking" ? "Booking" : "Pembayaran"}
+              </p>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer style={{ borderTop: "none" }}>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setShowConfirmPaymentModal(false);
+              setPaymentToConfirm(null);
+            }}
+            disabled={confirmingPayment}
+            className="rounded-pill px-4"
+          >
+            Batal
+          </Button>
+          <Button
+            variant="success"
+            onClick={async () => {
+              if (!paymentToConfirm) return;
+              setConfirmingPayment(true);
+              try {
+                if (paymentToConfirm.type === "invoice") {
+                  // Confirm invoice
+                  await confirmInvoicePayment(paymentToConfirm.invoiceIdRaw);
+                  if (paymentToConfirm.bookingId) {
+                    try {
+                      await verifikasiKoordinator(paymentToConfirm.bookingId);
+                    } catch (innerErr) {
+                      console.warn("verifikasiKoordinator failed after confirmInvoicePayment", innerErr);
+                    }
+                  }
+                  await fetchInvoicesFromServer();
+                  setPaymentPopup({ show: true, type: "success", message: "Pembayaran berhasil dikonfirmasi!" });
+                } else if (paymentToConfirm.type === "booking") {
+                  // Confirm booking payment
+                  await verifikasiKoordinator(paymentToConfirm.bookingId);
+                  await fetchInvoicesFromServer();
+                  setPaymentPopup({ show: true, type: "success", message: "Pembayaran berhasil dikonfirmasi!" });
+                } else if (paymentToConfirm.type === "detail") {
+                  // Confirm from detail modal
+                  const apiBase = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
+                  const token = localStorage.getItem("token");
+                  const headers = token ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` } : { "Content-Type": "application/json" };
+                  const res = await fetch(`${apiBase}/bookings/${paymentToConfirm.bookingId}/verify-payment`, { method: "POST", headers });
+                  if (!res.ok) throw new Error("Gagal menyetujui pembayaran");
+                  setShowDetailModal(false);
+                  fetchInvoicesFromServer();
+                  setPaymentPopup({ show: true, type: "success", message: "Pembayaran telah disetujui!" });
+                }
+                setShowConfirmPaymentModal(false);
+                setPaymentToConfirm(null);
+              } catch (e) {
+                console.error("Gagal konfirmasi pembayaran", e);
+                setPaymentPopup({ show: true, type: "error", message: "Gagal mengonfirmasi pembayaran. Silakan coba lagi." });
+              } finally {
+                setConfirmingPayment(false);
+              }
+            }}
+            disabled={confirmingPayment}
+            className="rounded-pill px-4"
+          >
+            {confirmingPayment ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Memproses...
+              </>
+            ) : (
+              <>
+                <i className="bi bi-check-circle me-2"></i>Ya, Setujui
+              </>
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* POPUP NOTIFIKASI PEMBAYARAN */}
+      {paymentPopup.show && (
+        <div
+          style={{
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            zIndex: 1080,
+            minWidth: "300px",
+            maxWidth: "400px",
+          }}
+        >
+          <Card
+            className="shadow-lg border-0"
+            style={{
+              borderRadius: "15px",
+              overflow: "hidden",
+            }}
+          >
+            <Card.Body className="text-center p-4">
+              <div className="mb-3">
+                {paymentPopup.type === "success" ? <i className="bi bi-check-circle-fill" style={{ fontSize: "3rem", color: "#198754" }}></i> : <i className="bi bi-x-circle-fill" style={{ fontSize: "3rem", color: "#dc3545" }}></i>}
+              </div>
+              <h5 className={paymentPopup.type === "success" ? "text-success" : "text-danger"}>{paymentPopup.type === "success" ? "Berhasil!" : "Gagal!"}</h5>
+              <p className="text-muted mb-3">{paymentPopup.message}</p>
+              <Button variant={paymentPopup.type === "success" ? "success" : "danger"} className="rounded-pill px-4" onClick={() => setPaymentPopup({ show: false, type: "", message: "" })}>
+                Tutup
+              </Button>
+            </Card.Body>
+          </Card>
+        </div>
+      )}
+      {paymentPopup.show && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            zIndex: 1075,
+          }}
+          onClick={() => setPaymentPopup({ show: false, type: "", message: "" })}
+        />
+      )}
 
       {/* Manual invoice modal removed — invoices are generated automatically from booking data */}
     </NavbarLoginKoordinator>

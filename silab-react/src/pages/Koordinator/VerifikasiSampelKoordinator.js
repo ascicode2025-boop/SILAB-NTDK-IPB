@@ -81,16 +81,14 @@ const VerifikasiSampelKoordinator = () => {
       const res = await getAllBookings();
       const all = res?.data || [];
       // Filter relevant statuses for Koordinator verification
-      // Koordinator should specifically act on items awaiting their signature/verification
+      // Koordinator should specifically act on items awaiting their verification (BEFORE sending to Kepala)
+      // Note: "menunggu_ttd_koordinator" is handled in TandaTanganKoordinator (AFTER Kepala approval)
       const filtered = all.filter((b) => {
         const st = (b.status || "").toLowerCase();
         return [
           "menunggu_verifikasi", // teknisi mengirim -> koordinator harus verifikasi
-          "menunggu_ttd_koordinator", // teknisi already requested ttd (legacy)
           "menunggu_verifikasi_kepala", // already sent to kepala (view-only)
-          "menunggu_ttd",
-          "menunggu_sign",
-          "ditolak_kepala",
+          "ditolak_kepala", // ditolak kepala, perlu dikirim balik ke teknisi
         ].includes(st);
       });
       // Sort by newest
@@ -282,8 +280,8 @@ const VerifikasiSampelKoordinator = () => {
                                     </Button>
                                   )}
 
-                                  {/* Tombol Kirim ke Kepala (ACTIVE) - when Koordinator completed verification (menunggu_verifikasi) or legacy menunggu_ttd_koordinator */}
-                                  {(item.status === "menunggu_verifikasi" || item.status === "menunggu_ttd_koordinator") && (
+                                  {/* Tombol Kirim ke Kepala (ACTIVE) - when Koordinator completed verification (menunggu_verifikasi) */}
+                                  {item.status === "menunggu_verifikasi" && (
                                     <Button
                                       variant="primary"
                                       size="sm"

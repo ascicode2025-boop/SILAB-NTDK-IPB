@@ -51,7 +51,14 @@ function DaftarAnalisisLogin() {
         }}
       >
         <div style={{ position: "relative" }}>
-          <Card.Img variant="top" src={item.img || "/asset/daftarAnalisis/Rectangle19.png"} style={{ height: "180px", objectFit: "cover" }} />
+          <Card.Img
+            variant="top"
+            src={`/asset/daftarAnalisis/${(item.jenis_analisis || item.nama).replace(/\s+/g, "_").replace(/[^\w_]/g, "")}.png`}
+            onError={(e) => {
+              e.target.src = "/asset/daftarAnalisis/Rectangle19.png";
+            }}
+            style={{ height: "180px", objectFit: "cover" }}
+          />
           <Badge bg="light" text="dark" className="position-absolute top-0 end-0 m-3 shadow-sm" style={{ borderRadius: "8px", fontWeight: "500", opacity: "0.9" }}>
             {kategori}
           </Badge>

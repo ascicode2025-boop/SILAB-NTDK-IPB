@@ -23,33 +23,76 @@ function Profile() {
   }, []);
   return (
     <section id="profil" style={{ fontFamily: "Poppins, sans-serif", padding: "50px 0 0 0" }}>
-      <Container>
-        {/* VISI */}
-        <Row className="mb-5">
-          <Col md={12}>
-            <h2 className="fw-bold" style={{ color: "#3a3a3a" }}>
-              VISI
+      <Container className="py-5">
+        <Row className="justify-content-center">
+          <Col md={10} className="text-center">
+            {/* Judul MANDAT */}
+            <h2
+              className="fw-bold mb-4"
+              style={{
+                color: "#4a3a2e",
+                letterSpacing: "2px",
+                fontSize: "2rem",
+              }}
+            >
+              MANDAT
             </h2>
-            <p className="text-muted mt-3" style={{ textAlign: "justify", lineHeight: "1.8" }}>
-              Menjadi Bagian Unggulan dan Terkemuka dibidang Industri Ternak
-            </p>
-          </Col>
-        </Row>
 
-        {/* MISI */}
-        <Row>
-          <Col md={12}>
-            <h2 className="fw-bold" style={{ color: "#3a3a3a" }}>
-              MISI
-            </h2>
-            <ol className="text-muted mt-3" style={{ textAlign: "justify", lineHeight: "1.8", paddingLeft: "20px" }}>
-              <li>
-                Mengimplementasikan Pendidikan Tinggi Modern Untuk Menghasilkan Berkualitas dan Terampil Dalam Memanfaatkan Sumberdaya Pakan Lokal dan Dalam Mengembangkan Industri Ternak Daging dan Kerja Serta Mempunyai Jiwa Kewirausahaan
-                sehingga dapat Bersaing di Pasar Global
-              </li>
-              <li>Mengembangkan dan mengaplikasikan Ilmu Pengetahuan dibidang Nutrisi Ternak Daging dan Kerja Melalui Proses Pendidikan dan Penyelesaian Masalah yang berhubungan dengan Bidang Nutrisi Ternak Daging dan Kerja</li>
-              <li>Meningkatkan Tanggung Jawab dalam Pengabdian pada Masyarakat dengan mengembangkan keahlian dan Program Profesional yang berhubungan dengan Bidang Nutrisi dan Ternak Kerja</li>
-            </ol>
+            {/* Kontainer dengan tanda kutip */}
+            <div className="position-relative px-5 py-3">
+              {/* Tanda Kutip Buka */}
+              <span
+                style={{
+                  position: "absolute",
+                  left: "0",
+                  top: "-10px",
+                  fontSize: "4rem",
+                  color: "#4a3a2e",
+                  fontFamily: "serif",
+                  lineHeight: "1",
+                }}
+              >
+                “
+              </span>
+
+              {/* Isi Mandat */}
+              <p
+                className="mb-0"
+                style={{
+                  color: "#333",
+                  fontSize: "1.1rem",
+                  lineHeight: "1.6",
+                  fontWeight: "400",
+                }}
+              >
+                mengembangkan dan mengaplikasikan ilmu pengetahuan serta teknologi pakan dalam pengembangan industri ternak daging dan kerja di daerah tropis.
+              </p>
+
+              {/* Tanda Kutip Tutup */}
+              <span
+                style={{
+                  position: "absolute",
+                  right: "0",
+                  bottom: "-30px",
+                  fontSize: "4rem",
+                  color: "#4a3a2e",
+                  fontFamily: "serif",
+                  lineHeight: "1",
+                }}
+              >
+                ”
+              </span>
+            </div>
+
+            {/* Garis Horizontal Bawah */}
+            <hr
+              style={{
+                width: "80%",
+                margin: "50px auto 0",
+                borderTop: "1px solid #ccc",
+                opacity: "0.5",
+              }}
+            />
           </Col>
         </Row>
       </Container>

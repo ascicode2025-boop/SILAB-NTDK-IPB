@@ -24,7 +24,33 @@ const LaporanKoordinator = () => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  const monthNames = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+  const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+  // Static month options for filter
+  const bulanOptions = [
+    { value: "1", label: "Januari" },
+    { value: "2", label: "Februari" },
+    { value: "3", label: "Maret" },
+    { value: "4", label: "April" },
+    { value: "5", label: "Mei" },
+    { value: "6", label: "Juni" },
+    { value: "7", label: "Juli" },
+    { value: "8", label: "Agustus" },
+    { value: "9", label: "September" },
+    { value: "10", label: "Oktober" },
+    { value: "11", label: "November" },
+    { value: "12", label: "Desember" },
+  ];
+
+  // Generate year options (current year and 5 years back)
+  const getYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear; i >= currentYear - 5; i--) {
+      years.push(i);
+    }
+    return years;
+  };
 
   const theme = {
     primary: "#8D766B",
@@ -129,9 +155,9 @@ const LaporanKoordinator = () => {
                     <Form.Label className="small fw-bold text-muted text-uppercase ms-1">Bulan</Form.Label>
                     <Form.Select name="bulan" value={filterForm.bulan} onChange={handleChange} className="bg-light border-0 py-2 shadow-none" style={{ borderRadius: "12px" }}>
                       <option value="">Semua Bulan</option>
-                      {filters.bulan.map((b, i) => (
-                        <option key={i} value={b}>
-                          {monthNames[Number(b)] || b}
+                      {bulanOptions.map((b) => (
+                        <option key={b.value} value={b.value}>
+                          {b.label}
                         </option>
                       ))}
                     </Form.Select>
@@ -140,8 +166,8 @@ const LaporanKoordinator = () => {
                     <Form.Label className="small fw-bold text-muted text-uppercase ms-1">Tahun</Form.Label>
                     <Form.Select name="tahun" value={filterForm.tahun} onChange={handleChange} className="bg-light border-0 py-2 shadow-none" style={{ borderRadius: "12px" }}>
                       <option value="">Semua Tahun</option>
-                      {filters.tahun.map((t, i) => (
-                        <option key={i} value={t}>
+                      {getYearOptions().map((t) => (
+                        <option key={t} value={t}>
                           {t}
                         </option>
                       ))}

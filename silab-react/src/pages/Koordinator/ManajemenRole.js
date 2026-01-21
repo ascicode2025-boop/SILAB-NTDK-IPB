@@ -38,6 +38,22 @@ const ManajemenAkun = () => {
     return keywords.some((k) => r.includes(k.toLowerCase()));
   };
 
+  // helper: check if user is internal IPB
+  const isInternalIPB = (user) => {
+    const inst = (user.institution || "").toLowerCase();
+    const email = (user.email || "").toLowerCase();
+    return inst.includes("ipb") || inst.includes("internal") || email.includes("@apps.ipb.ac.id") || email.includes("@ipb.ac.id");
+  };
+
+  // State untuk tab filter
+  const [activeTab, setActiveTab] = useState("staff"); // "staff" or "klien"
+
+  // State untuk modal konfirmasi aktivasi/nonaktifkan
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [userToToggle, setUserToToggle] = useState(null);
+  const [togglingStatus, setTogglingStatus] = useState(false);
+  const [statusPopup, setStatusPopup] = useState({ show: false, type: "", message: "" });
+
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -188,6 +204,7 @@ const ManajemenAkun = () => {
             {[
               { label: "Total Pengguna", value: `${users.length} User`, icon: <Users size={24} />, color: theme.primary },
               { label: "Admin Aktif", value: `${users.filter((u) => roleMatch(u.role, ["kepala", "koordinator"]) && (u.status || "Aktif") === "Aktif").length} Akun`, icon: <ShieldCheck size={24} />, color: theme.dark },
+              { label: "Klien Internal IPB", value: `${users.filter((u) => roleMatch(u.role, ["klien", "user", "mahasiswa"]) && isInternalIPB(u)).length} Akun`, icon: <UserCircle size={24} />, color: "#2E86AB" },
               { label: "Sistem Terintegrasi", value: "100%", icon: <Settings size={24} />, color: theme.accent },
             ].map((stat, idx) => (
               <Col md={4} key={idx}>
@@ -222,12 +239,36 @@ const ManajemenAkun = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
             <Card style={cardStyle} className="overflow-hidden border-0 shadow-lg">
               <Card.Header className="bg-white border-0 p-4">
-                <InputGroup className="rounded-4 overflow-hidden" style={{ border: `1.5px solid ${theme.accent}`, maxWidth: "400px" }}>
-                  <InputGroup.Text className="bg-transparent border-0 pe-0">
-                    <Search size={18} className="text-muted" />
-                  </InputGroup.Text>
-                  <Form.Control placeholder="Cari berdasarkan nama atau email..." className="bg-transparent border-0 py-2 shadow-none" style={{ fontSize: "14px" }} />
-                </InputGroup>
+                <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                  <InputGroup className="rounded-4 overflow-hidden" style={{ border: `1.5px solid ${theme.accent}`, maxWidth: "400px" }}>
+                    <InputGroup.Text className="bg-transparent border-0 pe-0">
+                      <Search size={18} className="text-muted" />
+                    </InputGroup.Text>
+                    <Form.Control placeholder="Cari berdasarkan nama atau email..." className="bg-transparent border-0 py-2 shadow-none" style={{ fontSize: "14px" }} />
+                  </InputGroup>
+
+                  {/* Tab Filter */}
+                  <div className="d-flex gap-2">
+                    <Button
+                      variant={activeTab === "staff" ? "primary" : "outline-secondary"}
+                      size="sm"
+                      className="rounded-pill px-3"
+                      style={activeTab === "staff" ? { backgroundColor: theme.primary, borderColor: theme.primary } : {}}
+                      onClick={() => setActiveTab("staff")}
+                    >
+                      <Users size={16} className="me-1" /> Staff Lab
+                    </Button>
+                    <Button
+                      variant={activeTab === "klien" ? "primary" : "outline-secondary"}
+                      size="sm"
+                      className="rounded-pill px-3"
+                      style={activeTab === "klien" ? { backgroundColor: "#2E86AB", borderColor: "#2E86AB" } : {}}
+                      onClick={() => setActiveTab("klien")}
+                    >
+                      <UserCircle size={16} className="me-1" /> Klien Internal IPB
+                    </Button>
+                  </div>
+                </div>
               </Card.Header>
 
               <Table hover responsive className="mb-0 custom-table">
@@ -241,20 +282,32 @@ const ManajemenAkun = () => {
                 </thead>
                 <tbody>
                   {(() => {
-                    const filtered = users.filter((u) => roleMatch(u.role, ["teknisi", "koordinator", "kepala"]));
+                    let filtered;
+                    if (activeTab === "staff") {
+                      filtered = users.filter((u) => roleMatch(u.role, ["teknisi", "koordinator", "kepala"]));
+                    } else {
+                      // Filter klien internal IPB (mahasiswa/user dari IPB)
+                      filtered = users.filter((u) => roleMatch(u.role, ["klien", "user", "mahasiswa"]) && isInternalIPB(u));
+                    }
+
                     if (filtered.length === 0)
                       return (
                         <tr>
                           <td colSpan={4} className="text-center py-4 text-muted">
-                            Tidak ada akun teknisi/koordinator/kepala
+                            {activeTab === "staff" ? "Tidak ada akun teknisi/koordinator/kepala" : "Tidak ada akun klien internal IPB"}
                           </td>
                         </tr>
                       );
                     return filtered.map((user) => {
                       const roleLower = (user.role || "").toLowerCase();
-                      const color = roleLower.includes("koordinator") ? "#A68A7D" : roleLower.includes("kepala") ? "#634E44" : "#8D766B";
+                      let color;
+                      if (activeTab === "klien") {
+                        color = "#2E86AB"; // Warna biru untuk klien
+                      } else {
+                        color = roleLower.includes("koordinator") ? "#A68A7D" : roleLower.includes("kepala") ? "#634E44" : "#8D766B";
+                      }
                       return (
-                        <tr key={user.id} style={{ verticalAlign: "middle" }}>
+                        <tr key={user.id} style={{ verticalAlign: "middle", opacity: user.status === "Non-Aktif" ? 0.6 : 1 }}>
                           <td className="py-4 px-4">
                             <div className="d-flex align-items-center">
                               <div className="me-3 d-flex align-items-center justify-content-center rounded-circle shadow-sm" style={{ width: "45px", height: "45px", backgroundColor: `${color}15`, color: color }}>
@@ -263,19 +316,25 @@ const ManajemenAkun = () => {
                               <div>
                                 <div className="fw-bold">{user.name}</div>
                                 <div className="text-muted small">{user.email}</div>
+                                {activeTab === "klien" && user.institution && (
+                                  <div className="text-muted small">
+                                    <i className="bi bi-building me-1"></i>
+                                    {user.institution}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </td>
                           <td>
                             <Badge bg="none" style={{ backgroundColor: `${color}15`, color: color, borderRadius: "8px", padding: "8px 12px", fontWeight: "600", fontSize: "11px", border: `1px solid ${color}25` }}>
-                              {user.role}
+                              {activeTab === "klien" ? "Klien Internal" : user.role}
                             </Badge>
                           </td>
                           <td className="text-center">
                             <div className="d-flex align-items-center justify-content-center gap-2">
-                              <div style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: user.status === "Aktif" ? "#2ECC71" : "#BDC3C7" }}></div>
-                              <span className="fw-medium" style={{ fontSize: "13px" }}>
-                                {user.status}
+                              <div style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: user.status === "Aktif" ? "#2ECC71" : "#E74C3C" }}></div>
+                              <span className="fw-medium" style={{ fontSize: "13px", color: user.status === "Aktif" ? "#2ECC71" : "#E74C3C" }}>
+                                {user.status || "Aktif"}
                               </span>
                             </div>
                           </td>
@@ -285,13 +344,14 @@ const ManajemenAkun = () => {
                                 <Eye size={16} />
                               </button>
                               <button
-                                title="Non-aktifkan / Aktifkan"
+                                title={user.status === "Aktif" ? "Non-aktifkan Akun" : "Aktifkan Akun"}
                                 onClick={() => {
-                                  if (window.confirm("Non-aktifkan/aktifkan akun ini?")) toggleActive(user);
+                                  setUserToToggle(user);
+                                  setShowConfirmModal(true);
                                 }}
-                                className="action-btn delete"
+                                className={`action-btn ${user.status === "Aktif" ? "delete" : "activate"}`}
                               >
-                                <Trash2 size={16} />
+                                {user.status === "Aktif" ? <EyeOff size={16} /> : <Eye size={16} />}
                               </button>
                             </div>
                           </td>
@@ -411,6 +471,182 @@ const ManajemenAkun = () => {
           </Modal.Footer>
         </Modal>
 
+        {/* MODAL KONFIRMASI AKTIVASI/NONAKTIFKAN AKUN */}
+        <Modal
+          show={showConfirmModal}
+          onHide={() => {
+            if (!togglingStatus) {
+              setShowConfirmModal(false);
+              setUserToToggle(null);
+            }
+          }}
+          centered
+          contentClassName="border-0 shadow-lg"
+          style={{ zIndex: 1070 }}
+        >
+          <Modal.Body className="p-0">
+            <div
+              className="text-center py-4 px-3"
+              style={{
+                backgroundColor: userToToggle?.status === "Aktif" ? "#FEF3F2" : "#ECFDF5",
+                borderRadius: "12px 12px 0 0",
+              }}
+            >
+              <div
+                className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+                style={{
+                  width: "70px",
+                  height: "70px",
+                  backgroundColor: userToToggle?.status === "Aktif" ? "#FEE4E2" : "#D1FAE5",
+                }}
+              >
+                {userToToggle?.status === "Aktif" ? <EyeOff size={32} color="#DC2626" /> : <Eye size={32} color="#059669" />}
+              </div>
+              <h5 className="fw-bold mb-2" style={{ color: userToToggle?.status === "Aktif" ? "#DC2626" : "#059669" }}>
+                {userToToggle?.status === "Aktif" ? "Nonaktifkan Akun?" : "Aktifkan Akun?"}
+              </h5>
+              <p className="text-muted mb-0 px-3">{userToToggle?.status === "Aktif" ? "Akun ini tidak akan bisa login setelah dinonaktifkan." : "Akun ini akan bisa login kembali setelah diaktifkan."}</p>
+            </div>
+
+            {userToToggle && (
+              <div className="p-4">
+                <div className="d-flex align-items-center p-3 rounded-3" style={{ backgroundColor: "#F9FAFB" }}>
+                  <div
+                    className="d-flex align-items-center justify-content-center rounded-circle me-3"
+                    style={{
+                      width: "50px",
+                      height: "50px",
+                      backgroundColor: "#E5E7EB",
+                    }}
+                  >
+                    <UserCircle size={28} color="#6B7280" />
+                  </div>
+                  <div>
+                    <div className="fw-bold">{userToToggle.name}</div>
+                    <div className="text-muted small">{userToToggle.email}</div>
+                    <Badge
+                      bg="none"
+                      className="mt-1"
+                      style={{
+                        backgroundColor: userToToggle.status === "Aktif" ? "#DEF7EC" : "#FDE8E8",
+                        color: userToToggle.status === "Aktif" ? "#03543F" : "#9B1C1C",
+                        fontSize: "11px",
+                        padding: "4px 10px",
+                        borderRadius: "20px",
+                      }}
+                    >
+                      Status: {userToToggle.status || "Aktif"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="d-flex gap-3 p-4 pt-0">
+              <Button
+                variant="light"
+                className="flex-fill py-2 rounded-pill fw-medium"
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setUserToToggle(null);
+                }}
+                disabled={togglingStatus}
+              >
+                Batal
+              </Button>
+              <Button
+                variant={userToToggle?.status === "Aktif" ? "danger" : "success"}
+                className="flex-fill py-2 rounded-pill fw-medium"
+                onClick={async () => {
+                  if (!userToToggle) return;
+                  setTogglingStatus(true);
+                  try {
+                    await toggleActive(userToToggle);
+                    setShowConfirmModal(false);
+                    setUserToToggle(null);
+                    setStatusPopup({
+                      show: true,
+                      type: "success",
+                      message: userToToggle.status === "Aktif" ? `Akun ${userToToggle.name} berhasil dinonaktifkan` : `Akun ${userToToggle.name} berhasil diaktifkan`,
+                    });
+                  } catch (e) {
+                    setStatusPopup({
+                      show: true,
+                      type: "error",
+                      message: "Gagal mengubah status akun. Silakan coba lagi.",
+                    });
+                  } finally {
+                    setTogglingStatus(false);
+                  }
+                }}
+                disabled={togglingStatus}
+              >
+                {togglingStatus ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Memproses...
+                  </>
+                ) : userToToggle?.status === "Aktif" ? (
+                  "Ya, Nonaktifkan"
+                ) : (
+                  "Ya, Aktifkan"
+                )}
+              </Button>
+            </div>
+          </Modal.Body>
+        </Modal>
+
+        {/* POPUP NOTIFIKASI STATUS */}
+        {statusPopup.show && (
+          <>
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(0,0,0,0.4)",
+                zIndex: 1075,
+              }}
+              onClick={() => setStatusPopup({ show: false, type: "", message: "" })}
+            />
+            <div
+              style={{
+                position: "fixed",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                zIndex: 1080,
+                minWidth: "320px",
+                maxWidth: "400px",
+              }}
+            >
+              <Card className="border-0 shadow-lg" style={{ borderRadius: "20px", overflow: "hidden" }}>
+                <Card.Body className="text-center p-4">
+                  <div
+                    className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+                    style={{
+                      width: "70px",
+                      height: "70px",
+                      backgroundColor: statusPopup.type === "success" ? "#D1FAE5" : "#FEE2E2",
+                    }}
+                  >
+                    {statusPopup.type === "success" ? <i className="bi bi-check-lg" style={{ fontSize: "2rem", color: "#059669" }}></i> : <i className="bi bi-x-lg" style={{ fontSize: "2rem", color: "#DC2626" }}></i>}
+                  </div>
+                  <h5 className="fw-bold mb-2" style={{ color: statusPopup.type === "success" ? "#059669" : "#DC2626" }}>
+                    {statusPopup.type === "success" ? "Berhasil!" : "Gagal!"}
+                  </h5>
+                  <p className="text-muted mb-4">{statusPopup.message}</p>
+                  <Button variant={statusPopup.type === "success" ? "success" : "danger"} className="rounded-pill px-5 py-2" onClick={() => setStatusPopup({ show: false, type: "", message: "" })}>
+                    Tutup
+                  </Button>
+                </Card.Body>
+              </Card>
+            </div>
+          </>
+        )}
+
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
           
@@ -448,6 +684,8 @@ const ManajemenAkun = () => {
           .action-btn.edit:hover { color: #2980B9; border-color: #2980B9; }
           .action-btn.settings:hover { color: ${theme.dark}; border-color: ${theme.dark}; }
           .action-btn.delete:hover { color: #E74C3C; border-color: #E74C3C; }
+          .action-btn.activate { color: #27AE60; }
+          .action-btn.activate:hover { color: #2ECC71; border-color: #2ECC71; background-color: #2ECC7115; }
 
           #btn-tambah:hover { filter: brightness(1.1); transform: scale(1.02); }
           .btn-submit-cokelat:hover { opacity: 0.9; transform: scale(1.02); }

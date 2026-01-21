@@ -86,6 +86,14 @@ class AuthController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
+        // Cek apakah akun dinonaktifkan
+        if (isset($user->status) && $user->status === 'Non-Aktif') {
+            Auth::logout();
+            return response()->json([
+                'message' => 'Akun Anda telah dinonaktifkan. Silakan hubungi administrator.'
+            ], 403);
+        }
+
         // Logika Keaktifan
         $user->increment('login_count');
         $this->checkLoginAchievements($user);

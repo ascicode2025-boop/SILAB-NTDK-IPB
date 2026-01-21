@@ -82,7 +82,7 @@ const RiwayatAnalisisTeknisi = () => {
     fetchData();
   }, []);
 
-  const filteredData = data.filter((item) => item.kode_batch?.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredData = data.filter((item) => item.kode_batch?.toLowerCase().includes(searchTerm.toLowerCase()) || item.user?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <NavbarLoginTeknisi>
@@ -112,7 +112,7 @@ const RiwayatAnalisisTeknisi = () => {
                       <InputGroup.Text className="bg-transparent border-0 text-muted">
                         <Search size={18} />
                       </InputGroup.Text>
-                      <Form.Control placeholder="Cari kode batch..." className="bg-transparent border-0 shadow-none" style={{ fontSize: "14px" }} onChange={(e) => setSearchTerm(e.target.value)} />
+                      <Form.Control placeholder="Cari kode batch atau nama klien..." className="bg-transparent border-0 shadow-none" style={{ fontSize: "14px" }} onChange={(e) => setSearchTerm(e.target.value)} />
                     </InputGroup>
                   </Col>
                 </Row>
@@ -127,6 +127,9 @@ const RiwayatAnalisisTeknisi = () => {
                         <Hash size={14} className="me-1" /> Kode Batch
                       </th>
                       <th>
+                        <User size={14} className="me-1" /> Nama Klien
+                      </th>
+                      <th>
                         <Beaker size={14} className="me-1" /> Jenis Analisis
                       </th>
                       <th>
@@ -139,13 +142,13 @@ const RiwayatAnalisisTeknisi = () => {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-5 text-muted">
+                        <td colSpan={7} className="text-center py-5 text-muted">
                           Memuat data...
                         </td>
                       </tr>
                     ) : filteredData.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-5 text-muted">
+                        <td colSpan={7} className="text-center py-5 text-muted">
                           Tidak ada riwayat ditemukan.
                         </td>
                       </tr>
@@ -153,9 +156,10 @@ const RiwayatAnalisisTeknisi = () => {
                       filteredData.map((item, idx) => (
                         <tr key={item.id}>
                           <td className="ps-4 text-muted">{idx + 1}</td>
-                          <td className="fw-bold" style={{ color: theme.textDark }}>
+                          <td className="fw-bold" style={{ color: theme.textDark, whiteSpace: "nowrap" }}>
                             {item.kode_batch || "-"}
                           </td>
+                          <td>{item.user?.full_name || "-"}</td>
                           <td>
                             <div className="text-truncate" style={{ maxWidth: "250px" }}>
                               {item.analysis_items?.map((i) => i.jenis_analisis || i.nama_item || "-").join(", ")}

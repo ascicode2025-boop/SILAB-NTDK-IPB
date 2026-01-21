@@ -22,7 +22,7 @@ function Galeri() {
       <Container>
         <div className="text-center mb-5 mt-4">
           <h2 className="gallery-title" style={{ color: "#45352F" }}>
-            Selamat Datang di Galeri Divisi NTDK
+            Galeri Divisi Nutrisi Ternak Daging dan Kerja
           </h2>
           <p className="text-muted mt-2">Integritas dan Kualitas dalam Setiap Layanan</p>
         </div>
@@ -78,23 +78,6 @@ function Galeri() {
           </Col>
         </Row>
 
-        {/* --- Bagian 3: Galeri Lebar --- */}
-        <Row className="justify-content-center">
-          <Col lg={12}>
-            {[images[3], images[4]].map((item, index) => (
-              <div key={index} className="wide-card-container mb-5">
-                <div className="custom-card shadow-sm p-3">
-                  <div className="img-wide-wrapper">
-                    <Image src={item.src} className="img-wide" alt="Fasilitas NTDK" />
-                  </div>
-                  <div className="wide-desc mx-2">
-                    <p className="mb-0">{item.text}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </Col>
-        </Row>
       </Container>
 
       <Footer />

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Container, Row, Col, Card, Table, Button, Form, InputGroup, Badge } from "react-bootstrap";
-import { Search, Filter, FileText, ChevronRight, Hash, Calendar as CalendarIcon, Beaker } from "lucide-react";
+import { Container, Row, Col, Card, Table, Button, Form, InputGroup } from "react-bootstrap";
+import { Search, FileText, ChevronRight, Hash, Calendar as CalendarIcon, Beaker } from "lucide-react";
 import { motion } from "framer-motion";
 import "bootstrap/dist/css/bootstrap.min.css";
 import NavbarLogin from "./NavbarLoginKlien";
@@ -98,6 +98,13 @@ const RiwayatAnalisisKlien = () => {
     );
   };
 
+  // Search filter function
+  const getFilteredData = () => {
+    return historyData.filter((item) => {
+      return item.kode_batch.toLowerCase().includes(searchTerm.toLowerCase()) || item.jenis.toLowerCase().includes(searchTerm.toLowerCase());
+    });
+  };
+
   return (
     <NavbarLogin>
       <div style={{ backgroundColor: theme.background, minHeight: "100vh", padding: "60px 0" }}>
@@ -128,11 +135,6 @@ const RiwayatAnalisisKlien = () => {
                       </InputGroup.Text>
                       <Form.Control placeholder="Cari berdasarkan kode batch atau jenis..." className="bg-transparent border-0 shadow-none" style={{ fontSize: "14px" }} onChange={(e) => setSearchTerm(e.target.value)} />
                     </InputGroup>
-                  </Col>
-                  <Col className="text-end">
-                    <Button variant="outline-secondary" className="border-0 d-inline-flex align-items-center gap-2" style={{ borderRadius: "12px", fontSize: "14px" }}>
-                      <Filter size={16} /> Filter
-                    </Button>
                   </Col>
                 </Row>
               </Card.Header>
@@ -168,39 +170,47 @@ const RiwayatAnalisisKlien = () => {
                           Belum ada riwayat analisis.
                         </td>
                       </tr>
+                    ) : getFilteredData().length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="text-center py-5">
+                          <div className="text-muted">
+                            <Search size={40} className="mb-3 opacity-50" />
+                            <p className="mb-2">Tidak ditemukan hasil</p>
+                            <small>Coba ubah kata kunci pencarian Anda</small>
+                          </div>
+                        </td>
+                      </tr>
                     ) : (
-                      historyData
-                        .filter((item) => item.kode_batch.toLowerCase().includes(searchTerm.toLowerCase()) || item.jenis.toLowerCase().includes(searchTerm.toLowerCase()))
-                        .map((item, index) => (
-                          <tr key={item.id}>
-                            <td className="ps-4 text-muted">{index + 1}</td>
-                            <td className="fw-bold" style={{ color: theme.textDark }}>
-                              {item.kode_batch}
-                            </td>
-                            <td>
-                              <div className="text-truncate" style={{ maxWidth: "250px" }}>
-                                {item.jenis}
-                              </div>
-                            </td>
-                            <td className="text-muted">{item.tanggal}</td>
-                            <td className="text-center">{getStatusBadge(item.status)}</td>
-                            <td className="text-center pe-4">
-                              {item.pdf_path ? (
-                                <Button
-                                  as="a"
-                                  href={`${process.env.REACT_APP_API_BASE_URL ? process.env.REACT_APP_API_BASE_URL.replace(/\/api$/, "") : "http://127.0.0.1:8000"}/storage/${item.pdf_path}`}
-                                  target="_blank"
-                                  className="btn-lihat-new"
-                                >
-                                  <span>Hasil</span>
-                                  <ChevronRight size={16} />
-                                </Button>
-                              ) : (
-                                <span className="text-muted small italic">Sertifikat diproses</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))
+                      getFilteredData().map((item, index) => (
+                        <tr key={item.id}>
+                          <td className="ps-4 text-muted">{index + 1}</td>
+                          <td className="fw-bold" style={{ color: theme.textDark }}>
+                            {item.kode_batch}
+                          </td>
+                          <td>
+                            <div className="text-truncate" style={{ maxWidth: "250px" }}>
+                              {item.jenis}
+                            </div>
+                          </td>
+                          <td className="text-muted">{item.tanggal}</td>
+                          <td className="text-center">{getStatusBadge(item.status)}</td>
+                          <td className="text-center pe-4">
+                            {item.pdf_path ? (
+                              <Button
+                                as="a"
+                                href={`${process.env.REACT_APP_API_BASE_URL ? process.env.REACT_APP_API_BASE_URL.replace(/\/api$/, "") : "http://127.0.0.1:8000"}/storage/${item.pdf_path}`}
+                                target="_blank"
+                                className="btn-lihat-new"
+                              >
+                                <span>Hasil</span>
+                                <ChevronRight size={16} />
+                              </Button>
+                            ) : (
+                              <span className="text-muted small italic">Sertifikat diproses</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
                     )}
                   </tbody>
                 </Table>

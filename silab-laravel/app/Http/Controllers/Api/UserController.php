@@ -24,13 +24,16 @@ class UserController extends Controller
             ->orderBy('id', 'desc')
             ->get()
             ->map(function ($u) {
-                // If the user has logged in at least once, consider them active
-                $status = 'Non-Aktif';
+                // Prioritaskan status dari database
+                // Jika status sudah diset (termasuk 'Non-Aktif'), gunakan itu
+                $status = 'Aktif'; // default untuk user baru
+
                 if (isset($u->status) && !empty($u->status)) {
+                    // Gunakan status dari database (ini sudah final, tidak di-override)
                     $status = $u->status;
-                }
-                if (isset($u->login_count) && intval($u->login_count) > 0) {
-                    $status = 'Aktif';
+                } elseif (!isset($u->login_count) || intval($u->login_count) === 0) {
+                    // Jika belum pernah login dan tidak ada status, anggap Non-Aktif
+                    $status = 'Non-Aktif';
                 }
 
                 return [

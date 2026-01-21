@@ -38,23 +38,11 @@ function LandingPage() {
   const images = [
     {
       src: "/asset/Galeri_Landing_Page/galeriLandingPage1.png",
-      text: "Laboratorium modern dengan teknologi terbaru",
-    },
-    {
-      src: "/asset/Galeri_Landing_Page/galeriLandingPage6.png",
-      text: "Proses analisis sampel yang cepat dan akurat",
-    },
-    {
-      src: "/asset/Galeri_Landing_Page/galeriLandingPage2.png",
-      text: "Layanan pemeriksaan lengkap untuk berbagai kebutuhan",
-    },
-    {
-      src: "/asset/Galeri_Landing_Page/galeriLandingPage3.png",
-      text: "Tenaga ahli profesional dan berpengalaman",
+      text: "Alat Laboratorium modern dengan teknologi terbaru",
     },
     {
       src: "/asset/Galeri_Landing_Page/galeriLandingPage5.png",
-      text: "Standar kualitas internasional dalam setiap pengujian",
+      text: "Tenaga ahli profesional dan berpengalaman",
     },
     {
       src: "/asset/Galeri_Landing_Page/galeriLandingPage4.png",

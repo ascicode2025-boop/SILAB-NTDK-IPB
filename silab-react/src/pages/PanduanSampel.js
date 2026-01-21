@@ -26,23 +26,35 @@ const PanduanSampel = () => {
 
           <div style={{ textAlign: "justify", fontSize: "14px", color: "#333" }}>
             <p>
-              <strong>Lorem Ipsum</strong> is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and
-              scrambled it to make a type specimen book.
+              <strong>1. Persiapan Sampel</strong>
+              <br />
+              Pastikan sampel telah dikemas dalam wadah steril yang tertutup rapat untuk menghindari kontaminasi selama perjalanan. Pastikan sampel telah dikemas menggunakan wadah yang steril, bersih, dan tertutup rapat untuk mencegah
+              terjadinya kontaminasi selama proses pengiriman. Wadah harus sesuai dengan jenis sampel dan tidak mudah bocor atau rusak agar kualitas sampel tetap terjaga hingga diterima oleh laboratorium.
             </p>
 
             <p>
-              <strong>Lorem Ipsum</strong> is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and
-              scrambled it to make a type specimen book.
+              <strong>2. Labeling</strong>
+              <br />
+              Berikan label yang jelas dan mudah dibaca pada setiap botol atau wadah sampel. Label wajib mencantumkan informasi penting seperti ID sampel, tanggal dan waktu pengambilan, serta jenis analisis yang diminta. Pelabelan yang
+              tepat bertujuan untuk menghindari kesalahan identifikasi dan memastikan akurasi hasil pengujian.
             </p>
 
             <p>
-              <strong>Lorem Ipsum</strong> is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and
-              scrambled it to make a type specimen book.
+              <strong>3. Suhu Penyimpanan</strong>
+              <br />
+              Gunakan ice pack dan thermal bag apabila sampel memerlukan kondisi suhu dingin, umumnya pada rentang 4–8°C. Pengendalian suhu selama pengiriman sangat penting untuk menjaga stabilitas zat metabolit dan mencegah terjadinya
+              degradasi yang dapat memengaruhi hasil analisis.
             </p>
 
             <p>
-              <strong>Lorem Ipsum</strong> is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and
-              scrambled it to make a type specimen book.
+              <strong>4. Dokumen Pendukung</strong>
+              <br />
+              Sertakan seluruh dokumen pendukung yang diperlukan, termasuk formulir pemesanan atau permintaan analisis yang telah dicetak dari sistem. Pastikan dokumen tersebut ditempatkan di dalam paket pengiriman dengan aman dan
+              terlindungi agar dapat diperiksa dengan mudah oleh pihak laboratorium.
+            </p>
+
+            <p style={{ color: "#8B0000", fontWeight: "500" }}>
+              <strong>Catatan Penting:</strong> Kerusakan sampel akibat pengemasan yang tidak standar di luar tanggung jawab laboratorium.
             </p>
           </div>
 

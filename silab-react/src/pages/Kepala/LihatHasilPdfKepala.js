@@ -7,7 +7,81 @@ import FooterSetelahLogin from "../FooterSetelahLogin";
 import { formatDataForPDF } from "../../utils/pdfHelpers";
 import { getAllBookings, updateBookingStatus } from "../../services/BookingService";
 import { getAuthHeader } from "../../services/AuthService";
-import { Button, Spinner, Card } from "react-bootstrap";
+import { Button, Spinner, Card, Modal } from "react-bootstrap";
+import CustomPopup from "../../components/Common/CustomPopup";
+
+// Responsive styles
+const responsiveStyles = `
+  @media (max-width: 992px) {
+    .pdf-header-card .card-body {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 1rem !important;
+    }
+    .pdf-header-actions {
+      width: 100% !important;
+      justify-content: flex-start !important;
+    }
+    .pdf-viewer-container {
+      height: 600px !important;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .pdf-header-title {
+      font-size: 1.1rem !important;
+    }
+    .pdf-header-subtitle {
+      font-size: 0.8rem !important;
+    }
+    .pdf-header-actions {
+      flex-wrap: wrap !important;
+    }
+    .pdf-header-actions .btn {
+      font-size: 0.8rem !important;
+      padding: 0.4rem 0.75rem !important;
+    }
+    .pdf-viewer-container {
+      height: 500px !important;
+      border-radius: 6px !important;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .pdf-page-container {
+      padding: 0.75rem !important;
+    }
+    .pdf-header-card {
+      margin-bottom: 0.75rem !important;
+    }
+    .pdf-header-card .card-body {
+      padding: 0.75rem !important;
+    }
+    .pdf-header-title {
+      font-size: 1rem !important;
+    }
+    .pdf-header-subtitle {
+      font-size: 0.75rem !important;
+      line-height: 1.4 !important;
+    }
+    .pdf-header-actions {
+      gap: 0.5rem !important;
+    }
+    .pdf-header-actions .btn {
+      flex: 1 1 auto !important;
+      min-width: 100px !important;
+      font-size: 0.75rem !important;
+      padding: 0.35rem 0.5rem !important;
+    }
+    .pdf-viewer-container {
+      height: 450px !important;
+      margin: 0 -0.75rem !important;
+      border-radius: 0 !important;
+      border-left: none !important;
+      border-right: none !important;
+    }
+  }
+`;
 
 export default function LihatHasilPdfKepala() {
   useEffect(() => {
@@ -21,6 +95,10 @@ export default function LihatHasilPdfKepala() {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
+
+  // Modal State
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [popup, setPopup] = useState({ show: false, title: "", message: "", type: "info" });
 
   // --- 1. Helper Nama File ---
   const getFilename = () => {
@@ -159,9 +237,6 @@ export default function LihatHasilPdfKepala() {
   const handleSetuju = async () => {
     if (!bookingData) return;
 
-    const confirmAction = window.confirm("Apakah Anda yakin menyetujui hasil ini? Dokumen akan dikirim ke Koordinator untuk Tanda Tangan.");
-    if (!confirmAction) return;
-
     setProcessing(true);
     try {
       // Send status with timestamp so backend records when kepala approved
@@ -170,49 +245,78 @@ export default function LihatHasilPdfKepala() {
         status_updated_at: new Date().toISOString(),
       });
 
-      alert("Berhasil disetujui! Menunggu TTD Koordinator.");
-      history.push("/kepala/dashboard/verifikasiKepala");
+      setShowConfirmModal(false);
+      setPopup({
+        show: true,
+        title: "Berhasil!",
+        message: "Hasil analisis telah disetujui dan dikirim ke Koordinator untuk ditandatangani.",
+        type: "success",
+      });
+      // Redirect after short delay
+      setTimeout(() => {
+        history.push("/kepala/dashboard/verifikasiKepala");
+      }, 1500);
     } catch (err) {
       console.error("Gagal update status:", err);
-      alert("Gagal menyetujui hasil analisis.");
+      setPopup({ show: true, title: "Gagal", message: "Gagal menyetujui hasil analisis.", type: "error" });
     } finally {
       setProcessing(false);
     }
   };
 
-  const handleDownload = () => {
-    const stored = getStoredPdfUrl();
+  const handleDownload = async () => {
     const fileName = getFilename();
+    const apiBase = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
 
-    if (stored) {
-      fetch(stored, { headers: getAuthHeader() })
-        .then((res) => {
-          if (!res.ok) throw new Error("Network err");
-          return res.blob();
-        })
-        .then((blob) => {
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.style.display = "none";
-          a.href = url;
-          a.download = fileName;
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
-        })
-        .catch((err) => {
-          console.error(err);
-          window.open(stored, "_blank");
+    try {
+      let blob;
+
+      // Prioritas: gunakan API endpoint untuk menghindari CORS
+      if (bookingData?.id) {
+        const response = await fetch(`${apiBase}/bookings/${bookingData.id}/pdf`, {
+          headers: { ...getAuthHeader(), Accept: "application/pdf" },
         });
-    } else {
-      buildPDF(true);
+        if (response.ok) {
+          blob = await response.blob();
+        }
+      }
+
+      // Fallback: coba storage URL jika API gagal
+      if (!blob) {
+        const stored = getStoredPdfUrl();
+        if (stored) {
+          const response = await fetch(stored, { headers: getAuthHeader(), mode: "cors" });
+          if (response.ok) {
+            blob = await response.blob();
+          }
+        }
+      }
+
+      if (!blob) {
+        alert("PDF tidak tersedia.");
+        return;
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Download error:", err);
+      alert("Gagal mengunduh PDF. Silakan coba lagi.");
     }
   };
 
   return (
     <NavbarLoginKepala>
-      <div className="container-fluid p-4" style={{ minHeight: "calc(100vh - 160px)" }}>
+      {/* Inject responsive styles */}
+      <style>{responsiveStyles}</style>
+      <div className="container-fluid p-3 p-md-4 pdf-page-container" style={{ minHeight: "calc(100vh - 160px)" }}>
         {loading && (
           <div className="text-center py-5">
             <Spinner animation="border" />
@@ -221,32 +325,38 @@ export default function LihatHasilPdfKepala() {
 
         {!loading && (
           <>
-            <Card className="shadow-sm border-0 mb-3">
-              <Card.Body className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h5 className="mb-1 text-primary">Preview Hasil Analisis</h5>
-                  <p className="mb-0 text-muted small">
-                    Kode Batch: <strong>{bookingData?.kode_batch || "-"}</strong> | Status: <strong className="text-uppercase">{bookingData?.status?.replace(/_/g, " ") || "-"}</strong>
+            <Card className="shadow-sm border-0 mb-2 mb-md-3 pdf-header-card">
+              <Card.Body className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div className="flex-grow-1">
+                  <h5 className="mb-1 text-primary pdf-header-title">Preview Hasil Analisis</h5>
+                  <p className="mb-0 text-muted small pdf-header-subtitle">
+                    Kode Batch: <strong>{bookingData?.kode_batch || "-"}</strong>
+                    <span className="d-none d-sm-inline"> | </span>
+                    <br className="d-sm-none" />
+                    Status: <strong className="text-uppercase">{bookingData?.status?.replace(/_/g, " ") || "-"}</strong>
                   </p>
                 </div>
-                <div className="d-flex gap-2">
-                  <Button variant="secondary" onClick={() => history.push("/kepala/dashboard/verifikasiKepala")}>
-                    Kembali
+                <div className="d-flex gap-2 flex-wrap pdf-header-actions">
+                  <Button variant="secondary" size="sm" className="d-flex align-items-center" onClick={() => history.push("/kepala/dashboard/verifikasiKepala")}>
+                    <span className="d-none d-sm-inline me-1">←</span> Kembali
                   </Button>
-                  <Button variant="primary" onClick={handleDownload}>
-                    Download PDF
+                  <Button variant="primary" size="sm" className="d-flex align-items-center" onClick={handleDownload}>
+                    <span className="d-none d-sm-inline me-1">↓</span> Download
                   </Button>
 
                   {/* TOMBOL SETUJU - Hanya muncul jika status sesuai */}
                   {bookingData && (bookingData.status || "").toLowerCase() === "menunggu_verifikasi_kepala" && (
-                    <Button variant="success" onClick={handleSetuju} disabled={processing} style={{ backgroundColor: "#28a745", borderColor: "#28a745" }}>
+                    <Button variant="success" size="sm" className="d-flex align-items-center" onClick={() => setShowConfirmModal(true)} disabled={processing} style={{ backgroundColor: "#28a745", borderColor: "#28a745" }}>
                       {processing ? (
                         <>
-                          <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
-                          Memproses...
+                          <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-1" />
+                          <span className="d-none d-md-inline">Memproses...</span>
                         </>
                       ) : (
-                        "Setuju (Kirim ke TTD)"
+                        <>
+                          <span className="d-none d-md-inline">Setuju (Kirim ke TTD)</span>
+                          <span className="d-md-none">Setuju</span>
+                        </>
                       )}
                     </Button>
                   )}
@@ -254,28 +364,90 @@ export default function LihatHasilPdfKepala() {
               </Card.Body>
             </Card>
 
-            <div style={{ height: "800px", border: "1px solid #ddd", borderRadius: "8px", overflow: "hidden", backgroundColor: "#525659" }}>
+            <div
+              className="pdf-viewer-container"
+              style={{
+                height: "75vh",
+                minHeight: "400px",
+                maxHeight: "800px",
+                border: "1px solid #ddd",
+                borderRadius: "8px",
+                overflow: "hidden",
+                backgroundColor: "#525659",
+              }}
+            >
               {pdfLoading ? (
-                <div className="text-center py-5 text-white">
-                  <p>Memuat Preview PDF...</p>
+                <div className="d-flex flex-column justify-content-center align-items-center h-100 text-white">
+                  <Spinner animation="border" variant="light" className="mb-2" />
+                  <p className="mb-0">Memuat Preview PDF...</p>
                 </div>
               ) : pdfUrl ? (
                 <object data={pdfUrl} type="application/pdf" width="100%" height="100%" aria-label="PDF Preview">
-                  <p className="text-white">
-                    PDF tidak dapat ditampilkan.{" "}
-                    <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
-                      Klik di sini untuk membuka PDF
+                  <div className="d-flex flex-column justify-content-center align-items-center h-100 text-white p-3 text-center">
+                    <p className="mb-2">PDF tidak dapat ditampilkan di browser ini.</p>
+                    <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline-light btn-sm">
+                      Buka PDF di Tab Baru
                     </a>
-                    .
-                  </p>
+                  </div>
                 </object>
               ) : (
-                <div className="text-center py-5 text-white">Preview tidak tersedia.</div>
+                <div className="d-flex justify-content-center align-items-center h-100 text-white">
+                  <p className="mb-0">Preview tidak tersedia.</p>
+                </div>
               )}
             </div>
           </>
         )}
       </div>
+
+      {/* MODAL KONFIRMASI SETUJU */}
+      <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered style={{ zIndex: 1060 }}>
+        <Modal.Header closeButton style={{ borderBottom: "1px solid #eee" }}>
+          <Modal.Title className="h5 fw-bold">
+            <span className="text-success me-2">✓</span>
+            Konfirmasi Persetujuan
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="px-4 py-3">
+          <p className="mb-2">Apakah Anda yakin menyetujui hasil analisis ini?</p>
+          <p className="mb-3 text-muted small">
+            Dengan menyetujui, dokumen akan dikirim ke <strong>Koordinator</strong> untuk proses <strong>Tanda Tangan Digital</strong>.
+          </p>
+          <div className="bg-light p-3 rounded">
+            <div className="d-flex justify-content-between small">
+              <span className="text-muted">Kode Batch:</span>
+              <strong>{bookingData?.kode_batch || "-"}</strong>
+            </div>
+            <div className="d-flex justify-content-between small mt-1">
+              <span className="text-muted">Pemesan:</span>
+              <strong>{bookingData?.user?.full_name || bookingData?.user?.name || "-"}</strong>
+            </div>
+            <div className="d-flex justify-content-between small mt-1">
+              <span className="text-muted">Jenis Analisis:</span>
+              <strong>{bookingData?.jenis_analisis || "-"}</strong>
+            </div>
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="border-top-0">
+          <Button variant="outline-secondary" onClick={() => setShowConfirmModal(false)} disabled={processing}>
+            Batal
+          </Button>
+          <Button variant="success" onClick={handleSetuju} disabled={processing} style={{ minWidth: "120px" }}>
+            {processing ? (
+              <>
+                <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+                Memproses...
+              </>
+            ) : (
+              "Ya, Setujui"
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* POPUP NOTIFIKASI */}
+      <CustomPopup show={popup.show} title={popup.title} message={popup.message} type={popup.type} onClose={() => setPopup((p) => ({ ...p, show: false }))} />
+
       <FooterSetelahLogin />
     </NavbarLoginKepala>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Container, Row, Col, Card, Table, Button, Form, InputGroup } from "react-bootstrap";
-import { Search, FileText, Download, Calendar, Filter, Archive, Eye } from "lucide-react";
+import { Search, FileText, Download } from "lucide-react";
 import { motion } from "framer-motion";
 import "bootstrap/dist/css/bootstrap.min.css";
 import NavbarLoginKepala from "./NavbarLoginKepala";
@@ -80,25 +80,28 @@ const LaporanKepala = () => {
   const handleDownload = async (item) => {
     if (!item) return;
     try {
-      // If backend already provides a public URL, open it
-      if (item.pdf_url) {
-        window.open(item.pdf_url, "_blank");
-        return;
-      }
+      let blob;
+      const fileName = `Hasil_Analisis_${item.kode || item.kode_batch || item.id || "hasil"}.pdf`;
 
-      if (!item.id) {
+      if (item.pdf_url) {
+        const resp = await fetch(item.pdf_url);
+        if (!resp.ok) throw new Error("Network error");
+        blob = await resp.blob();
+      } else if (item.id) {
+        const url = `${API_URL}/bookings/${item.id}/pdf`;
+        const resp = await axios.get(url, { headers: getAuthHeader(), responseType: "blob" });
+        const contentType = resp.headers["content-type"] || "application/pdf";
+        blob = new Blob([resp.data], { type: contentType });
+      } else {
         alert("File hasil analisis tidak tersedia untuk item ini.");
         return;
       }
 
-      const url = `${API_URL}/bookings/${item.id}/pdf`;
-      const resp = await axios.get(url, { headers: getAuthHeader(), responseType: "blob" });
-      const contentType = resp.headers["content-type"] || "application/pdf";
-      const blob = new Blob([resp.data], { type: contentType });
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
+      a.style.display = "none";
       a.href = downloadUrl;
-      a.download = `${item.kode || "hasil_analisis"}.pdf`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -141,6 +144,32 @@ const LaporanKepala = () => {
     white: "#FFFFFF",
   };
 
+  // Static month options for filter
+  const bulanOptions = [
+    { value: "1", label: "Januari" },
+    { value: "2", label: "Februari" },
+    { value: "3", label: "Maret" },
+    { value: "4", label: "April" },
+    { value: "5", label: "Mei" },
+    { value: "6", label: "Juni" },
+    { value: "7", label: "Juli" },
+    { value: "8", label: "Agustus" },
+    { value: "9", label: "September" },
+    { value: "10", label: "Oktober" },
+    { value: "11", label: "November" },
+    { value: "12", label: "Desember" },
+  ];
+
+  // Generate year options (current year and 5 years back)
+  const getYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear; i >= currentYear - 5; i--) {
+      years.push(i);
+    }
+    return years;
+  };
+
   return (
     <NavbarLoginKepala>
       <div style={{ backgroundColor: theme.background, minHeight: "100vh", padding: "40px 0" }}>
@@ -161,27 +190,27 @@ const LaporanKepala = () => {
               <Col md={3}>
                 <Form.Group>
                   <Form.Label className="small fw-bold text-muted">Bulan:</Form.Label>
-                  <InputGroup className="shadow-sm rounded-pill border overflow-hidden">
-                    <Form.Control value={filterBulan} onChange={(e) => setFilterBulan(e.target.value)} type="number" min={1} max={12} className="border-0 py-2 shadow-none" placeholder="Bulan (1-12)" />
-                    <InputGroup.Text className="bg-white border-0">
-                      <div className="icon-calendar-bg">
-                        <Calendar size={16} color="white" />
-                      </div>
-                    </InputGroup.Text>
-                  </InputGroup>
+                  <Form.Select value={filterBulan} onChange={(e) => setFilterBulan(e.target.value)} className="custom-input shadow-sm">
+                    <option value="">Semua Bulan</option>
+                    {bulanOptions.map((b) => (
+                      <option key={b.value} value={b.value}>
+                        {b.label}
+                      </option>
+                    ))}
+                  </Form.Select>
                 </Form.Group>
               </Col>
               <Col md={3}>
                 <Form.Group>
                   <Form.Label className="small fw-bold text-muted">Tahun:</Form.Label>
-                  <InputGroup className="shadow-sm rounded-pill border overflow-hidden">
-                    <Form.Control value={filterTahun} onChange={(e) => setFilterTahun(e.target.value)} type="number" className="border-0 py-2 shadow-none" placeholder="Tahun (YYYY)" />
-                    <InputGroup.Text className="bg-white border-0">
-                      <div className="icon-calendar-bg">
-                        <Calendar size={16} color="white" />
-                      </div>
-                    </InputGroup.Text>
-                  </InputGroup>
+                  <Form.Select value={filterTahun} onChange={(e) => setFilterTahun(e.target.value)} className="custom-input shadow-sm">
+                    <option value="">Semua Tahun</option>
+                    {getYearOptions().map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </Form.Select>
                 </Form.Group>
               </Col>
               <Col md={3}>

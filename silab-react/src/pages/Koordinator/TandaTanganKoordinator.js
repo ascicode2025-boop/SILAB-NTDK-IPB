@@ -21,6 +21,16 @@ const customColors = {
   darkBrown: "#5d4037",
 };
 
+// Custom styles for modal to prevent navbar overlap
+const modalStyles = `
+  .modal-backdrop-high {
+    z-index: 1055 !important;
+  }
+  .modal.show {
+    z-index: 1060 !important;
+  }
+`;
+
 const TandaTanganKoordinator = () => {
   useEffect(() => {
     document.title = "SILAB-NTDK - Tanda Tangan Koordinator";
@@ -433,6 +443,8 @@ const TandaTanganKoordinator = () => {
 
   return (
     <NavbarLoginKoordinator>
+      {/* Inject modal z-index styles */}
+      <style>{modalStyles}</style>
       <div className="container-fluid min-vh-100 p-4" style={{ backgroundColor: customColors.lightGray }}>
         <div className="card border-0 shadow-sm" style={{ borderRadius: "20px", overflow: "hidden" }}>
           <div
@@ -457,18 +469,32 @@ const TandaTanganKoordinator = () => {
             ) : error ? (
               <Alert variant="danger">{error}</Alert>
             ) : (
-              <div className="table-responsive">
-                <table className="table table-hover align-middle text-center">
-                  <thead className="table-light">
+              <div className="table-responsive" style={{ maxHeight: "70vh", overflowY: "auto", overflowX: "auto" }}>
+                <table className="table table-hover align-middle text-center" style={{ minWidth: "1200px" }}>
+                  <thead className="table-light" style={{ position: "sticky", top: 0, zIndex: 1 }}>
                     <tr>
-                      <th className="py-3">Kode Batch</th>
-                      <th className="py-3">Nama Lengkap</th>
-                      <th className="py-3">Jenis Analisis</th>
-                      <th className="py-3">Parameter (Kategori)</th>
-                      <th className="py-3">Tanggal</th>
-                      <th className="py-3">Status</th>
-                      <th className="py-3">Total Harga</th>
-                      <th className="py-3" style={{ minWidth: "300px" }}>
+                      <th className="py-3" style={{ whiteSpace: "nowrap", minWidth: "150px" }}>
+                        Kode Batch
+                      </th>
+                      <th className="py-3" style={{ minWidth: "150px" }}>
+                        Nama Lengkap
+                      </th>
+                      <th className="py-3" style={{ minWidth: "120px" }}>
+                        Jenis Analisis
+                      </th>
+                      <th className="py-3" style={{ minWidth: "180px" }}>
+                        Parameter (Kategori)
+                      </th>
+                      <th className="py-3" style={{ whiteSpace: "nowrap", minWidth: "100px" }}>
+                        Tanggal
+                      </th>
+                      <th className="py-3" style={{ minWidth: "100px" }}>
+                        Status
+                      </th>
+                      <th className="py-3" style={{ whiteSpace: "nowrap", minWidth: "120px" }}>
+                        Total Harga
+                      </th>
+                      <th className="py-3" style={{ minWidth: "320px" }}>
                         Aksi
                       </th>
                     </tr>
@@ -483,7 +509,9 @@ const TandaTanganKoordinator = () => {
                     ) : (
                       dataSampel.map((item) => (
                         <tr key={item.id}>
-                          <td className="fw-bold text-dark">{item.kode_batch || "-"}</td>
+                          <td className="fw-bold text-dark" style={{ whiteSpace: "nowrap" }}>
+                            {item.kode_batch || "-"}
+                          </td>
                           <td className="text-start ps-3">{item.user?.full_name || item.user?.name || "-"}</td>
                           <td>{item.jenis_analisis}</td>
                           <td>
@@ -596,6 +624,9 @@ const TandaTanganKoordinator = () => {
         }}
         size="xl"
         centered
+        style={{ zIndex: 1060 }}
+        backdropClassName="modal-backdrop-custom"
+        contentClassName="shadow-lg"
       >
         <Modal.Header closeButton style={{ backgroundColor: customColors.brown, color: "white", borderBottom: "none" }}>
           <Modal.Title>Preview Laporan Analisis</Modal.Title>
@@ -606,9 +637,6 @@ const TandaTanganKoordinator = () => {
               <strong style={{ color: customColors.darkBrown }}>Tanggal Verifikasi:</strong>
               <span className="ms-2 text-dark">{previewTanggal || "-"}</span>
             </div>
-            <Button variant="outline-secondary" size="sm" onClick={handleModalDownload} disabled={!pdfBlobUrl}>
-              <i className="bi bi-download me-1"></i> Download
-            </Button>
           </div>
 
           {pdfLoading ? (
@@ -644,14 +672,11 @@ const TandaTanganKoordinator = () => {
           >
             Tutup
           </Button>
-          <Button style={{ backgroundColor: customColors.brown, borderColor: customColors.brown }} onClick={handleModalDownload} disabled={!pdfBlobUrl}>
-            Download PDF
-          </Button>
         </Modal.Footer>
       </Modal>
 
       {/* MODAL UPLOAD PDF */}
-      <Modal show={showUploadModal} onHide={() => setShowUploadModal(false)} centered>
+      <Modal show={showUploadModal} onHide={() => setShowUploadModal(false)} centered style={{ zIndex: 1060 }}>
         <Modal.Header closeButton>
           <Modal.Title>Upload Dokumen Ditandatangani</Modal.Title>
         </Modal.Header>

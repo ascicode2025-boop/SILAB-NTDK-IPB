@@ -2,10 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useParams, useHistory } from "react-router-dom";
 import NavbarLoginKoordinator from "./NavbarLoginKoordinator";
 import FooterSetelahLogin from "../FooterSetelahLogin";
-import { getAllBookings, updateBookingStatus, kirimKeKepala } from "../../services/BookingService";
+import { getAllBookings, kirimKeKepala } from "../../services/BookingService";
 import { getAuthHeader } from "../../services/AuthService";
-import { Button, Spinner, Container, Card } from "react-bootstrap";
-import Modal from "react-bootstrap/Modal";
+import { Button, Spinner, Container, Card, Modal, Row, Col, Table } from "react-bootstrap";
 
 export default function LihatHasilPdfKoordinator() {
   useEffect(() => {
@@ -23,6 +22,7 @@ export default function LihatHasilPdfKoordinator() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [priceMap, setPriceMap] = useState({});
 
+  // Fungsi Fetch Harga
   const fetchPrices = async () => {
     try {
       const apiBase = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
@@ -49,16 +49,7 @@ export default function LihatHasilPdfKoordinator() {
     fetchPrices();
   }, []);
 
-  // --- LOGIKA GENERATE PDF IDENTIK DENGAN TEKNISI ---
-  const instituteHeader = [
-    "KEMENTERIAN RISET, TEKNOLOGI DAN PENDIDIKAN TINGGI",
-    "INSTITUT PERTANIAN BOGOR",
-    "FAKULTAS PETERNAKAN",
-    "DEPARTEMEN ILMU NUTRISI DAN TEKNOLOGI PAKAN",
-    "LABORATORIUM NUTRISI TERNAK DAGING DAN KERJA",
-    "Jl. Agathis Kampus IPB Darmaga, Bogor 16680",
-  ];
-
+  // Penentuan Nama File PDF
   const getFilename = () => {
     let kodeBatch = "unknown";
     if (bookingData) {
@@ -93,24 +84,6 @@ export default function LihatHasilPdfKoordinator() {
       const all = res?.data || [];
       const booking = all.find((b) => String(b.id) === String(bookingId));
       setBookingData(booking || null);
-
-      if (booking) {
-        // Cek file dari server (TTD atau Generated Teknisi)
-        const apiBase = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
-        const storageBase = apiBase.replace(/\/api\/?$/, "");
-        let fileUrl = null;
-        // 1. Prioritas: file_ttd_path (hasil upload ttd manual)
-        if (booking.file_ttd_path) {
-          fileUrl = `${storageBase}/storage/${booking.file_ttd_path}`;
-          // 2. Jika belum ada, gunakan pdf_path (hasil generate teknisi)
-        } else if (booking.pdf_path) {
-          fileUrl = `${storageBase}/storage/${booking.pdf_path}`;
-          // 3. Fallback: endpoint backend untuk generate PDF on the fly
-        } else {
-          fileUrl = `${apiBase}/bookings/${booking.id}/pdf`;
-        }
-        setPdfUrl(fileUrl);
-      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -128,17 +101,14 @@ export default function LihatHasilPdfKoordinator() {
     return null;
   };
 
-  // Fungsi untuk fetch PDF dari backend (blade template)
   const fetchPdfBlob = async (bookingId) => {
     const apiBase = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
-    // Try stored/uploaded PDF first
     try {
       const res = await fetch(`${apiBase}/bookings/${bookingId}/pdf`, {
         headers: { ...getAuthHeader(), Accept: "application/pdf" },
       });
       if (res.ok) return await res.blob();
     } catch (e) {}
-    // Fallback ke generated PDF (blade template)
     try {
       const genRes = await fetch(`${apiBase}/bookings/${bookingId}/pdf-generated`, {
         headers: { ...getAuthHeader(), Accept: "application/pdf" },
@@ -161,7 +131,6 @@ export default function LihatHasilPdfKoordinator() {
       } catch (e) {
         setPdfUrl(null);
         setPdfError("PDF belum tersedia. Kemungkinan teknisi belum meng-upload hasil analisis.");
-        console.error("Error fetching PDF:", e);
       } finally {
         setPdfLoading(false);
       }
@@ -170,18 +139,14 @@ export default function LihatHasilPdfKoordinator() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingData]);
 
-  // --- 3. Logika SETUJU (Simpan Status) ---
   const handleSetuju = async () => {
     if (!bookingData) return;
     setProcessing(true);
     try {
-      // Jika booking sudah disetujui oleh Kepala (menunggu tanda tangan Koordinator),
-      // langsung arahkan ke halaman Tanda Tangan Koordinator untuk upload PDF signed.
       const st = (bookingData.status || "").toLowerCase();
       if (st === "menunggu_ttd_koordinator" || st === "menunggu_ttd") {
         history.push(`/koordinator/dashboard/tandaTanganKoordinator?bookingId=${bookingData.id}`);
       } else {
-        // Panggil endpoint kirim-ke-kepala yang tersedia di backend
         await kirimKeKepala(bookingData.id);
         setBookingData({ ...bookingData, status: "menunggu_verifikasi_kepala" });
       }
@@ -191,45 +156,50 @@ export default function LihatHasilPdfKoordinator() {
         history.push("/koordinator/dashboard/verifikasiSampelKoordinator");
       }, 300);
     } catch (err) {
-      console.error("Gagal mengirim ke verifikasi kepala:", err);
       alert("Terjadi kesalahan sistem saat menyimpan data.");
     } finally {
       setProcessing(false);
     }
   };
 
-  // --- 4. Logika Download ---
-  const handleDownload = () => {
-    const stored = getStoredPdfUrl();
+  const handleDownload = async () => {
     const fileName = getFilename();
-
-    if (stored) {
-      fetch(stored, { headers: getAuthHeader() })
-        .then((response) => {
-          if (!response.ok) throw new Error("Network response was not ok");
-          return response.blob();
-        })
-        .then((blob) => {
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.style.display = "none";
-          a.href = url;
-          a.download = fileName;
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
-        })
-        .catch((err) => {
-          console.error("Download error:", err);
-          window.open(stored, "_blank");
+    const apiBase = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
+    try {
+      let blob;
+      if (bookingData?.id) {
+        const response = await fetch(`${apiBase}/bookings/${bookingData.id}/pdf`, {
+          headers: { ...getAuthHeader(), Accept: "application/pdf" },
         });
-    } // buildPDF(true) dihapus, tidak ada fallback generate PDF lokal
+        if (response.ok) blob = await response.blob();
+      }
+      if (!blob) {
+        const stored = getStoredPdfUrl();
+        if (stored) {
+          const response = await fetch(stored, { headers: getAuthHeader(), mode: "cors" });
+          if (response.ok) blob = await response.blob();
+        }
+      }
+      if (!blob) {
+        alert("PDF tidak tersedia.");
+        return;
+      }
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      alert("Gagal mengunduh PDF.");
+    }
   };
 
   return (
     <NavbarLoginKoordinator>
-      <div className="container-fluid p-4" style={{ minHeight: "calc(100vh - 160px)" }}>
+      <Container fluid className="p-2 p-md-4" style={{ minHeight: "calc(100vh - 160px)" }}>
         {loading && (
           <div className="text-center py-5">
             <Spinner animation="border" variant="primary" />
@@ -238,129 +208,129 @@ export default function LihatHasilPdfKoordinator() {
 
         {!loading && (
           <>
+            {/* Header Section Responsif */}
             <Card className="shadow-sm border-0 mb-3">
-              <Card.Body className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h5 className="mb-1 text-primary">Preview Hasil Analisis</h5>
-                  <p className="mb-0 text-muted small">
-                    Kode Batch: <strong>{bookingData?.kode_batch || "-"}</strong> | Status: <strong className="text-uppercase">{bookingData?.status?.replace(/_/g, " ") || "-"}</strong>
-                  </p>
-                </div>
-                <div className="d-flex gap-2">
-                  <Button variant="secondary" onClick={() => history.push("/koordinator/dashboard/verifikasiSampelKoordinator")}>
-                    Kembali
-                  </Button>
-
-                  <Button variant="primary" onClick={handleDownload}>
-                    Download PDF
-                  </Button>
-
-                  {/* TOMBOL SETUJU - Hanya muncul jika status 'menunggu_verifikasi' */}
-                  {bookingData && (bookingData.status || "").toLowerCase() === "menunggu_verifikasi" && (
-                    <Button variant="success" onClick={() => setShowConfirmModal(true)} disabled={processing} style={{ backgroundColor: "#28a745", borderColor: "#28a745" }}>
-                      {processing ? (
-                        <>
-                          <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
-                          Menyimpan...
-                        </>
-                      ) : (
-                        "Setuju & Kirim ke Kepala"
+              <Card.Body>
+                <Row className="align-items-center">
+                  <Col xs={12} lg={6} className="mb-3 mb-lg-0">
+                    <h5 className="mb-1 text-primary">Preview Hasil Analisis</h5>
+                    <p className="mb-0 text-muted small">
+                      Kode Batch: <strong>{bookingData?.kode_batch || "-"}</strong> | 
+                      Status: <strong className="text-uppercase text-info">{bookingData?.status?.replace(/_/g, " ") || "-"}</strong>
+                    </p>
+                  </Col>
+                  <Col xs={12} lg={6}>
+                    <div className="d-grid d-md-flex gap-2 justify-content-lg-end">
+                      <Button variant="outline-secondary" size="sm" onClick={() => history.push("/koordinator/dashboard/verifikasiSampelKoordinator")}>
+                        Kembali
+                      </Button>
+                      <Button variant="primary" size="sm" onClick={handleDownload}>
+                        Download PDF
+                      </Button>
+                      {bookingData && (bookingData.status || "").toLowerCase() === "menunggu_verifikasi" && (
+                        <Button variant="success" size="sm" onClick={() => setShowConfirmModal(true)} disabled={processing}>
+                          {processing ? <Spinner animation="border" size="sm" /> : "Setuju & Kirim"}
+                        </Button>
                       )}
-                    </Button>
-                  )}
-                  {/* Modal Konfirmasi Kirim ke Kepala */}
-                  <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered>
-                    <Modal.Header closeButton>
-                      <Modal.Title>Konfirmasi Kirim ke Kepala</Modal.Title>
-                    </Modal.Header>
-                    <Modal.Body>
-                      <p>Apakah Anda yakin hasil analisis ini sudah benar dan siap dikirim ke Kepala Laboratorium?</p>
-                    </Modal.Body>
-                    <Modal.Footer>
-                      <Button variant="secondary" onClick={() => setShowConfirmModal(false)} disabled={processing}>
-                        Batal
-                      </Button>
-                      <Button variant="success" onClick={handleSetuju} disabled={processing}>
-                        {processing ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" /> : null}
-                        Ya, Kirim ke Kepala
-                      </Button>
-                    </Modal.Footer>
-                  </Modal>
-                </div>
+                    </div>
+                  </Col>
+                </Row>
               </Card.Body>
             </Card>
 
+            {/* Bagian Detail Harga */}
+            {bookingData && Array.isArray(bookingData.analysis_items) && bookingData.analysis_items.length > 0 && (
+              <Card className="mb-3 shadow-sm border-0">
+                <Card.Body className="p-3">
+                  <h6 className="fw-bold mb-3"><i className="bi bi- cash-stack me-2"></i>Rincian Biaya Analisis</h6>
+                  <div className="table-responsive">
+                    <Table hover size="sm" className="align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Item Analisis</th>
+                          <th className="text-center">Jumlah</th>
+                          <th>Harga Satuan</th>
+                          <th className="text-end">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bookingData.analysis_items.map((it, idx) => {
+                          const harga = priceMap[it.nama_item] || 0;
+                          const jumlah = Number(bookingData.jumlah_sampel) || 1;
+                          return (
+                            <tr key={idx}>
+                              <td className="small">{it.nama_item}</td>
+                              <td className="text-center small">{jumlah}</td>
+                              <td className="small">Rp {harga.toLocaleString("id-ID")}</td>
+                              <td className="text-end fw-bold small">Rp {(harga * jumlah).toLocaleString("id-ID")}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </Table>
+                  </div>
+                </Card.Body>
+              </Card>
+            )}
+
+            {/* PDF Viewer Container */}
             <div
+              className="pdf-viewer-container"
               style={{
                 width: "100%",
-                minHeight: "800px",
-                height: "calc(100vh - 260px)",
+                minHeight: "500px",
+                height: "calc(100vh - 200px)",
                 border: "1px solid #ddd",
-                borderRadius: "8px",
+                borderRadius: "12px",
                 overflow: "hidden",
-                backgroundColor: "#525659", // Warna background PDF viewer native
+                backgroundColor: "#525659",
+                position: "relative"
               }}
             >
-              {/* Tampilkan ringkasan item analisis dan harga di atas preview */}
-              {bookingData && Array.isArray(bookingData.analysis_items) && bookingData.analysis_items.length > 0 && (
-                <Card className="mb-2" style={{ margin: "12px" }}>
-                  <Card.Body>
-                    <h6 className="fw-bold">Detail Analisis & Harga</h6>
-                    <div className="table-responsive">
-                      <table className="table table-sm table-bordered mb-0">
-                        <thead>
-                          <tr>
-                            <th>Nama Item</th>
-                            <th>Harga Satuan</th>
-                            <th>Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {bookingData.analysis_items.map((it, idx) => {
-                            const harga = priceMap[it.nama_item] || 0;
-                            const jumlah = Number(bookingData.jumlah_sampel) || 1;
-                            return (
-                              <tr key={idx}>
-                                <td>{it.nama_item}</td>
-                                <td>Rp {harga.toLocaleString("id-ID")}</td>
-                                <td>Rp {(harga * jumlah).toLocaleString("id-ID")}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </Card.Body>
-                </Card>
-              )}
               {pdfLoading ? (
-                <div className="text-center py-5 text-white">
-                  <p>Memuat Preview PDF...</p>
+                <div className="position-absolute top-50 start-50 translate-middle text-white text-center">
+                  <Spinner animation="grow" variant="light" className="mb-2" /><br/>
+                  <span>Menyiapkan Dokumen...</span>
                 </div>
               ) : pdfUrl ? (
-                <object data={pdfUrl} type="application/pdf" width="100%" height="100%" aria-label="PDF Preview">
-                  <p className="text-white">
-                    PDF tidak dapat ditampilkan.{" "}
-                    <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
-                      Klik di sini untuk membuka PDF
-                    </a>
-                    .
-                  </p>
+                <object
+                  data={pdfUrl}
+                  type="application/pdf"
+                  width="100%"
+                  height="100%"
+                >
+                  <div className="text-center p-5 text-white">
+                    <p>Browser Anda tidak mendukung preview PDF langsung.</p>
+                    <Button variant="light" href={pdfUrl} target="_blank">Buka PDF di Tab Baru</Button>
+                  </div>
                 </object>
-              ) : pdfError ? (
-                <div className="text-center py-5 text-danger">
-                  <p>{pdfError}</p>
-                  <p className="text-white">Silakan hubungi teknisi untuk meng-upload hasil analisis.</p>
-                </div>
               ) : (
-                <div className="text-center py-5 text-white">
-                  <p>Preview PDF tidak tersedia.</p>
+                <div className="text-center p-5 text-white">
+                  <p className="text-warning">{pdfError || "Dokumen belum siap."}</p>
                 </div>
               )}
             </div>
           </>
         )}
-      </div>
+      </Container>
+
+      {/* Modal Konfirmasi */}
+      <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered size="sm">
+        <Modal.Header closeButton className="border-0">
+          <Modal.Title className="h6">Konfirmasi Verifikasi</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="text-center">
+          <p>Kirim hasil analisis ini ke <b>Kepala Laboratorium</b> untuk tahap tanda tangan?</p>
+        </Modal.Body>
+        <Modal.Footer className="border-0 flex-column">
+          <Button variant="success" className="w-100 mb-2" onClick={handleSetuju} disabled={processing}>
+            Ya, Kirim Sekarang
+          </Button>
+          <Button variant="link" className="text-muted w-100" onClick={() => setShowConfirmModal(false)}>
+            Batal
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       <FooterSetelahLogin />
     </NavbarLoginKoordinator>

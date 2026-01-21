@@ -8,15 +8,24 @@ import "@fontsource/poppins";
 function DaftarAnalisis() {
   const [groupedAnalisis, setGroupedAnalisis] = useState({});
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const API_URL = process.env.REACT_APP_API_BASE_URL;
 
   useEffect(() => {
     document.title = "SILAB-NTDK - Daftar Analisis";
-    if (API_URL) {
+    if (API_URL && !hasLoaded) {
+      setHasLoaded(true);
       fetch(`${API_URL}/analysis-prices-grouped`)
         .then((res) => res.json())
         .then((data) => {
-          setGroupedAnalisis(data);
+          // Hapus duplikat berdasarkan jenis_analisis
+          const cleanedData = {};
+          Object.entries(data).forEach(([kategori, items]) => {
+            const uniqueItems = items.filter((item, index, self) => index === self.findIndex((t) => t.jenis_analisis === item.jenis_analisis));
+            cleanedData[kategori] = uniqueItems;
+          });
+          console.log("Data setelah hapus duplikat:", cleanedData);
+          setGroupedAnalisis(cleanedData);
           setLoading(false);
         })
         .catch((err) => {
@@ -24,7 +33,7 @@ function DaftarAnalisis() {
           setLoading(false);
         });
     }
-  }, [API_URL]);
+  }, [API_URL, hasLoaded]);
 
   const renderKategori = (title, data) => (
     <>
@@ -43,7 +52,7 @@ function DaftarAnalisis() {
       <Container className="py-2">
         <Row className="g-4 justify-content-center justify-content-md-start">
           {data.map((item, index) => (
-            <Col key={index} xs={12} sm={6} md={4} lg={3}>
+            <Col key={`${item.jenis_analisis}-${item.harga}-${index}`} xs={12} sm={6} md={4} lg={3}>
               <Card
                 className="h-100 shadow-sm border-0 daftarAnalisis-card"
                 style={{
@@ -62,7 +71,14 @@ function DaftarAnalisis() {
                   e.currentTarget.style.boxShadow = "none";
                 }}
               >
-                <Card.Img variant="top" src="/asset/daftarAnalisis/Rectangle19.png" style={{ objectFit: "cover", height: "180px" }} />
+                <Card.Img
+                  variant="top"
+                  src={`/asset/daftarAnalisis/${item.jenis_analisis.replace(/\s+/g, "_").replace(/[^\w_]/g, "")}.png`}
+                  onError={(e) => {
+                    e.target.src = "/asset/daftarAnalisis/Rectangle19.png";
+                  }}
+                  style={{ objectFit: "cover", height: "180px" }}
+                />
                 <Card.Body className="text-white">
                   <Card.Title style={{ fontSize: "1rem", fontWeight: "600" }}>{item.jenis_analisis}</Card.Title>
                   <Card.Text style={{ fontSize: "0.9rem" }}>Rp. {item.harga.toLocaleString("id-ID")}</Card.Text>
@@ -91,7 +107,7 @@ function DaftarAnalisis() {
         ) : Object.keys(groupedAnalisis).length === 0 ? (
           <div className="text-center py-5">Tidak ada data analisis tersedia.</div>
         ) : (
-          Object.entries(groupedAnalisis).map(([kategori, data]) => renderKategori(kategori, data))
+          Object.entries(groupedAnalisis).map(([kategori, data], index) => <div key={`kategori-${kategori}-${index}`}>{renderKategori(kategori, data)}</div>)
         )}
       </section>
 

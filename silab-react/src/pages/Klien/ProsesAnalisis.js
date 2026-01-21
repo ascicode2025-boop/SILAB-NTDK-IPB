@@ -13,6 +13,10 @@ import dayjs from "dayjs";
 const statusToStep = (status) => {
   const lowerStatus = (status || "").toLowerCase();
   switch (lowerStatus) {
+    case "dikirim_ke_teknisi":
+    case "dikirim ke_teknisi":
+    case "dikirim ke teknisi":
+      return 2;
     case "proses":
     case "sedang_dianalisis":
     case "sedang dianalisis":
@@ -21,6 +25,9 @@ const statusToStep = (status) => {
     case "menunggu verifikasi":
     case "menunggu_verifikasi_kepala":
     case "menunggu verifikasi kepala":
+    case "menunggu_ttd_koordinator":
+    case "menunggu ttd_koordinator":
+    case "menunggu ttd koordinator":
       return 3;
     case "menunggu_pembayaran":
     case "menunggu pembayaran":
@@ -37,10 +44,16 @@ const formatStatus = (status) => {
   if (!status) return "";
   const lowerStatus = status.toLowerCase();
 
+  if (lowerStatus === "dikirim_ke_teknisi" || lowerStatus === "dikirim ke_teknisi" || lowerStatus === "dikirim ke teknisi") {
+    return "Sedang Dianalisis";
+  }
   if (lowerStatus === "proses" || lowerStatus === "sedang_dianalisis" || lowerStatus === "sedang dianalisis") {
     return "Sedang Dianalisis";
   }
   if (lowerStatus === "menunggu_verifikasi_kepala" || lowerStatus === "menunggu verifikasi kepala") {
+    return "Menunggu Verifikasi";
+  }
+  if (lowerStatus === "menunggu_ttd_koordinator" || lowerStatus === "menunggu ttd_koordinator" || lowerStatus === "menunggu ttd koordinator") {
     return "Menunggu Verifikasi";
   }
 
@@ -60,11 +73,18 @@ const getStatusBadge = (status) => {
     case "menunggu verifikasi":
     case "menunggu_verifikasi_kepala":
     case "menunggu verifikasi kepala":
+    case "menunggu_ttd_koordinator":
+    case "menunggu ttd_koordinator":
+    case "menunggu ttd koordinator":
       return "bg-warning";
     case "proses":
     case "sedang dianalisis":
     case "sedang_dianalisis":
       return "bg-primary";
+    case "dikirim_ke_teknisi":
+    case "dikirim ke_teknisi":
+    case "dikirim ke teknisi":
+      return "bg-secondary";
     default:
       return "bg-secondary";
   }
@@ -145,7 +165,15 @@ const ProsesAnalisis = () => {
         const filtered = bookings.filter((b) => {
           const status = (b.status || "").toLowerCase();
           return (
-            status === "proses" || status === "sedang_dianalisis" || status === "menunggu_verifikasi" || status === "menunggu_verifikasi_kepala" || status === "menunggu_pembayaran" || status === "selesai" || status === "ditandatangani"
+            status === "dikirim_ke_teknisi" ||
+            status === "proses" ||
+            status === "sedang_dianalisis" ||
+            status === "menunggu_verifikasi" ||
+            status === "menunggu_verifikasi_kepala" ||
+            status === "menunggu_ttd_koordinator" ||
+            status === "menunggu_pembayaran" ||
+            status === "selesai" ||
+            status === "ditandatangani"
           );
         });
 
@@ -375,7 +403,77 @@ const ProsesAnalisis = () => {
 
             {currentStep === 5 &&
               (selectedBooking && (selectedBooking.pdf_path || selectedBooking.pdfPath) && canViewResult ? (
-                <button className="btn btn-success w-100 mt-3" onClick={() => window.open(`${apiHost}/storage/${selectedBooking.pdf_path || selectedBooking.pdfPath}`, "_blank")}>
+                <button
+                  className="btn btn-success w-100 mt-3"
+                  onClick={async () => {
+                    try {
+                      const apiBase = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
+                      const token = localStorage.getItem("token");
+                      const authHeaders = token ? { Accept: "application/pdf", Authorization: `Bearer ${token}` } : { Accept: "application/pdf" };
+                      let blob;
+
+                      // Prioritas: gunakan API endpoint untuk menghindari CORS
+                      if (selectedBooking?.id) {
+                        const response = await fetch(`${apiBase}/bookings/${selectedBooking.id}/pdf`, {
+                          headers: authHeaders,
+                        });
+                        if (response.ok) {
+                          blob = await response.blob();
+                        } else {
+                          console.warn("API PDF endpoint failed:", response.status);
+                        }
+                      }
+
+                      // Fallback: coba storage URL jika API gagal
+                      if (!blob) {
+                        const pdfPath = selectedBooking.pdf_path || selectedBooking.pdfPath;
+                        if (pdfPath) {
+                          const storageUrl = `${apiHost}/storage/${pdfPath}`;
+                          console.log("Trying storage URL:", storageUrl);
+                          const response = await fetch(storageUrl, {
+                            mode: "cors",
+                            headers: authHeaders,
+                          });
+                          if (response.ok) {
+                            blob = await response.blob();
+                          } else {
+                            console.warn("Storage URL failed:", response.status);
+                          }
+                        }
+                      }
+
+                      // Fallback terakhir: buka di tab baru
+                      if (!blob) {
+                        const pdfPath = selectedBooking.pdf_path || selectedBooking.pdfPath;
+                        if (pdfPath) {
+                          window.open(`${apiHost}/storage/${pdfPath}`, "_blank");
+                          return;
+                        }
+                        alert("PDF tidak tersedia.");
+                        return;
+                      }
+
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.style.display = "none";
+                      a.href = url;
+                      a.download = `Hasil_Analisis_${selectedBooking.kode_batch || selectedBooking.id}.pdf`;
+                      document.body.appendChild(a);
+                      a.click();
+                      window.URL.revokeObjectURL(url);
+                      document.body.removeChild(a);
+                    } catch (err) {
+                      console.error("Download error:", err);
+                      // Fallback: buka di tab baru jika download gagal
+                      const pdfPath = selectedBooking.pdf_path || selectedBooking.pdfPath;
+                      if (pdfPath) {
+                        window.open(`${apiHost}/storage/${pdfPath}`, "_blank");
+                      } else {
+                        alert("Gagal mengunduh PDF. Silakan coba lagi.");
+                      }
+                    }
+                  }}
+                >
                   <i className="bi bi-download me-2"></i>
                   Download Hasil Analisis (PDF)
                 </button>
