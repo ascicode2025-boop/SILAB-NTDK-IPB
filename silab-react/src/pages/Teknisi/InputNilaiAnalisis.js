@@ -16,75 +16,55 @@ function InputNilaiAnalisis() {
   }, []);
 
   const [approvedSamples, setApprovedSamples] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Initial loading true
   const history = useHistory();
 
   useEffect(() => {
-    fetchData();
-    // Auto-refresh setiap 10 detik
+    let mounted = true;
+
+    const fetchDataSafe = async () => {
+      if (!mounted) return;
+      try {
+        const data = await getAllBookings();
+        const allBookings = data?.data || [];
+
+        // Filter status untuk input/edit
+        const approved = allBookings.filter((booking) => {
+          const status = (booking.status || "").toLowerCase();
+          return status === "proses" || status === "selesai_di_analisis" || status === "menunggu_verifikasi" || status === "draft" || status === "ditolak" || status === "dikirim_ke_teknisi" || status === "dikirim ke teknisi";
+        });
+
+        if (mounted) {
+          setApprovedSamples(approved);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Failed to fetch approved samples", error);
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    // Initial fetch
+    fetchDataSafe();
+
+    // Auto-refresh setiap 30 detik (lebih jarang untuk mengurangi load)
     const interval = setInterval(() => {
-      fetchData();
-    }, 10000);
-    return () => clearInterval(interval);
+      if (mounted) {
+        fetchDataSafe();
+      }
+    }, 30000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const data = await getAllBookings();
-      const allBookings = data?.data || [];
-
-      // Filter status untuk input/edit: "proses", "selesai_di_analisis", "menunggu_verifikasi", "draft", "ditolak" dan status yang menunjukkan dikembalikan ke teknisi (dikirim_ke_teknisi)
-      const approved = allBookings.filter((booking) => {
-        const status = (booking.status || "").toLowerCase();
-        return status === "proses" || status === "selesai_di_analisis" || status === "menunggu_verifikasi" || status === "draft" || status === "ditolak" || status === "dikirim_ke_teknisi" || status === "dikirim ke teknisi";
-      });
-      setApprovedSamples(approved);
-    } catch (error) {
-      console.error("Failed to fetch approved samples", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Helper function untuk parse kode_sampel JSON
-  const generateSampleCodes = (booking) => {
-    if (!booking) return [];
-
-    try {
-      let codes = [];
-
-      if (typeof booking.kode_sampel === "string") {
-        try {
-          codes = JSON.parse(booking.kode_sampel);
-          if (Array.isArray(codes)) {
-            return codes;
-          }
-        } catch (e) {
-          codes = [booking.kode_sampel];
-        }
-      } else if (Array.isArray(booking.kode_sampel)) {
-        codes = booking.kode_sampel;
-      }
-
-      return codes;
-    } catch (error) {
-      console.error("Error parsing kode_sampel:", error);
-      return [];
-    }
-  };
-
   const handleInputNilai = async (record) => {
-    try {
-      setLoading(true);
-
-      // Redirect langsung ke halaman input analisis
-      history.push(`/teknisi/dashboard/inputNilaiAnalisis/input-analisis/${record.id}`);
-    } catch (error) {
-      console.error("Gagal memperbarui status:", error);
-    } finally {
-      setLoading(false);
-    }
+    // Redirect langsung tanpa setLoading untuk menghindari loading terus menerus
+    history.push(`/teknisi/dashboard/inputNilaiAnalisis/input-analisis/${record.id}`);
   };
 
   // Menggunakan Kolom Ant Design untuk tampilan lebih rapi & responsif
@@ -199,7 +179,7 @@ function InputNilaiAnalisis() {
           disabled = false; // Bisa edit jika ditolak
         }
         return (
-          <Button type="primary" icon={<EditOutlined />} size="middle" loading={loading} disabled={disabled} onClick={() => handleInputNilai(record)}>
+          <Button type="primary" icon={<EditOutlined />} size="middle" disabled={disabled} onClick={() => handleInputNilai(record)}>
             {buttonText}
           </Button>
         );

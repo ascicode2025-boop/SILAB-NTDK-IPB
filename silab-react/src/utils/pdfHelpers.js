@@ -98,9 +98,9 @@ export const formatDataForPDF = (booking) => {
         hematologiItems[code].HB = displayValue;
         availableHematologiParams.add("HB");
       } else if (itemNameLower.includes("hematokrit") || itemNameLower === "pcv") {
-        // Use label 'PCV' if source name is exactly 'pcv', otherwise use 'Hematokrit'
+        // Always use label 'PCV' for Hematokrit/PCV parameter
         if (!hematologiItems[code]) hematologiItems[code] = {};
-        const label = itemNameLower === "pcv" ? "PCV" : "Hematokrit";
+        const label = "PCV";
         hematologiItems[code][label] = displayValue;
         availableHematologiParams.add(label);
       } else if (itemName === "Diferensiasi Leukosit") {
@@ -157,13 +157,12 @@ export const formatDataForPDF = (booking) => {
   let table1 = null;
   if (availableHematologiParams.size > 0) {
     // Urutan dan label parameter sesuai gambar
-    const hematologiParamOrder = ["BDM", "BDP", "HB", "Hematokrit", "PCV", "Limfosit", "Heterofil", "Eosinofil", "Monosit", "Basofil"];
+    const hematologiParamOrder = ["BDM", "BDP", "HB", "PCV", "Limfosit", "Heterofil", "Eosinofil", "Monosit", "Basofil"];
     // Mapping label sesuai gambar / sesuai nama yang dipesan klien
     const headerMap = {
       BDM: "BDM",
       BDP: "BDP",
       HB: "HB",
-      Hematokrit: "Hematokrit",
       PCV: "PCV",
       Limfosit: "Limfosit (%)",
       Heterofil: "Neutrofil (%)",
@@ -241,6 +240,9 @@ export const formatDataForPDF = (booking) => {
       instansi: booking.user?.full_name || booking.user?.name || "****",
       tempat: "Di Tempat",
       tanggal: tanggalDisplay, // Format DD/MM/YYYY - tanggal hari ini WIB
+      jenis_kelamin: booking.jenis_kelamin || "****",
+      umur: booking.umur || "**** minggu",
+      status_fisiologis: booking.status_fisiologis || "****",
       parameterAnalisis: parameterAnalisis,
       title1: table1 ? headerTitle1 : null,
       title2: table2 ? headerTitle2 : null,

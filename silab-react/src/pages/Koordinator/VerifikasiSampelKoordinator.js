@@ -173,7 +173,7 @@ const VerifikasiSampelKoordinator = () => {
                 }}
               >
                 <h4 className="mb-0 fw-normal" style={{ fontFamily: "serif" }}>
-                  Tanda Tangan Digital
+                  Verifikasi Hasil Analisis
                 </h4>
               </div>
 

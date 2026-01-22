@@ -48,11 +48,14 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
       instansi: "****",
       tempat: "Di Tempat",
       tanggal: "**/**/****",
-      title1: "Tabel 1. Hasil Analisis Hematologi",
+      jenis_kelamin: "****",
+      umur: "**** minggu",
+      status_fisiologis: "****",
+      title1: "Tabel 1. Hasil Analisis BDM, BDP, HB, PCV, Limfosit, Neutrofil, Eosinofil, Monosit, Basofil dan Differensiasi Leukosit pada hewan ternak Puyuh",
       title2: "Tabel 2. Hasil Analisis Metabolit",
     },
     table1: [
-      ["Kode", "BDM\n(10⁶/µL)", "BDP\n(10³/µL)", "HB\n(g%)", "PCV\n(%)", "Limfosit\n(%)", "Neutrofil\n(%)", "Eosinofil\n(%)", "Monosit\n(%)", "Basofil\n(%)"],
+      ["Kode", "BDM x10^6(Butir/mm³)", "BDP x10^3 (Butir/mm³)", "HB\n(G%)", "PCV\n(%)", "Limfosit\n(%)", "Neutrofil\n(%)", "Eosinofil\n(%)", "Monosit\n(%)", "Basofil\n(%)"],
       ["-", "-", "-", "-", "-", "-", "-", "-", "-", "-"],
     ],
     table2: [
@@ -86,9 +89,11 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
       const response = await getAllBookings();
       const allBookings = response?.data || [];
 
-      // Filter status: Tampilkan mulai dari 'menunggu_verifikasi' sampai selesai
-      // Agar teknisi bisa melihat riwayat yang sudah dikirim
+      // Filter status: Tampilkan semua booking yang relevan untuk teknisi
+      // Termasuk yang belum dikirim (proses/draft) dan yang sudah dikirim
       const visibleStatuses = [
+        "proses",
+        "draft",
         "menunggu_verifikasi",
         "menunggu_verifikasi_kepala",
         "menunggu_ttd",
@@ -253,25 +258,49 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
     doc.text(payload.header.tempat, leftMargin, cursorY);
     cursorY += 12;
 
+    // Tambahkan informasi hewan
+    doc.setFontSize(10);
+    doc.setFont("Times New Roman", "bold");
+    doc.text("Informasi Hewan:", leftMargin, cursorY);
+    cursorY += 5;
+    doc.setFont("Times New Roman", "normal");
+    doc.text(`Jenis Kelamin: ${payload.header.jenis_kelamin || "-"}`, leftMargin, cursorY);
+    cursorY += 4;
+    doc.text(`Umur: ${payload.header.umur || "-"}`, leftMargin, cursorY);
+    cursorY += 4;
+    doc.text(`Status Fisiologis: ${payload.header.status_fisiologis || "-"}`, leftMargin, cursorY);
+    cursorY += 12;
+
     if (payload.table1 && payload.table1.length > 0 && payload.header.title1) {
       doc.setFontSize(11);
       doc.setFont("Times New Roman", "bold");
       const title1Lines = doc.splitTextToSize(payload.header.title1, usableWidth);
       doc.text(title1Lines, leftMargin, cursorY);
       cursorY += title1Lines.length * 5 + 2;
-      const [table1Head, ...table1Body] = payload.table1;
-      const colNoWidth = 10;
-      const colKodeWidth = 35;
-      const remainingWidth = usableWidth - colNoWidth - colKodeWidth;
-      const paramColCount = table1Head.length - 2;
+      const [, ...table1Body] = payload.table1;
+
+      // Pastikan header menggunakan satuan yang benar
+      const correctedTable1Head = ["No", "Kode", "BDM x10^6\n(Butir/mm³)", "BDP x10^3\n(Butir/mm³)", "HB\n(G%)", "PCV\n(%)", "Limfosit\n(%)", "Neutrofil\n(%)", "Eosinofil\n(%)", "Monosit\n(%)", "Basofil\n(%)"];
+
+      const colNoWidth = 12;
+      const colKodeWidth = 30;
+      const bdmWidth = 25; // Lebih lebar untuk BDM
+      const bdpWidth = 25; // Lebih lebar untuk BDP
+      const remainingWidth = usableWidth - colNoWidth - colKodeWidth - bdmWidth - bdpWidth;
+      const paramColCount = correctedTable1Head.length - 4;
       const paramColWidth = remainingWidth / (paramColCount > 0 ? paramColCount : 1);
-      let columnStylesT1 = { 0: { cellWidth: colNoWidth }, 1: { cellWidth: colKodeWidth } };
-      for (let i = 2; i < table1Head.length; i++) {
+      let columnStylesT1 = {
+        0: { cellWidth: colNoWidth },
+        1: { cellWidth: colKodeWidth },
+        2: { cellWidth: bdmWidth },
+        3: { cellWidth: bdpWidth },
+      };
+      for (let i = 4; i < correctedTable1Head.length; i++) {
         columnStylesT1[i] = { cellWidth: paramColWidth };
       }
       autoTable(doc, {
         startY: cursorY,
-        head: [table1Head],
+        head: [correctedTable1Head],
         body: table1Body,
         theme: "grid",
         styles: commonTableStyles,

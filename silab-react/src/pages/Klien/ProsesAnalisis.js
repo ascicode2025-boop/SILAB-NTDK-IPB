@@ -21,6 +21,12 @@ const statusToStep = (status) => {
     case "sedang_dianalisis":
     case "sedang dianalisis":
       return 2;
+    case "analisis_ditolak":
+    case "analisis ditolak":
+    case "rejected":
+    case "cancelled":
+    case "dibatalkan":
+      return -1; // Status khusus untuk ditolak
     case "menunggu_verifikasi":
     case "menunggu verifikasi":
     case "menunggu_verifikasi_kepala":
@@ -50,6 +56,9 @@ const formatStatus = (status) => {
   if (lowerStatus === "proses" || lowerStatus === "sedang_dianalisis" || lowerStatus === "sedang dianalisis") {
     return "Sedang Dianalisis";
   }
+  if (lowerStatus === "analisis_ditolak" || lowerStatus === "analisis ditolak" || lowerStatus === "rejected" || lowerStatus === "cancelled" || lowerStatus === "dibatalkan") {
+    return "Analisis Ditolak";
+  }
   if (lowerStatus === "menunggu_verifikasi_kepala" || lowerStatus === "menunggu verifikasi kepala") {
     return "Menunggu Verifikasi";
   }
@@ -77,6 +86,12 @@ const getStatusBadge = (status) => {
     case "menunggu ttd_koordinator":
     case "menunggu ttd koordinator":
       return "bg-warning";
+    case "analisis_ditolak":
+    case "analisis ditolak":
+    case "rejected":
+    case "cancelled":
+    case "dibatalkan":
+      return "bg-danger";
     case "proses":
     case "sedang dianalisis":
     case "sedang_dianalisis":
@@ -168,6 +183,10 @@ const ProsesAnalisis = () => {
             status === "dikirim_ke_teknisi" ||
             status === "proses" ||
             status === "sedang_dianalisis" ||
+            status === "analisis_ditolak" ||
+            status === "rejected" ||
+            status === "cancelled" ||
+            status === "dibatalkan" ||
             status === "menunggu_verifikasi" ||
             status === "menunggu_verifikasi_kepala" ||
             status === "menunggu_ttd_koordinator" ||
@@ -290,6 +309,13 @@ const ProsesAnalisis = () => {
   const renderDetail = () => {
     if (!selectedBooking) return null;
 
+    // Check if analysis was rejected
+    const isRejected =
+      (selectedBooking.status || "").toLowerCase() === "analisis_ditolak" ||
+      (selectedBooking.status || "").toLowerCase() === "rejected" ||
+      (selectedBooking.status || "").toLowerCase() === "cancelled" ||
+      (selectedBooking.status || "").toLowerCase() === "dibatalkan";
+
     // Only allow result access if paid and verified
     const isPaid = selectedBooking && (selectedBooking.status === "paid" || selectedBooking.status === "lunas" || selectedBooking.status === "verified" || selectedBooking.status === "selesai" || selectedBooking.status === "ditandatangani");
     const isVerified =
@@ -303,46 +329,93 @@ const ProsesAnalisis = () => {
         </button>
 
         {/* ===== STEPPER BESAR ===== */}
-        <div className="progress-analisis-wrapper mb-5 mt-4">
-          <div className="analisis-step">
-            <div className={`analisis-icon active big-step`}>
-              <i className="bi bi-box-seam" />
+        {isRejected ? (
+          // Stepper khusus untuk status ditolak
+          <div className="progress-analisis-wrapper mb-5 mt-4">
+            <div className="analisis-step">
+              <div className={`analisis-icon active big-step`}>
+                <i className="bi bi-box-seam" />
+              </div>
+              <p className="label active-text">Sampel Diterima</p>
             </div>
-            <p className="label active-text">Sampel Diterima</p>
-          </div>
-          <div className={`analisis-line big-line ${currentStep >= 2 ? "filled" : ""}`} />
+            <div className="analisis-line big-line filled" />
 
-          <div className="analisis-step">
-            <div className={`analisis-icon ${currentStep >= 2 ? "active" : ""} ${currentStep === 2 ? "pulse-active" : ""} big-step`}>
-              <i className="bi bi-arrow-repeat" />
+            <div className="analisis-step">
+              <div className="analisis-icon active big-step" style={{ backgroundColor: "#dc3545" }}>
+                <i className="bi bi-x-circle" />
+              </div>
+              <p className="label" style={{ color: "#dc3545", fontWeight: "bold" }}>
+                Analisis Ditolak
+              </p>
             </div>
-            <p className={`label ${currentStep >= 2 ? "active-text" : ""}`}>Sedang Dianalisis</p>
-          </div>
-          <div className={`analisis-line big-line ${currentStep >= 3 ? "filled" : ""}`} />
+            <div className="analisis-line big-line" style={{ backgroundColor: "#dee2e6" }} />
 
-          <div className="analisis-step">
-            <div className={`analisis-icon ${currentStep >= 3 ? "active" : ""} ${currentStep === 3 ? "pulse-active" : ""} big-step`}>
-              <i className="bi bi-file-earmark-check" />
+            <div className="analisis-step">
+              <div className="analisis-icon big-step" style={{ backgroundColor: "#dee2e6" }}>
+                <i className="bi bi-file-earmark-check" />
+              </div>
+              <p className="label">Verifikasi</p>
             </div>
-            <p className={`label ${currentStep >= 3 ? "active-text" : ""}`}>Verifikasi</p>
-          </div>
-          <div className={`analisis-line big-line ${currentStep >= 4 ? "filled" : ""}`} />
+            <div className="analisis-line big-line" style={{ backgroundColor: "#dee2e6" }} />
 
-          <div className="analisis-step">
-            <div className={`analisis-icon ${currentStep >= 4 ? "active" : ""} ${currentStep === 4 ? "pulse-active" : ""} big-step`}>
-              <i className="bi bi-credit-card" />
+            <div className="analisis-step">
+              <div className="analisis-icon big-step" style={{ backgroundColor: "#dee2e6" }}>
+                <i className="bi bi-credit-card" />
+              </div>
+              <p className="label">Pembayaran</p>
             </div>
-            <p className={`label ${currentStep >= 4 ? "active-text" : ""}`}>Pembayaran</p>
-          </div>
-          <div className={`analisis-line big-line ${currentStep >= 5 ? "filled" : ""}`} />
+            <div className="analisis-line big-line" style={{ backgroundColor: "#dee2e6" }} />
 
-          <div className="analisis-step">
-            <div className={`analisis-icon ${currentStep >= 5 ? "active" : ""} ${currentStep === 5 ? "pulse-active" : ""} big-step`}>
-              <i className="bi bi-check2" />
+            <div className="analisis-step">
+              <div className="analisis-icon big-step" style={{ backgroundColor: "#dee2e6" }}>
+                <i className="bi bi-check2" />
+              </div>
+              <p className="label">Selesai</p>
             </div>
-            <p className={`label ${currentStep >= 5 ? "active-text" : ""}`}>Selesai</p>
           </div>
-        </div>
+        ) : (
+          // Stepper normal
+          <div className="progress-analisis-wrapper mb-5 mt-4">
+            <div className="analisis-step">
+              <div className={`analisis-icon active big-step`}>
+                <i className="bi bi-box-seam" />
+              </div>
+              <p className="label active-text">Sampel Diterima</p>
+            </div>
+            <div className={`analisis-line big-line ${currentStep >= 2 ? "filled" : ""}`} />
+
+            <div className="analisis-step">
+              <div className={`analisis-icon ${currentStep >= 2 ? "active" : ""} ${currentStep === 2 ? "pulse-active" : ""} big-step`}>
+                <i className="bi bi-arrow-repeat" />
+              </div>
+              <p className={`label ${currentStep >= 2 ? "active-text" : ""}`}>Sedang Dianalisis</p>
+            </div>
+            <div className={`analisis-line big-line ${currentStep >= 3 ? "filled" : ""}`} />
+
+            <div className="analisis-step">
+              <div className={`analisis-icon ${currentStep >= 3 ? "active" : ""} ${currentStep === 3 ? "pulse-active" : ""} big-step`}>
+                <i className="bi bi-file-earmark-check" />
+              </div>
+              <p className={`label ${currentStep >= 3 ? "active-text" : ""}`}>Verifikasi</p>
+            </div>
+            <div className={`analisis-line big-line ${currentStep >= 4 ? "filled" : ""}`} />
+
+            <div className="analisis-step">
+              <div className={`analisis-icon ${currentStep >= 4 ? "active" : ""} ${currentStep === 4 ? "pulse-active" : ""} big-step`}>
+                <i className="bi bi-credit-card" />
+              </div>
+              <p className={`label ${currentStep >= 4 ? "active-text" : ""}`}>Pembayaran</p>
+            </div>
+            <div className={`analisis-line big-line ${currentStep >= 5 ? "filled" : ""}`} />
+
+            <div className="analisis-step">
+              <div className={`analisis-icon ${currentStep >= 5 ? "active" : ""} ${currentStep === 5 ? "pulse-active" : ""} big-step`}>
+                <i className="bi bi-check2" />
+              </div>
+              <p className={`label ${currentStep >= 5 ? "active-text" : ""}`}>Selesai</p>
+            </div>
+          </div>
+        )}
 
         {/* ===== KARTU STATUS ===== */}
         <div className="d-flex justify-content-center">
@@ -350,21 +423,44 @@ const ProsesAnalisis = () => {
             className={`info-card text-center shadow-sm`}
             style={{
               maxWidth: "600px",
-              borderTop: currentStep === 2 ? "6px solid #198754" : "6px solid #8c6b60",
+              borderTop: isRejected ? "6px solid #dc3545" : currentStep === 2 ? "6px solid #198754" : "6px solid #8c6b60",
               backgroundColor: "#fff",
             }}
           >
-            <div className="mb-3" style={{ color: currentStep === 2 ? "#198754" : "#8c6b60" }}>
-              {currentStep === 2 ? <i className="bi bi-check-circle-fill" style={{ fontSize: "3.5rem" }} /> : <i className="bi bi-gear-fill rotate-icon-slow" style={{ fontSize: "3.5rem", display: "inline-block" }} />}
+            <div className="mb-3" style={{ color: isRejected ? "#dc3545" : currentStep === 2 ? "#198754" : "#8c6b60" }}>
+              {isRejected ? (
+                <i className="bi bi-x-circle-fill" style={{ fontSize: "3.5rem" }} />
+              ) : currentStep === 2 ? (
+                <i className="bi bi-check-circle-fill" style={{ fontSize: "3.5rem" }} />
+              ) : (
+                <i className="bi bi-gear-fill rotate-icon-slow" style={{ fontSize: "3.5rem", display: "inline-block" }} />
+              )}
             </div>
 
-            <h4 className="fw-bold mb-3">{currentStep === 5 ? "Analisis Selesai!" : currentStep === 4 ? "Menunggu Pembayaran" : "Sampel Dalam Proses"}</h4>
+            <h4 className="fw-bold mb-3">{isRejected ? "Analisis Ditolak" : currentStep === 5 ? "Analisis Selesai!" : currentStep === 4 ? "Menunggu Pembayaran" : "Sampel Dalam Proses"}</h4>
 
-            <div className={`alert ${currentStep === 5 ? "alert-success" : currentStep === 4 ? "alert-info" : currentStep === 3 ? "alert-warning" : "alert-info"} text-start`}>
-              {currentStep === 1 && "Sampel Anda telah kami terima dan sedang dalam antrean analisis."}
-              {currentStep === 2 && "Tim teknisi kami sedang melakukan pengujian laboratorium pada sampel Anda."}
-              {currentStep === 3 && "Hasil analisis telah selesai dan sedang menunggu verifikasi dari Koordinator Lab."}
-              {currentStep === 4 && (
+            <div className={`alert ${isRejected ? "alert-danger" : currentStep === 5 ? "alert-success" : currentStep === 4 ? "alert-info" : currentStep === 3 ? "alert-warning" : "alert-info"} text-start`}>
+              {isRejected && (
+                <div>
+                  <div className="fw-bold mb-2">
+                    <i className="bi bi-exclamation-triangle me-2"></i>
+                    Analisis sampel Anda ditolak oleh teknisi laboratorium.
+                  </div>
+                  {selectedBooking && selectedBooking.alasan_teknisi && (
+                    <div className="mb-2">
+                      <strong>Alasan Penolakan:</strong>
+                      <div className="mt-1 p-2 rounded" style={{ backgroundColor: "#f8d7da", border: "1px solid #f1aeb5" }}>
+                        {selectedBooking.alasan_teknisi}
+                      </div>
+                    </div>
+                  )}
+                  <div className="text-muted small">Silakan hubungi admin untuk informasi lebih lanjut atau ajukan sampel baru.</div>
+                </div>
+              )}
+              {!isRejected && currentStep === 1 && "Sampel Anda telah kami terima dan sedang dalam antrean analisis."}
+              {!isRejected && currentStep === 2 && "Tim teknisi kami sedang melakukan pengujian laboratorium pada sampel Anda."}
+              {!isRejected && currentStep === 3 && "Hasil analisis telah selesai dan sedang menunggu verifikasi dari Koordinator Lab."}
+              {!isRejected && currentStep === 4 && (
                 <div>
                   <i className="bi bi-credit-card me-2"></i>
                   Hasil analisis Anda sudah siap. Silakan lakukan pembayaran untuk mendapatkan hasil lengkap.
@@ -398,10 +494,11 @@ const ProsesAnalisis = () => {
                   </div>
                 </div>
               )}
-              {currentStep === 5 && "Hasil analisis telah diverifikasi dan selesai. Anda dapat mengunduh dokumen hasil di bawah ini."}
+              {!isRejected && currentStep === 5 && "Hasil analisis telah diverifikasi dan selesai. Anda dapat mengunduh dokumen hasil di bawah ini."}
             </div>
 
-            {currentStep === 5 &&
+            {!isRejected &&
+              currentStep === 5 &&
               (selectedBooking && (selectedBooking.pdf_path || selectedBooking.pdfPath) && canViewResult ? (
                 <button
                   className="btn btn-success w-100 mt-3"
@@ -484,22 +581,34 @@ const ProsesAnalisis = () => {
                 </button>
               ))}
 
-            {currentStep === 4 && (
+            {!isRejected && currentStep === 4 && (
               <button className="btn btn-primary w-100 mt-3" onClick={() => (window.location.href = `/dashboard/pembayaranKlien?bookingId=${selectedBooking.id}`)}>
                 <i className="bi bi-credit-card me-2"></i>
                 Lakukan Pembayaran
               </button>
             )}
 
+            {isRejected && (
+              <button className="btn btn-primary w-100 mt-3" onClick={() => (window.location.href = "/dashboard/pemesananSampelKlien")}>
+                <i className="bi bi-plus-circle me-2"></i>
+                Ajukan Sampel Baru
+              </button>
+            )}
+
             <button
               className="btn wa-btn text-white w-100 mt-3"
-              disabled={!canViewResult}
-              title={canViewResult ? "Lihat hasil analisis" : "Silakan lakukan pembayaran dan tunggu verifikasi koordinator untuk melihat hasil"}
+              disabled={isRejected ? false : !canViewResult}
+              title={isRejected ? "Hubungi admin untuk informasi lebih lanjut" : canViewResult ? "Lihat hasil analisis" : "Silakan lakukan pembayaran dan tunggu verifikasi koordinator untuk melihat hasil"}
               style={{
-                backgroundColor: canViewResult ? "#8c6b60" : "#d5c8c3",
-                cursor: canViewResult ? "pointer" : "not-allowed",
+                backgroundColor: isRejected ? "#dc3545" : canViewResult ? "#8c6b60" : "#d5c8c3",
+                cursor: isRejected || canViewResult ? "pointer" : "not-allowed",
               }}
               onClick={() => {
+                if (isRejected) {
+                  // Buka WhatsApp atau halaman kontak admin
+                  window.open("https://wa.me/6281234567890?text=Halo%20admin,%20saya%20ingin%20menanyakan%20tentang%20analisis%20yang%20ditolak", "_blank");
+                  return;
+                }
                 if (!canViewResult) return;
                 if (selectedBooking && (selectedBooking.pdf_path || selectedBooking.pdfPath)) {
                   const url = `${apiHost}/storage/${selectedBooking.pdf_path || selectedBooking.pdfPath}`;
@@ -510,7 +619,8 @@ const ProsesAnalisis = () => {
                 }
               }}
             >
-              <i className="bi bi-file-earmark-pdf me-2" /> Lihat Hasil Analisis
+              <i className={`bi ${isRejected ? "bi-telephone" : "bi-file-earmark-pdf"} me-2`} />
+              {isRejected ? "Hubungi Admin" : "Lihat Hasil Analisis"}
             </button>
           </div>
         </div>

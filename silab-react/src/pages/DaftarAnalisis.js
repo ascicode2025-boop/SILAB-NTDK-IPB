@@ -75,7 +75,7 @@ function DaftarAnalisis() {
                   variant="top"
                   src={`/asset/daftarAnalisis/${item.jenis_analisis.replace(/\s+/g, "_").replace(/[^\w_]/g, "")}.png`}
                   onError={(e) => {
-                    e.target.src = "/asset/daftarAnalisis/Rectangle19.png";
+                    e.target.src = "/asset/daftarAnalisis/Spektro.jpg";
                   }}
                   style={{ objectFit: "cover", height: "180px" }}
                 />

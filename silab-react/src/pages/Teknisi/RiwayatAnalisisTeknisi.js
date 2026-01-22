@@ -230,6 +230,18 @@ const RiwayatAnalisisTeknisi = () => {
                   </div>
                   <div>
                     <small className="text-muted d-block text-uppercase fw-bold" style={{ fontSize: "10px" }}>
+                      No. Telepon
+                    </small>
+                    <span className="fw-bold">{selectedBooking.user?.nomor_telpon || selectedBooking.user?.nomor_telpon || selectedBooking.user?.nomor_telpon || selectedBooking.user?.nomor_telpon || selectedBooking.user?.nomor_telpon || "-"}</span>
+                  </div>
+                  <div>
+                    <small className="text-muted d-block text-uppercase fw-bold" style={{ fontSize: "10px" }}>
+                      Email
+                    </small>
+                    <span className="fw-bold">{selectedBooking.user?.email || "-"}</span>
+                  </div>
+                  <div>
+                    <small className="text-muted d-block text-uppercase fw-bold" style={{ fontSize: "10px" }}>
                       Selesai Pada
                     </small>
                     <span className="fw-bold">{new Date(selectedBooking.updated_at).toLocaleDateString("id-ID")}</span>

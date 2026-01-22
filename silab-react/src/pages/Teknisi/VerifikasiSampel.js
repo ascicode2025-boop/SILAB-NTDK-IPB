@@ -30,12 +30,37 @@ const VerifikasiSampel = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailData, setDetailData] = useState(null);
 
+  // State untuk modal tolak kualitas sampel
+  const [showTolakKualitasModal, setShowTolakKualitasModal] = useState(false);
+  const [selectedKualitasSampel, setSelectedKualitasSampel] = useState(null);
+  const [alasanTolakKualitas, setAlasanTolakKualitas] = useState("");
+
   // Memoize approved data
   const approvedData = useMemo(
     () =>
       dataBookings.filter((item) => {
         const status = (item.status || "").toLowerCase();
         return status === "disetujui";
+      }),
+    [dataBookings],
+  );
+
+  // Memoize process data (kualitas sampel)
+  const processData = useMemo(
+    () =>
+      dataBookings.filter((item) => {
+        const status = (item.status || "").toLowerCase();
+        return status === "proses";
+      }),
+    [dataBookings],
+  );
+
+  // Memoize cancelled data (kualitas sampel buruk)
+  const cancelledData = useMemo(
+    () =>
+      dataBookings.filter((item) => {
+        const status = (item.status || "").toLowerCase();
+        return status === "dibatalkan";
       }),
     [dataBookings],
   );
@@ -126,12 +151,14 @@ const VerifikasiSampel = () => {
     if (!selectedSample) return;
     setIsProcessing(true);
     try {
-      await updateBookingStatus(selectedSample.id, { status: "disetujui" });
+      console.log("Updating booking status to disetujui:", selectedSample.id);
+      await updateBookingStatus(selectedSample.id, "disetujui");
       message.success(`Sampel ${generateSampleCodes(selectedSample)[0]} berhasil disetujui!`);
       setShowPopup(false);
       fetchData();
     } catch (error) {
-      message.error("Gagal update status.");
+      console.error("Error updating status:", error);
+      message.error(error?.response?.data?.message || error?.message || "Gagal update status.");
     } finally {
       setIsProcessing(false);
     }
@@ -154,18 +181,57 @@ const VerifikasiSampel = () => {
 
   const handleSampelSampai = async (row) => {
     try {
-      await updateBookingStatus(row.id, { status: "proses" });
-      // Ambil data booking terbaru setelah update status
-      const allBookings = (await getAllBookings()).data;
-      const updatedBooking = allBookings.find((b) => b.id === row.id);
+      setIsProcessing(true);
+      console.log("Updating booking status to proses:", row.id);
+      await updateBookingStatus(row.id, "proses");
       await fetchData();
-      message.success("Sampel diterima! Status: Sedang Dianalisis");
-      history.push({
-        pathname: "/teknisi/dashboard/inputNilaiAnalisis",
-        state: { booking: updatedBooking || row },
-      });
+      message.success("Sampel diterima! Pindah ke Kualitas Sampel");
     } catch (err) {
-      message.error("Gagal mengubah status sampel");
+      console.error("Error updating status:", err);
+      message.error(err?.response?.data?.message || err?.message || "Gagal mengubah status sampel");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleInputAnalisis = (row) => {
+    history.push({
+      pathname: "/teknisi/dashboard/inputNilaiAnalisis",
+      state: { booking: row },
+    });
+  };
+
+  const handleTolakKualitas = (row) => {
+    setSelectedKualitasSampel(row);
+    setAlasanTolakKualitas("");
+    setShowTolakKualitasModal(true);
+  };
+
+  const confirmTolakKualitas = async () => {
+    if (!selectedKualitasSampel || !alasanTolakKualitas.trim()) {
+      message.error("Alasan penolakan harus diisi!");
+      return;
+    }
+    try {
+      setIsProcessing(true);
+      console.log("Updating booking status to dibatalkan with reason:", selectedKualitasSampel.id);
+
+      // Kirim status dan alasan penolakan ke backend
+      await updateBookingStatus(selectedKualitasSampel.id, {
+        status: "dibatalkan",
+        alasan_teknisi: alasanTolakKualitas.trim(),
+      });
+
+      await fetchData();
+      setShowTolakKualitasModal(false);
+      setSelectedKualitasSampel(null);
+      setAlasanTolakKualitas("");
+      message.success("Analisis ditolak! Alasan telah dikirim ke klien.");
+    } catch (err) {
+      console.error("Error updating status:", err);
+      message.error(err?.response?.data?.message || err?.message || "Gagal mengubah status sampel");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -341,7 +407,7 @@ const VerifikasiSampel = () => {
             <div className="bg-success rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style={{ width: "32px", height: "32px" }}>
               <i className="bi bi-check2 text-white"></i>
             </div>
-            <h5 className="fw-bold mb-0 text-dark">Siap Diterima (Approved)</h5>
+            <h5 className="fw-bold mb-0 text-dark">Sampel Sampai</h5>
           </div>
 
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
@@ -377,9 +443,16 @@ const VerifikasiSampel = () => {
                           <small className="text-muted">{row.jenis_analisis}</small>
                         </td>
                         <td className="text-center pe-4">
-                          <button className="btn btn-primary btn-sm rounded-pill px-4 shadow-sm" onClick={() => handleSampelSampai(row)}>
-                            <i className="bi bi-box-seam me-2"></i>
-                            Konfirmasi Terima
+                          <button className="btn btn-primary btn-sm rounded-pill px-4 shadow-sm" onClick={() => handleSampelSampai(row)} disabled={isProcessing}>
+                            {isProcessing ? (
+                              <span>
+                                <i className="bi bi-hourglass-split me-2"></i>Memproses...
+                              </span>
+                            ) : (
+                              <span>
+                                <i className="bi bi-box-seam me-2"></i>Konfirmasi Terima
+                              </span>
+                            )}
                           </button>
                         </td>
                       </tr>
@@ -388,6 +461,171 @@ const VerifikasiSampel = () => {
                     <tr>
                       <td colSpan="6" className="text-center py-4 text-muted small italic">
                         Belum ada sampel yang menunggu penerimaan fisik.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* ================= TABEL KUALITAS SAMPEL ================= */}
+        <div className="mt-5">
+          <div className="d-flex align-items-center mb-3">
+            <div className="bg-info rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style={{ width: "32px", height: "32px" }}>
+              <i className="bi bi-clipboard-data text-white"></i>
+            </div>
+            <h5 className="fw-bold mb-0 text-dark">Kualitas Sampel</h5>
+            <span className="badge bg-info bg-opacity-10 text-info ms-2 px-3 py-2 rounded-pill">{processData.length} Sampel</span>
+          </div>
+
+          <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0" style={{ minWidth: "1000px" }}>
+                <thead style={{ backgroundColor: "#e3f2fd" }}>
+                  <tr>
+                    <th className="ps-4 py-3 small fw-bold" style={{ width: "60px" }}>
+                      No
+                    </th>
+                    <th className="py-3 small fw-bold">Kode Batch</th>
+                    <th className="py-3 small fw-bold">Klien</th>
+                    <th className="py-3 small fw-bold text-center">Jumlah</th>
+                    <th className="py-3 small fw-bold">Analisis</th>
+                    <th className="py-3 small fw-bold text-center">Tanggal Diterima</th>
+                    <th className="py-3 small fw-bold text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {processData.length > 0 ? (
+                    processData.map((row, index) => (
+                      <tr key={row.id}>
+                        <td className="ps-4 text-muted">{index + 1}</td>
+                        <td>
+                          <span className="badge bg-info bg-opacity-10 text-info fw-bold px-3 py-2 rounded-pill shadow-sm" style={{ fontSize: "1rem", letterSpacing: "1px" }}>
+                            {row.kode_batch || "-"}
+                          </span>
+                          {generateSampleCodes(row).length > 1 && (
+                            <div className="text-muted" style={{ fontSize: "11px" }}>
+                              +{generateSampleCodes(row).length - 1} sampel lainnya
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <div className="text-dark fw-medium">{row.user ? row.user.full_name || row.user.name : "Guest"}</div>
+                        </td>
+                        <td className="text-center">
+                          <span className="badge bg-light text-dark border px-3">{row.jumlah_sampel}</span>
+                        </td>
+                        <td>
+                          <span className="text-muted small">{row.jenis_analisis}</span>
+                        </td>
+                        <td className="text-center text-secondary small">{dayjs(row.updated_at || row.tanggal_kirim).format("DD/MM/YY HH:mm")}</td>
+                        <td className="text-center pe-4">
+                          <div className="d-flex justify-content-center gap-2">
+                            <button className="btn btn-outline-info btn-sm rounded-3 shadow-sm" onClick={() => handleDetail(row)} title="Lihat Detail">
+                              <i className="bi bi-eye"></i>
+                            </button>
+                            <button className="btn btn-warning btn-sm rounded-3 shadow-sm text-white" onClick={() => handleInputAnalisis(row)} title="Input Nilai Analisis">
+                              <i className="bi bi-pencil-square me-1"></i>
+                            </button>
+                            <button className="btn btn-danger btn-sm rounded-3 shadow-sm" onClick={() => handleTolakKualitas(row)} title="Tolak Sampel" disabled={isProcessing}>
+                              <i className="bi bi-x-lg"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="text-center py-5 text-muted">
+                        <i className="bi bi-clipboard-data fs-2 d-block mb-2"></i>
+                        Belum ada sampel dalam tahap analisis kualitas.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* ================= TABEL KUALITAS SAMPEL BURUK ================= */}
+        <div className="mt-5">
+          <div className="d-flex align-items-center mb-3">
+            <div className="bg-danger rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style={{ width: "32px", height: "32px" }}>
+              <i className="bi bi-exclamation-triangle text-white"></i>
+            </div>
+            <h5 className="fw-bold mb-0 text-dark">Kualitas Sampel Buruk</h5>
+            <span className="badge bg-danger bg-opacity-10 text-danger ms-2 px-3 py-2 rounded-pill">{cancelledData.length} Sampel</span>
+          </div>
+
+          <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0" style={{ minWidth: "1100px" }}>
+                <thead style={{ backgroundColor: "#ffebee" }}>
+                  <tr>
+                    <th className="ps-4 py-3 small fw-bold" style={{ width: "60px" }}>
+                      No
+                    </th>
+                    <th className="py-3 small fw-bold">Kode Batch</th>
+                    <th className="py-3 small fw-bold">Klien</th>
+                    <th className="py-3 small fw-bold text-center">Jumlah</th>
+                    <th className="py-3 small fw-bold">Analisis</th>
+                    <th className="py-3 small fw-bold">Alasan Penolakan</th>
+                    <th className="py-3 small fw-bold text-center">Tanggal Ditolak</th>
+                    <th className="py-3 small fw-bold text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cancelledData.length > 0 ? (
+                    cancelledData.map((row, index) => (
+                      <tr key={row.id} style={{ backgroundColor: "#fff5f5" }}>
+                        <td className="ps-4 text-muted">{index + 1}</td>
+                        <td>
+                          <span className="badge bg-danger bg-opacity-10 text-danger fw-bold px-3 py-2 rounded-pill shadow-sm" style={{ fontSize: "1rem", letterSpacing: "1px" }}>
+                            {row.kode_batch || "-"}
+                          </span>
+                          {generateSampleCodes(row).length > 1 && (
+                            <div className="text-muted" style={{ fontSize: "11px" }}>
+                              +{generateSampleCodes(row).length - 1} sampel lainnya
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <div className="text-dark fw-medium">{row.user ? row.user.full_name || row.user.name : "Guest"}</div>
+                        </td>
+                        <td className="text-center">
+                          <span className="badge bg-light text-dark border px-3">{row.jumlah_sampel}</span>
+                        </td>
+                        <td>
+                          <span className="text-muted small">{row.jenis_analisis}</span>
+                        </td>
+                        <td>
+                          <div className="text-danger small" style={{ maxWidth: "200px" }}>
+                            <i className="bi bi-exclamation-circle me-1"></i>
+                            {row.alasan_teknisi ? <span>{row.alasan_teknisi}</span> : <span className="fst-italic text-muted">Tidak ada alasan tercatat</span>}
+                          </div>
+                        </td>
+                        <td className="text-center text-secondary small">{dayjs(row.updated_at || row.tanggal_kirim).format("DD/MM/YY HH:mm")}</td>
+                        <td className="text-center pe-4">
+                          <div className="d-flex justify-content-center gap-2">
+                            <button className="btn btn-outline-secondary btn-sm rounded-3 shadow-sm" onClick={() => handleDetail(row)} title="Lihat Detail">
+                              <i className="bi bi-eye"></i>
+                            </button>
+                            <button className="btn btn-danger btn-sm rounded-3 shadow-sm" onClick={() => handleDelete(row)} disabled={isProcessing} title="Hapus booking dibatalkan">
+                              <i className="bi bi-trash"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="8" className="text-center py-5 text-muted">
+                        <i className="bi bi-shield-x fs-2 d-block mb-2 text-danger"></i>
+                        Tidak ada sampel yang ditolak karena kualitas buruk.
+                        <div className="small text-success mt-1">Semua sampel memenuhi standar kualitas! 👍</div>
                       </td>
                     </tr>
                   )}
@@ -502,6 +740,72 @@ const VerifikasiSampel = () => {
         </div>
       )}
 
+      {/* --- MODAL TOLAK KUALITAS SAMPEL --- */}
+      <Modal show={showTolakKualitasModal} onHide={() => !isProcessing && setShowTolakKualitasModal(false)} size="md" centered style={{ zIndex: 9999 }}>
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fw-bold text-danger">
+            <i className="bi bi-exclamation-triangle me-2"></i>
+            Tolak Kualitas Sampel
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4">
+          {selectedKualitasSampel && (
+            <>
+              <div className="alert alert-warning border-0 rounded-3 mb-3">
+                <div className="d-flex align-items-center">
+                  <i className="bi bi-info-circle me-2"></i>
+                  <div>
+                    <strong>Batch:</strong> {selectedKualitasSampel.kode_batch || "-"} <br />
+                    <strong>Klien:</strong> {selectedKualitasSampel.user?.full_name || selectedKualitasSampel.user?.name}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold text-dark">
+                  Alasan Penolakan <span className="text-danger">*</span>
+                </label>
+                <textarea
+                  className="form-control border-2"
+                  rows={4}
+                  value={alasanTolakKualitas}
+                  onChange={(e) => setAlasanTolakKualitas(e.target.value)}
+                  placeholder="Jelaskan mengapa kualitas sampel tidak memenuhi standar analisis..."
+                  disabled={isProcessing}
+                  style={{ resize: "none" }}
+                />
+                <div className="form-text text-muted">Alasan ini akan dikirimkan ke klien sebagai feedback.</div>
+              </div>
+
+              <div className="alert alert-danger border-0 rounded-3">
+                <small>
+                  <i className="bi bi-exclamation-triangle me-1"></i>
+                  <strong>Perhatian:</strong> Sampel yang ditolak akan dikembalikan ke klien dan status berubah menjadi "Dibatalkan".
+                </small>
+              </div>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="border-0 pt-0">
+          <button className="btn btn-light px-4 rounded-3" onClick={() => setShowTolakKualitasModal(false)} disabled={isProcessing}>
+            Batal
+          </button>
+          <button className="btn btn-danger px-4 rounded-3" onClick={confirmTolakKualitas} disabled={isProcessing || !alasanTolakKualitas.trim()}>
+            {isProcessing ? (
+              <span>
+                <i className="bi bi-hourglass-split me-2"></i>
+                Memproses...
+              </span>
+            ) : (
+              <span>
+                <i className="bi bi-x-circle me-2"></i>
+                Tolak Sampel
+              </span>
+            )}
+          </button>
+        </Modal.Footer>
+      </Modal>
+
       <style>{`
         .table thead th { vertical-align: middle; border: none; }
         .table tbody td { border-bottom: 1px solid #f2f2f2; }
@@ -511,6 +815,10 @@ const VerifikasiSampel = () => {
         
         .popup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); display: flex; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(2px); }
         .popup-box { width: 380px; background: white; padding: 30px; border-radius: 24px; text-align: center; }
+        
+        /* Ensure modals appear above navbar */
+        .modal { z-index: 9999 !important; }
+        .modal-backdrop { z-index: 9998 !important; }
         
         @keyframes popupShow { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .popup-box { animation: popupShow 0.3s ease-out; }

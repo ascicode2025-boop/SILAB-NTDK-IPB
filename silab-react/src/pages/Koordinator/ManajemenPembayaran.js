@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Container, Row, Col, Card, Table, Button, Form, InputGroup, Modal, Stack } from "react-bootstrap";
 import NavbarLoginKoordinator from "./NavbarLoginKoordinator";
 import FooterSetelahLogin from "../FooterSetelahLogin";
 import { getInvoices, uploadInvoicePaymentProof, confirmInvoicePayment, getAllBookings, updateBookingStatus, verifikasiKoordinator } from "../../services/BookingService";
 import { sendInvoiceEmail } from "../../services/BookingService";
 import { getAuthHeader } from "../../services/AuthService";
+import * as XLSX from 'xlsx';
 
 // axios used for uploading payment proof
 import axios from "axios";
@@ -17,7 +18,6 @@ const ManajemenPembayaran = () => {
   const [invoices, setInvoices] = useState([]);
   const [loadingInvoices, setLoadingInvoices] = useState(true);
 
-  const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showProofModal, setShowProofModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -34,15 +34,6 @@ const ManajemenPembayaran = () => {
   const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [paymentPopup, setPaymentPopup] = useState({ show: false, type: "", message: "" });
 
-  const [formData, setFormData] = useState({
-    namaKlien: "",
-    institusi: "",
-    tanggal: "",
-    dueDate: "",
-    total: "",
-    status: "DRAFT",
-  });
-
   const customColors = {
     brown: "#a3867a",
     lightGray: "#e9ecef",
@@ -53,6 +44,11 @@ const ManajemenPembayaran = () => {
   const [pendingBookings, setPendingBookings] = useState([]);
   const [analysisSummary, setAnalysisSummary] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // State untuk rekap keuangan bulanan
+  const [showMonthlyRecap, setShowMonthlyRecap] = useState(false);
+  const [monthlyData, setMonthlyData] = useState([]);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   const handleShowDetail = (item) => {
     // Check if this is a pending booking or an invoice
@@ -179,7 +175,222 @@ const ManajemenPembayaran = () => {
 
   useEffect(() => {
     fetchInvoicesFromServer();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
+
+  // Function untuk menghitung data rekap bulanan
+  const calculateMonthlyData = useCallback(() => {
+    const monthlyMap = {};
+    
+    console.log('Calculating monthly data for year:', selectedYear);
+    console.log('Invoices data:', invoices);
+    console.log('Pending bookings data:', pendingBookings);
+    
+    // Process invoices
+    invoices.forEach(invoice => {
+      // Use raw created_at from the original server response instead of formatted tanggal
+      let date;
+      if (invoice.created_at) {
+        date = new Date(invoice.created_at);
+      } else {
+        // Fallback: try to parse the formatted tanggal
+        const parts = invoice.tanggal?.split('/');
+        if (parts && parts.length === 3) {
+          // Convert from DD/MM/YYYY to YYYY-MM-DD
+          date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        } else {
+          date = new Date(); // Current date as fallback
+        }
+      }
+      
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date for invoice:', invoice);
+        return;
+      }
+      
+      if (date.getFullYear() !== selectedYear) return;
+      
+      const monthKey = date.getMonth(); // 0-11
+      if (!monthlyMap[monthKey]) {
+        monthlyMap[monthKey] = {
+          month: monthKey,
+          monthName: new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(new Date(selectedYear, monthKey, 1)),
+          totalInvoices: 0,
+          paidAmount: 0,
+          unpaidAmount: 0,
+          pendingAmount: 0,
+          invoiceCount: 0,
+          paidCount: 0,
+          unpaidCount: 0
+        };
+      }
+      
+      const amount = Number(invoice.total) || 0;
+      const isPaid = (invoice.status || "").toString().toUpperCase() === "PAID";
+      
+      monthlyMap[monthKey].totalInvoices += amount;
+      monthlyMap[monthKey].invoiceCount += 1;
+      
+      if (isPaid) {
+        monthlyMap[monthKey].paidAmount += amount;
+        monthlyMap[monthKey].paidCount += 1;
+      } else {
+        monthlyMap[monthKey].unpaidAmount += amount;
+        monthlyMap[monthKey].unpaidCount += 1;
+      }
+    });
+    
+    // Process pending bookings
+    pendingBookings.forEach(booking => {
+      // Use raw created_at from booking data
+      let date;
+      if (booking.booking?.created_at) {
+        date = new Date(booking.booking.created_at);
+      } else if (booking.created_at) {
+        date = new Date(booking.created_at);
+      } else {
+        // Fallback: try to parse the formatted tanggal
+        const parts = booking.tanggal?.split('/');
+        if (parts && parts.length === 3) {
+          // Convert from DD/MM/YYYY to YYYY-MM-DD
+          date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        } else {
+          date = new Date(); // Current date as fallback
+        }
+      }
+      
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date for booking:', booking);
+        return;
+      }
+      
+      if (date.getFullYear() !== selectedYear) return;
+      
+      const monthKey = date.getMonth();
+      if (!monthlyMap[monthKey]) {
+        monthlyMap[monthKey] = {
+          month: monthKey,
+          monthName: new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(new Date(selectedYear, monthKey, 1)),
+          totalInvoices: 0,
+          paidAmount: 0,
+          unpaidAmount: 0,
+          pendingAmount: 0,
+          invoiceCount: 0,
+          paidCount: 0,
+          unpaidCount: 0
+        };
+      }
+      
+      const amount = Number(booking.total) || 0;
+      monthlyMap[monthKey].pendingAmount += amount;
+      monthlyMap[monthKey].unpaidAmount += amount;
+      monthlyMap[monthKey].totalInvoices += amount;
+      monthlyMap[monthKey].invoiceCount += 1;
+      monthlyMap[monthKey].unpaidCount += 1;
+    });
+    
+    // Convert to array and sort by month
+    const monthlyArray = Object.values(monthlyMap).sort((a, b) => a.month - b.month);
+    console.log('Monthly data calculated:', monthlyArray);
+    setMonthlyData(monthlyArray);
+  }, [invoices, pendingBookings, selectedYear]);
+
+  // Function to toggle monthly recap display
+  const handleToggleMonthlyRecap = () => {
+    if (!showMonthlyRecap) {
+      calculateMonthlyData();
+    }
+    setShowMonthlyRecap(!showMonthlyRecap);
+  };
+
+  // Update monthly data when year changes
+  useEffect(() => {
+    if (showMonthlyRecap) {
+      calculateMonthlyData();
+    }
+  }, [selectedYear, showMonthlyRecap, calculateMonthlyData]);
+
+  // Function to export monthly data to Excel
+  const exportToExcel = () => {
+    try {
+      // Prepare data for Excel export
+      const exportData = monthlyData.map(month => ({
+        'Bulan': month.monthName,
+        'Total Pendapatan (Rp)': month.totalInvoices,
+        'Sudah Dibayar (Rp)': month.paidAmount,
+        'Belum Dibayar (Rp)': month.unpaidAmount,
+        'Jumlah Transaksi': month.invoiceCount,
+        'Transaksi Lunas': month.paidCount,
+        'Transaksi Pending': month.unpaidCount,
+        'Tingkat Pembayaran (%)': ((month.paidAmount / month.totalInvoices) * 100).toFixed(1)
+      }));
+
+      // Add summary row
+      const totalPendapatan = monthlyData.reduce((sum, month) => sum + month.totalInvoices, 0);
+      const totalDibayar = monthlyData.reduce((sum, month) => sum + month.paidAmount, 0);
+      const totalBelumBayar = monthlyData.reduce((sum, month) => sum + month.unpaidAmount, 0);
+      const totalTransaksi = monthlyData.reduce((sum, month) => sum + month.invoiceCount, 0);
+      const totalLunas = monthlyData.reduce((sum, month) => sum + month.paidCount, 0);
+      const totalPending = monthlyData.reduce((sum, month) => sum + month.unpaidCount, 0);
+      const overallRate = totalPendapatan > 0 ? ((totalDibayar / totalPendapatan) * 100).toFixed(1) : '0.0';
+
+      exportData.push({
+        'Bulan': '',
+        'Total Pendapatan (Rp)': '',
+        'Sudah Dibayar (Rp)': '',
+        'Belum Dibayar (Rp)': '',
+        'Jumlah Transaksi': '',
+        'Transaksi Lunas': '',
+        'Transaksi Pending': '',
+        'Tingkat Pembayaran (%)': ''
+      });
+
+      exportData.push({
+        'Bulan': 'TOTAL TAHUNAN',
+        'Total Pendapatan (Rp)': totalPendapatan,
+        'Sudah Dibayar (Rp)': totalDibayar,
+        'Belum Dibayar (Rp)': totalBelumBayar,
+        'Jumlah Transaksi': totalTransaksi,
+        'Transaksi Lunas': totalLunas,
+        'Transaksi Pending': totalPending,
+        'Tingkat Pembayaran (%)': overallRate
+      });
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(exportData);
+
+      // Set column widths
+      const colWidths = [
+        { wch: 15 }, // Bulan
+        { wch: 18 }, // Total Pendapatan
+        { wch: 18 }, // Sudah Dibayar
+        { wch: 18 }, // Belum Dibayar
+        { wch: 15 }, // Jumlah Transaksi
+        { wch: 15 }, // Transaksi Lunas
+        { wch: 15 }, // Transaksi Pending
+        { wch: 20 }  // Tingkat Pembayaran
+      ];
+      ws['!cols'] = colWidths;
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, `Rekap ${selectedYear}`);
+
+      // Generate filename with current date and time
+      const now = new Date();
+      const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
+      const filename = `Rekap_Keuangan_${selectedYear}_${timestamp}.xlsx`;
+
+      // Save file
+      XLSX.writeFile(wb, filename);
+
+      // Show success message
+      alert(`Data berhasil diekspor ke file: ${filename}`);
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      alert('Gagal mengekspor data ke Excel. Pastikan browser mendukung download file.');
+    }
+  };
 
   const fetchInvoicesFromServer = async () => {
     setLoadingInvoices(true);
@@ -205,6 +416,7 @@ const ManajemenPembayaran = () => {
           booking: inv.booking || {}, // Store full booking object for detail modal
           invoice_number: inv.invoice_number,
           jumlah_sampel: inv.booking?.jumlah_sampel || 0, // Extract jumlah_sampel from booking for display
+          created_at: inv.created_at, // Store raw created_at for date calculations
         }));
 
         // compute totals for summary from invoices
@@ -319,27 +531,20 @@ const ManajemenPembayaran = () => {
         }
 
         setSummaryTotals({ totalAll, paid, unpaid });
+        
+        // Trigger monthly calculation if recap is shown
+        if (showMonthlyRecap) {
+          // Use setTimeout to ensure state is updated first
+          setTimeout(() => {
+            calculateMonthlyData();
+          }, 100);
+        }
       }
     } catch (e) {
       console.error("Gagal memuat invoices dari server", e);
     } finally {
       setLoadingInvoices(false);
     }
-  };
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const newInvoice = {
-      invoiceId: `INV-2026-0${invoices.length + 1}`,
-      ...formData,
-      total: parseInt(formData.total),
-    };
-    setInvoices([newInvoice, ...invoices]);
-    setShowModal(false);
   };
 
   const getStatusBadge = (status) => {
@@ -404,10 +609,177 @@ const ManajemenPembayaran = () => {
               <h4 className="mb-0 fw-normal py-2" style={{ fontFamily: "serif" }}>
                 Manajemen Invoice
               </h4>
-              <div>{/* Manual invoice creation removed: invoices are auto-created when booking status becomes 'menunggu_pembayaran' */}</div>
+              <div>
+                <Button 
+                  variant="light" 
+                  size="sm" 
+                  className="rounded-pill px-3 fw-bold" 
+                  onClick={handleToggleMonthlyRecap}
+                  style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
+                >
+                  <i className={`bi ${showMonthlyRecap ? 'bi-eye-slash' : 'bi-bar-chart'} me-2`}></i>
+                  {showMonthlyRecap ? 'Sembunyikan Rekap' : 'Rekap Keuangan'}
+                </Button>
+              </div>
             </div>
 
             <Card.Body className="p-4 p-md-5 bg-white">
+              {/* REKAP KEUANGAN BULANAN SECTION */}
+              {showMonthlyRecap && (
+                <div className="mb-5">
+                  <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h5 className="mb-0 fw-bold" style={{ color: customColors.brown }}>
+                      <i className="bi bi-calendar3 me-2"></i>Rekap Keuangan Bulanan {selectedYear}
+                    </h5>
+                    <div className="d-flex align-items-center gap-3">
+                      <label className="fw-bold text-muted mb-0">Tahun:</label>
+                      <Form.Select 
+                        value={selectedYear} 
+                        onChange={(e) => setSelectedYear(Number(e.target.value))}
+                        size="sm"
+                        style={{ width: "120px", borderRadius: "15px" }}
+                      >
+                        {Array.from({ length: 5 }, (_, i) => {
+                          const year = new Date().getFullYear() - 2 + i;
+                          return <option key={year} value={year}>{year}</option>;
+                        })}
+                      </Form.Select>
+                    </div>
+                  </div>
+                  
+                  {/* Yearly Summary Cards */}
+                  <Row className="g-3 mb-4">
+                    {[
+                      { 
+                        label: "Total Pendapatan", 
+                        value: monthlyData.reduce((sum, month) => sum + month.totalInvoices, 0),
+                        color: customColors.brown,
+                        icon: "bi-cash-stack"
+                      },
+                      { 
+                        label: "Sudah Dibayar", 
+                        value: monthlyData.reduce((sum, month) => sum + month.paidAmount, 0),
+                        color: "#198754",
+                        icon: "bi-check-circle"
+                      },
+                      { 
+                        label: "Belum Dibayar", 
+                        value: monthlyData.reduce((sum, month) => sum + month.unpaidAmount, 0),
+                        color: "#dc3545",
+                        icon: "bi-clock-history"
+                      },
+                      { 
+                        label: "Total Transaksi", 
+                        value: monthlyData.reduce((sum, month) => sum + month.invoiceCount, 0),
+                        color: "#6f42c1",
+                        icon: "bi-receipt",
+                        isCount: true
+                      }
+                    ].map((stat, idx) => (
+                      <Col md={3} key={idx}>
+                        <Card className="border-0 shadow-sm h-100" style={{ borderRadius: "15px", backgroundColor: "#fdfcfc" }}>
+                          <Card.Body className="p-3 text-center">
+                            <div className="d-flex align-items-center justify-content-center mb-2">
+                              <i className={`${stat.icon} fs-4`} style={{ color: stat.color }}></i>
+                            </div>
+                            <small className="fw-bold text-muted text-uppercase d-block mb-1" style={{ fontSize: "0.7rem", letterSpacing: "0.5px" }}>
+                              {stat.label}
+                            </small>
+                            <h6 className="fw-bold mb-0" style={{ color: stat.color }}>
+                              {stat.isCount ? `${stat.value} transaksi` : `Rp ${stat.value.toLocaleString("id-ID")}`}
+                            </h6>
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>
+
+                  {/* Monthly Breakdown Table */}
+                  {monthlyData.length > 0 ? (
+                    <div className="table-responsive">
+                      <Table className="mb-0" hover style={{ fontSize: "0.9rem" }}>
+                        <thead style={{ backgroundColor: "#f8f9fa" }}>
+                          <tr>
+                            <th className="py-3 ps-3 fw-bold border-0" style={{ color: customColors.brown }}>Bulan</th>
+                            <th className="py-3 text-center fw-bold border-0" style={{ color: customColors.brown }}>Total Pendapatan</th>
+                            <th className="py-3 text-center fw-bold border-0" style={{ color: customColors.brown }}>Sudah Dibayar</th>
+                            <th className="py-3 text-center fw-bold border-0" style={{ color: customColors.brown }}>Belum Dibayar</th>
+                            <th className="py-3 text-center fw-bold border-0" style={{ color: customColors.brown }}>Transaksi</th>
+                            <th className="py-3 text-center fw-bold border-0" style={{ color: customColors.brown }}>Tingkat Pembayaran</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {monthlyData.map((month, idx) => {
+                            const paymentRate = month.totalInvoices > 0 ? (month.paidAmount / month.totalInvoices) * 100 : 0;
+                            return (
+                              <tr key={idx} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                                <td className="py-3 ps-3 fw-bold" style={{ color: customColors.brown }}>
+                                  {month.monthName}
+                                </td>
+                                <td className="py-3 text-center fw-bold">
+                                  Rp {month.totalInvoices.toLocaleString("id-ID")}
+                                </td>
+                                <td className="py-3 text-center">
+                                  <div className="fw-bold" style={{ color: "#198754" }}>Rp {month.paidAmount.toLocaleString("id-ID")}</div>
+                                  <small className="text-muted">({month.paidCount} transaksi)</small>
+                                </td>
+                                <td className="py-3 text-center">
+                                  <div className="fw-bold" style={{ color: "#dc3545" }}>Rp {month.unpaidAmount.toLocaleString("id-ID")}</div>
+                                  <small className="text-muted">({month.unpaidCount} transaksi)</small>
+                                </td>
+                                <td className="py-3 text-center fw-bold">
+                                  {month.invoiceCount}
+                                </td>
+                                <td className="py-3 text-center">
+                                  <div className="d-flex align-items-center justify-content-center gap-2">
+                                    <div 
+                                      className="progress" 
+                                      style={{ width: "60px", height: "8px", borderRadius: "4px", backgroundColor: "#e9ecef" }}
+                                    >
+                                      <div 
+                                        className="progress-bar" 
+                                        style={{ 
+                                          width: `${paymentRate}%`, 
+                                          backgroundColor: paymentRate >= 80 ? "#198754" : paymentRate >= 50 ? "#ffc107" : "#dc3545",
+                                          borderRadius: "4px"
+                                        }}
+                                      ></div>
+                                    </div>
+                                    <small className="fw-bold" style={{ minWidth: "45px" }}>{paymentRate.toFixed(1)}%</small>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <div className="p-5 text-center">
+                      <i className="bi bi-inbox" style={{ fontSize: "4rem", color: "#ccc" }}></i>
+                      <h5 className="mt-3 text-muted">Tidak ada data keuangan</h5>
+                      <p className="text-muted mb-0">Belum ada transaksi untuk tahun {selectedYear}</p>
+                    </div>
+                  )}
+                  
+                  {/* Export Button */}
+                  {monthlyData.length > 0 && (
+                    <div className="text-end mt-3">
+                      <Button 
+                        variant="success" 
+                        size="sm"
+                        className="rounded-pill px-3 me-2"
+                        onClick={exportToExcel}
+                      >
+                        <i className="bi bi-file-earmark-excel me-2"></i>Export Excel
+                      </Button>
+                    </div>
+                  )}
+                  
+                  <hr className="my-4" style={{ border: "2px solid #f0f0f0", borderRadius: "2px" }} />
+                </div>
+              )}
+              
               <div className="mb-4" style={{ maxWidth: "400px" }}>
                 <InputGroup className="shadow-sm rounded-pill overflow-hidden border">
                   <Form.Control placeholder="Cari klien, invoice, atau status..." className="border-0 ps-4" style={{ fontSize: "0.9rem" }} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />

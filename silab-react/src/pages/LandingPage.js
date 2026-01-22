@@ -146,7 +146,7 @@ function LandingPage() {
               daftarAnalisis.slice(0, 4).map((item, idx) => (
                 <Col key={idx} xs={12} sm={6} md={4} lg={3}>
                   <Card className="h-100 text-center shadow-sm daftarAnalisis-card" style={{ backgroundColor: "" }}>
-                    <Card.Img variant="top" src="/asset/daftarAnalisis/Rectangle19.png" className="img-fluid" />
+                    <Card.Img variant="top" src="/asset/daftarAnalisis/Spektro.jpg" className="img-fluid" />
                     <Card.Body>
                       <Card.Title className="text-black">{item.jenis_analisis}</Card.Title>
                       <Card.Text className="text-black">Rp. {item.harga.toLocaleString("id-ID")}</Card.Text>

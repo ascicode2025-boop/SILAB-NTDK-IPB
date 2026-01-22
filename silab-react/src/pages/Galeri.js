@@ -10,11 +10,9 @@ function Galeri() {
 
   const images = [
     { src: "/asset/Galeri_Landing_Page/galeriLandingPage1.png", text: "Laboratorium modern dengan teknologi terbaru" },
-    { src: "/asset/Galeri_Landing_Page/galeriLandingPage6.png", text: "Proses analisis sampel yang cepat dan akurat" },
+    { src: "/asset/Galeri_Landing_Page/galeriLandingPage6.png", text: "Tenaga ahli profesional dan berpengalaman yang siap memberikan pelayanan terbaik." },
     { src: "/asset/Galeri_Landing_Page/galeriLandingPage2.png", text: "Layanan pemeriksaan lengkap untuk berbagai kebutuhan" },
     { src: "/asset/Galeri_Landing_Page/galeriLandingPage3.png", text: "Tenaga ahli profesional dan berpengalaman yang siap memberikan pelayanan terbaik." },
-    { src: "/asset/Galeri_Landing_Page/galeriLandingPage5.png", text: "Standar kualitas internasional dalam setiap pengujian untuk akurasi data maksimal." },
-    { src: "/asset/Galeri_Landing_Page/galeriLandingPage4.png", text: "Dilengkapi fasilitas laboratorium yang nyaman dan aman, mendukung kinerja optimal, serta memastikan keselamatan bagi semua pengguna." },
   ];
 
   return (
@@ -40,7 +38,7 @@ function Galeri() {
                 <Col md={6}>
                   <div className="ps-md-3">
                     <h5 style={{ color: "#45352F", fontWeight: "600" }}>Fasilitas Kami</h5>
-                    <p className="desc-text">{images[5].text}</p>
+                    <p className="desc-text">{images[0].text}</p>
                   </div>
                 </Col>
               </Row>
@@ -77,7 +75,6 @@ function Galeri() {
             </Row>
           </Col>
         </Row>
-
       </Container>
 
       <Footer />

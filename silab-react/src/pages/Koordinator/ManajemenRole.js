@@ -178,45 +178,67 @@ const ManajemenAkun = () => {
         <Container>
           {/* Header Section */}
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <Row className="mb-5 align-items-center">
-              <Col>
+            <Row className="mb-4 mb-md-5">
+              <Col xs={12} lg={8} className="mb-3 mb-lg-0">
                 <div className="d-flex align-items-center gap-3 mb-2">
                   <div style={{ width: "40px", height: "4px", backgroundColor: theme.primary, borderRadius: "2px" }}></div>
                   <h6 className="text-uppercase fw-bold mb-0" style={{ color: theme.primary, letterSpacing: "2px", fontSize: "13px" }}>
                     Administrator Only
                   </h6>
                 </div>
-                <h2 className="fw-bold mb-1" style={{ fontSize: "2.2rem" }}>
+                <h2 className="fw-bold mb-1" style={{ fontSize: "clamp(1.5rem, 4vw, 2.2rem)" }}>
                   Manajemen Akun
                 </h2>
-                <p className="text-muted opacity-75">Kelola hak akses dan identitas digital personil laboratorium</p>
+                <p className="text-muted opacity-75 mb-0">Kelola hak akses dan identitas digital personil laboratorium</p>
               </Col>
-              <Col xs="auto">
-                <Button onClick={() => setShowModal(true)} className="d-flex align-items-center gap-2 border-0 py-2 px-4 fw-bold shadow" style={{ backgroundColor: theme.primary, borderRadius: "14px" }} id="btn-tambah">
-                  <Plus size={20} /> Tambah Akun
-                </Button>
+              <Col xs={12} lg={4} className="d-flex justify-content-lg-end align-items-center">
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="w-100 w-lg-auto">
+                  <Button
+                    onClick={() => setShowModal(true)}
+                    className="d-flex align-items-center justify-content-center gap-2 border-0 shadow-sm transition-all"
+                    style={{
+                      background: `linear-gradient(135deg, ${theme.primary} 0%, ${theme.dark} 100%)`,
+                      borderRadius: "12px",
+                      padding: "12px 24px",
+                      fontWeight: "600",
+                      letterSpacing: "0.5px",
+                      color: "white",
+                      minWidth: "180px",
+                    }}
+                    id="btn-tambah"
+                  >
+                    <div className="bg-white bg-opacity-25 rounded-circle p-1 d-flex align-items-center justify-content-center">
+                      <Plus size={18} strokeWidth={3} />
+                    </div>
+                    <span className="ms-1">Tambah Akun</span>
+                  </Button>
+                </motion.div>
               </Col>
             </Row>
           </motion.div>
 
           {/* Statistik Ringkas */}
-          <Row className="mb-5 g-4">
+          <Row className="mb-4 mb-md-5 g-3 g-md-4">
             {[
               { label: "Total Pengguna", value: `${users.length} User`, icon: <Users size={24} />, color: theme.primary },
-              { label: "Admin Aktif", value: `${users.filter((u) => roleMatch(u.role, ["kepala", "koordinator"]) && (u.status || "Aktif") === "Aktif").length} Akun`, icon: <ShieldCheck size={24} />, color: theme.dark },
+              { label: "Staff Lab Aktif", value: `${users.filter((u) => roleMatch(u.role, ["kepala", "koordinator", "teknisi"]) && (u.status || "Aktif") === "Aktif").length} Akun`, icon: <ShieldCheck size={24} />, color: theme.dark },
               { label: "Klien Internal IPB", value: `${users.filter((u) => roleMatch(u.role, ["klien", "user", "mahasiswa"]) && isInternalIPB(u)).length} Akun`, icon: <UserCircle size={24} />, color: "#2E86AB" },
-              { label: "Sistem Terintegrasi", value: "100%", icon: <Settings size={24} />, color: theme.accent },
+              { label: "Klien Eksternal", value: `${users.filter((u) => roleMatch(u.role, ["klien", "user", "mahasiswa"]) && !isInternalIPB(u)).length} Akun`, icon: <Settings size={24} />, color: "#E67E22" },
             ].map((stat, idx) => (
-              <Col md={4} key={idx}>
+              <Col xs={12} sm={6} lg={3} key={idx}>
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}>
-                  <Card style={cardStyle} className="p-2 border-0 stat-card shadow-sm">
-                    <Card.Body className="d-flex align-items-center">
-                      <div className="p-3 rounded-4 me-3" style={{ backgroundColor: `${stat.color}15`, color: stat.color }}>
+                  <Card style={cardStyle} className="p-2 border-0 stat-card shadow-sm h-100">
+                    <Card.Body className="d-flex align-items-center p-3">
+                      <div className="p-2 p-md-3 rounded-4 me-3 flex-shrink-0" style={{ backgroundColor: `${stat.color}15`, color: stat.color }}>
                         {stat.icon}
                       </div>
-                      <div>
-                        <h6 className="text-muted mb-0 small text-uppercase fw-bold">{stat.label}</h6>
-                        <h4 className="fw-bold mb-0">{stat.value}</h4>
+                      <div className="min-w-0 flex-grow-1">
+                        <h6 className="text-muted mb-0 small text-uppercase fw-bold" style={{ fontSize: "0.7rem", lineHeight: "1.2" }}>
+                          {stat.label}
+                        </h6>
+                        <h5 className="fw-bold mb-0" style={{ fontSize: "clamp(1rem, 3vw, 1.5rem)" }}>
+                          {stat.value}
+                        </h5>
                       </div>
                     </Card.Body>
                   </Card>
@@ -238,9 +260,9 @@ const ManajemenAkun = () => {
           {/* Tabel Utama */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
             <Card style={cardStyle} className="overflow-hidden border-0 shadow-lg">
-              <Card.Header className="bg-white border-0 p-4">
-                <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                  <InputGroup className="rounded-4 overflow-hidden" style={{ border: `1.5px solid ${theme.accent}`, maxWidth: "400px" }}>
+              <Card.Header className="bg-white border-0 p-3 p-md-4">
+                <div className="d-flex flex-column flex-lg-row justify-content-between align-items-stretch align-items-lg-center gap-3">
+                  <InputGroup className="rounded-4 overflow-hidden order-2 order-lg-1" style={{ border: `1.5px solid ${theme.accent}`, maxWidth: "400px" }}>
                     <InputGroup.Text className="bg-transparent border-0 pe-0">
                       <Search size={18} className="text-muted" />
                     </InputGroup.Text>
@@ -248,24 +270,36 @@ const ManajemenAkun = () => {
                   </InputGroup>
 
                   {/* Tab Filter */}
-                  <div className="d-flex gap-2">
+                  <div className="d-flex flex-column flex-sm-row gap-2 order-1 order-lg-2">
                     <Button
                       variant={activeTab === "staff" ? "primary" : "outline-secondary"}
                       size="sm"
-                      className="rounded-pill px-3"
-                      style={activeTab === "staff" ? { backgroundColor: theme.primary, borderColor: theme.primary } : {}}
+                      className="rounded-pill px-3 d-flex align-items-center justify-content-center"
+                      style={activeTab === "staff" ? { backgroundColor: theme.primary, borderColor: theme.primary, minHeight: "38px" } : { minHeight: "38px" }}
                       onClick={() => setActiveTab("staff")}
                     >
-                      <Users size={16} className="me-1" /> Staff Lab
+                      <Users size={16} className="me-1" />
+                      <span className="text-nowrap">Staff Lab</span>
                     </Button>
                     <Button
                       variant={activeTab === "klien" ? "primary" : "outline-secondary"}
                       size="sm"
-                      className="rounded-pill px-3"
-                      style={activeTab === "klien" ? { backgroundColor: "#2E86AB", borderColor: "#2E86AB" } : {}}
+                      className="rounded-pill px-3 d-flex align-items-center justify-content-center"
+                      style={activeTab === "klien" ? { backgroundColor: "#2E86AB", borderColor: "#2E86AB", minHeight: "38px" } : { minHeight: "38px" }}
                       onClick={() => setActiveTab("klien")}
                     >
-                      <UserCircle size={16} className="me-1" /> Klien Internal IPB
+                      <UserCircle size={16} className="me-1" />
+                      <span className="text-nowrap">Klien Internal</span>
+                    </Button>
+                    <Button
+                      variant={activeTab === "eksternal" ? "primary" : "outline-secondary"}
+                      size="sm"
+                      className="rounded-pill px-3 d-flex align-items-center justify-content-center"
+                      style={activeTab === "eksternal" ? { backgroundColor: "#E67E22", borderColor: "#E67E22", minHeight: "38px" } : { minHeight: "38px" }}
+                      onClick={() => setActiveTab("eksternal")}
+                    >
+                      <UserCircle size={16} className="me-1" />
+                      <span className="text-nowrap">Klien Eksternal</span>
                     </Button>
                   </div>
                 </div>
@@ -274,10 +308,18 @@ const ManajemenAkun = () => {
               <Table hover responsive className="mb-0 custom-table">
                 <thead style={{ backgroundColor: "#FBF9F8" }}>
                   <tr className="small text-uppercase" style={{ color: theme.primary, letterSpacing: "1px" }}>
-                    <th className="py-4 px-4">Informasi Pengguna</th>
-                    <th className="py-4">Jabatan / Role</th>
-                    <th className="py-4 text-center">Status Akses</th>
-                    <th className="py-4 text-center">Navigasi</th>
+                    <th className="py-3 py-md-4 px-3 px-md-4" style={{ fontSize: "0.7rem" }}>
+                      Informasi Pengguna
+                    </th>
+                    <th className="py-3 py-md-4 px-2" style={{ fontSize: "0.7rem" }}>
+                      Jabatan / Role
+                    </th>
+                    <th className="py-3 py-md-4 text-center px-2" style={{ fontSize: "0.7rem" }}>
+                      Status Akses
+                    </th>
+                    <th className="py-3 py-md-4 text-center px-2" style={{ fontSize: "0.7rem" }}>
+                      Navigasi
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -285,16 +327,19 @@ const ManajemenAkun = () => {
                     let filtered;
                     if (activeTab === "staff") {
                       filtered = users.filter((u) => roleMatch(u.role, ["teknisi", "koordinator", "kepala"]));
-                    } else {
+                    } else if (activeTab === "klien") {
                       // Filter klien internal IPB (mahasiswa/user dari IPB)
                       filtered = users.filter((u) => roleMatch(u.role, ["klien", "user", "mahasiswa"]) && isInternalIPB(u));
+                    } else {
+                      // Filter klien eksternal (non-IPB)
+                      filtered = users.filter((u) => roleMatch(u.role, ["klien", "user", "mahasiswa"]) && !isInternalIPB(u));
                     }
 
                     if (filtered.length === 0)
                       return (
                         <tr>
                           <td colSpan={4} className="text-center py-4 text-muted">
-                            {activeTab === "staff" ? "Tidak ada akun teknisi/koordinator/kepala" : "Tidak ada akun klien internal IPB"}
+                            {activeTab === "staff" ? "Tidak ada akun teknisi/koordinator/kepala" : activeTab === "klien" ? "Tidak ada akun klien internal IPB" : "Tidak ada akun klien eksternal"}
                           </td>
                         </tr>
                       );
@@ -302,7 +347,9 @@ const ManajemenAkun = () => {
                       const roleLower = (user.role || "").toLowerCase();
                       let color;
                       if (activeTab === "klien") {
-                        color = "#2E86AB"; // Warna biru untuk klien
+                        color = "#2E86AB"; // Warna biru untuk klien internal
+                      } else if (activeTab === "eksternal") {
+                        color = "#E67E22"; // Warna orange untuk klien eksternal
                       } else {
                         color = roleLower.includes("koordinator") ? "#A68A7D" : roleLower.includes("kepala") ? "#634E44" : "#8D766B";
                       }
@@ -316,7 +363,7 @@ const ManajemenAkun = () => {
                               <div>
                                 <div className="fw-bold">{user.name}</div>
                                 <div className="text-muted small">{user.email}</div>
-                                {activeTab === "klien" && user.institution && (
+                                {(activeTab === "klien" || activeTab === "eksternal") && user.institution && (
                                   <div className="text-muted small">
                                     <i className="bi bi-building me-1"></i>
                                     {user.institution}
@@ -327,7 +374,7 @@ const ManajemenAkun = () => {
                           </td>
                           <td>
                             <Badge bg="none" style={{ backgroundColor: `${color}15`, color: color, borderRadius: "8px", padding: "8px 12px", fontWeight: "600", fontSize: "11px", border: `1px solid ${color}25` }}>
-                              {activeTab === "klien" ? "Klien Internal" : user.role}
+                              {activeTab === "klien" ? "Klien Internal" : activeTab === "eksternal" ? "Klien Eksternal" : user.role}
                             </Badge>
                           </td>
                           <td className="text-center">
@@ -366,13 +413,13 @@ const ManajemenAkun = () => {
         </Container>
 
         {/* MODAL TAMBAH AKUN */}
-        <Modal show={showModal} onHide={() => setShowModal(false)} centered contentClassName="border-0 shadow-lg custom-modal-content" style={{ zIndex: 1060 }}>
+        <Modal show={showModal} onHide={() => setShowModal(false)} centered size="md" contentClassName="border-0 shadow-lg custom-modal-content" style={{ zIndex: 1060 }}>
           <div className="p-2 text-end">
             <Button variant="link" onClick={() => setShowModal(false)} className="text-muted p-2 shadow-none">
               <X size={24} />
             </Button>
           </div>
-          <Modal.Body className="px-4 px-md-5 pb-5 pt-0">
+          <Modal.Body className="px-3 px-md-5 pb-4 pb-md-5 pt-0">
             <Form onSubmit={submitCreate}>
               <Form.Group className="mb-3">
                 <Form.Label className="text-muted small ms-1">Nama Lengkap</Form.Label>
@@ -425,7 +472,7 @@ const ManajemenAkun = () => {
               </Form.Group>
 
               <div className="text-center mt-4">
-                <Button type="submit" disabled={creating} className="w-50 border-0 py-2 shadow-sm btn-submit-cokelat" style={{ backgroundColor: "#92786D", borderRadius: "15px", fontWeight: "500" }}>
+                <Button type="submit" disabled={creating} className="w-100 w-md-50 border-0 py-2 py-md-3 shadow-sm btn-submit-cokelat" style={{ backgroundColor: "#92786D", borderRadius: "15px", fontWeight: "500", minHeight: "44px" }}>
                   {creating ? "Membuat..." : "Buat akun"}
                 </Button>
               </div>
@@ -669,10 +716,66 @@ const ManajemenAkun = () => {
           }
 
           .stat-card { transition: all 0.3s ease; }
-          .stat-card:hover { transform: translateY(-8px); box-shadow: 0 15px 35px rgba(62, 50, 46, 0.1) !important; }
+          .stat-card:hover { transform: translateY(-4px); box-shadow: 0 15px 35px rgba(62, 50, 46, 0.1) !important; }
 
           .custom-table tbody tr { transition: all 0.2s ease; border-bottom: 1px solid rgba(141, 118, 107, 0.05); }
           .custom-table tbody tr:hover { background-color: #FDFBFA !important; }
+
+          /* Responsive improvements */
+          @media (max-width: 768px) {
+            .custom-modal-content {
+              border-radius: 20px !important;
+              margin: 10px;
+            }
+            
+            .stat-card:hover {
+              transform: translateY(-2px);
+            }
+            
+            .custom-table th,
+            .custom-table td {
+              padding: 0.5rem 0.25rem !important;
+              font-size: 0.8rem !important;
+            }
+            
+            .custom-table {
+              font-size: 0.75rem;
+            }
+            
+            .action-btn {
+              width: 32px !important;
+              height: 32px !important;
+            }
+          }
+
+          @media (max-width: 576px) {
+            .custom-input {
+              font-size: 16px !important; /* Prevent zoom on iOS */
+            }
+            
+            .stat-card .card-body {
+              padding: 0.75rem !important;
+            }
+            
+            .custom-table th,
+            .custom-table td {
+              padding: 0.4rem 0.2rem !important;
+              font-size: 0.75rem !important;
+            }
+            
+            .action-btn {
+              width: 30px !important;
+              height: 30px !important;
+              font-size: 0.8rem !important;
+            }
+          }
+
+          @media (max-width: 480px) {
+            .custom-table th:nth-child(2),
+            .custom-table td:nth-child(2) {
+              display: none;
+            }
+          }
 
           .action-btn {
             width: 36px; height: 36px; border-radius: 10px;
