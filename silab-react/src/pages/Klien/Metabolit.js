@@ -292,19 +292,28 @@ export default function Metabolit() {
                     <Form.Label style={labelStyle} className="fw-bold">
                       Jumlah Sampel
                     </Form.Label>
+
                     <Form.Control
                       type="number"
                       min={1}
                       className="py-2 shadow-sm border-0 bg-light w-50"
-                      value={jumlahSampel}
+                      value={jumlahSampel === 0 ? "" : jumlahSampel}
                       onChange={(e) => {
-                        const num = Number(e.target.value || 0);
+                        const val = e.target.value;
+
+                        if (val === "" || Number(val) === 0) {
+                          setJumlahSampel("");
+                          setKodeSampel([]);
+                          return;
+                        }
+
+                        const num = Number(val);
                         setJumlahSampel(num);
                         setKodeSampel(Array.from({ length: num }, (_, i) => String(i + 1).padStart(2, "0")));
                       }}
                       required
                     />
-                  </Form.Group>
+                  </Form.Group> 
 
                   <Row>
                     {kodeSampel.map((kode, i) => (

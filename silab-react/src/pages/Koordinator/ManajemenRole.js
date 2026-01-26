@@ -28,7 +28,7 @@ const ManajemenAkun = () => {
   const [showViewModal, setShowViewModal] = useState(false);
 
   // Add account form state
-  const [createForm, setCreateForm] = useState({ name: "", email: "", institution: "", phone: "", role: "Teknisi", password: "" });
+  const [createForm, setCreateForm] = useState({ name: "", username: "", email: "", institution: "", phone: "", role: "Teknisi", password: "" });
   const [creating, setCreating] = useState(false);
 
   // helper: role match function (case-insensitive)
@@ -132,6 +132,7 @@ const ManajemenAkun = () => {
     try {
       const payload = {
         name: createForm.name,
+        username: createForm.username,
         email: createForm.email,
         role: createForm.role,
         institution: createForm.institution,
@@ -140,7 +141,7 @@ const ManajemenAkun = () => {
       };
       await axios.post(`${API_URL}/users`, payload, { headers: getAuthHeader() });
       setShowModal(false);
-      setCreateForm({ name: "", email: "", institution: "", phone: "", role: "Teknisi", password: "" });
+      setCreateForm({ name: "", username: "", email: "", institution: "", phone: "", role: "Teknisi", password: "" });
       fetchUsers();
     } catch (err) {
       console.error("Gagal membuat akun:", err);
@@ -174,11 +175,11 @@ const ManajemenAkun = () => {
 
   return (
     <NavbarLoginKoordinator>
-      <div style={{ backgroundColor: theme.background, minHeight: "100vh", padding: "40px 0", color: theme.dark }}>
-        <Container>
+      <div style={{ backgroundColor: theme.background, minHeight: "100vh", padding: "20px 0", color: theme.dark }}>
+        <Container className="px-2 px-md-4">
           {/* Header Section */}
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <Row className="mb-4 mb-md-5">
+            <Row className="mb-3 mb-md-5">
               <Col xs={12} lg={8} className="mb-3 mb-lg-0">
                 <div className="d-flex align-items-center gap-3 mb-2">
                   <div style={{ width: "40px", height: "4px", backgroundColor: theme.primary, borderRadius: "2px" }}></div>
@@ -218,7 +219,7 @@ const ManajemenAkun = () => {
           </motion.div>
 
           {/* Statistik Ringkas */}
-          <Row className="mb-4 mb-md-5 g-3 g-md-4">
+          <Row className="mb-3 mb-md-5 g-2 g-md-4">
             {[
               { label: "Total Pengguna", value: `${users.length} User`, icon: <Users size={24} />, color: theme.primary },
               { label: "Staff Lab Aktif", value: `${users.filter((u) => roleMatch(u.role, ["kepala", "koordinator", "teknisi"]) && (u.status || "Aktif") === "Aktif").length} Akun`, icon: <ShieldCheck size={24} />, color: theme.dark },
@@ -260,65 +261,66 @@ const ManajemenAkun = () => {
           {/* Tabel Utama */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
             <Card style={cardStyle} className="overflow-hidden border-0 shadow-lg">
-              <Card.Header className="bg-white border-0 p-3 p-md-4">
-                <div className="d-flex flex-column flex-lg-row justify-content-between align-items-stretch align-items-lg-center gap-3">
+              <Card.Header className="bg-white border-0 p-2 p-md-4">
+                <div className="d-flex flex-column flex-lg-row justify-content-between align-items-stretch align-items-lg-center gap-2 gap-md-3">
                   <InputGroup className="rounded-4 overflow-hidden order-2 order-lg-1" style={{ border: `1.5px solid ${theme.accent}`, maxWidth: "400px" }}>
                     <InputGroup.Text className="bg-transparent border-0 pe-0">
-                      <Search size={18} className="text-muted" />
+                      <Search size={16} className="text-muted" />
                     </InputGroup.Text>
-                    <Form.Control placeholder="Cari berdasarkan nama atau email..." className="bg-transparent border-0 py-2 shadow-none" style={{ fontSize: "14px" }} />
+                    <Form.Control placeholder="Cari nama atau email..." className="bg-transparent border-0 py-2 shadow-none" style={{ fontSize: "14px" }} />
                   </InputGroup>
 
                   {/* Tab Filter */}
-                  <div className="d-flex flex-column flex-sm-row gap-2 order-1 order-lg-2">
+                  <div className="d-flex flex-column flex-sm-row gap-1 gap-md-2 order-1 order-lg-2">
                     <Button
                       variant={activeTab === "staff" ? "primary" : "outline-secondary"}
                       size="sm"
-                      className="rounded-pill px-3 d-flex align-items-center justify-content-center"
-                      style={activeTab === "staff" ? { backgroundColor: theme.primary, borderColor: theme.primary, minHeight: "38px" } : { minHeight: "38px" }}
+                      className="rounded-pill px-2 px-md-3 d-flex align-items-center justify-content-center"
+                      style={activeTab === "staff" ? { backgroundColor: theme.primary, borderColor: theme.primary, minHeight: "36px", fontSize: "0.8rem" } : { minHeight: "36px", fontSize: "0.8rem" }}
                       onClick={() => setActiveTab("staff")}
                     >
-                      <Users size={16} className="me-1" />
+                      <Users size={14} className="me-1" />
                       <span className="text-nowrap">Staff Lab</span>
                     </Button>
                     <Button
                       variant={activeTab === "klien" ? "primary" : "outline-secondary"}
                       size="sm"
-                      className="rounded-pill px-3 d-flex align-items-center justify-content-center"
-                      style={activeTab === "klien" ? { backgroundColor: "#2E86AB", borderColor: "#2E86AB", minHeight: "38px" } : { minHeight: "38px" }}
+                      className="rounded-pill px-2 px-md-3 d-flex align-items-center justify-content-center"
+                      style={activeTab === "klien" ? { backgroundColor: "#2E86AB", borderColor: "#2E86AB", minHeight: "36px", fontSize: "0.8rem" } : { minHeight: "36px", fontSize: "0.8rem" }}
                       onClick={() => setActiveTab("klien")}
                     >
-                      <UserCircle size={16} className="me-1" />
+                      <UserCircle size={14} className="me-1" />
                       <span className="text-nowrap">Klien Internal</span>
                     </Button>
                     <Button
                       variant={activeTab === "eksternal" ? "primary" : "outline-secondary"}
                       size="sm"
-                      className="rounded-pill px-3 d-flex align-items-center justify-content-center"
-                      style={activeTab === "eksternal" ? { backgroundColor: "#E67E22", borderColor: "#E67E22", minHeight: "38px" } : { minHeight: "38px" }}
+                      className="rounded-pill px-2 px-md-3 d-flex align-items-center justify-content-center"
+                      style={activeTab === "eksternal" ? { backgroundColor: "#E67E22", borderColor: "#E67E22", minHeight: "36px", fontSize: "0.8rem" } : { minHeight: "36px", fontSize: "0.8rem" }}
                       onClick={() => setActiveTab("eksternal")}
                     >
-                      <UserCircle size={16} className="me-1" />
+                      <UserCircle size={14} className="me-1" />
                       <span className="text-nowrap">Klien Eksternal</span>
                     </Button>
                   </div>
                 </div>
               </Card.Header>
 
-              <Table hover responsive className="mb-0 custom-table">
+              <div className="table-responsive" style={{ overflowX: "auto" }}>
+                <Table hover className="mb-0 custom-table" style={{ minWidth: "700px" }}>
                 <thead style={{ backgroundColor: "#FBF9F8" }}>
                   <tr className="small text-uppercase" style={{ color: theme.primary, letterSpacing: "1px" }}>
-                    <th className="py-3 py-md-4 px-3 px-md-4" style={{ fontSize: "0.7rem" }}>
+                    <th className="py-2 py-md-4 px-2 px-md-4" style={{ fontSize: "0.65rem", minWidth: "200px", width: "40%" }}>
                       Informasi Pengguna
                     </th>
-                    <th className="py-3 py-md-4 px-2" style={{ fontSize: "0.7rem" }}>
+                    <th className="py-2 py-md-4 px-1 px-md-2" style={{ fontSize: "0.65rem", minWidth: "120px", width: "25%" }}>
                       Jabatan / Role
                     </th>
-                    <th className="py-3 py-md-4 text-center px-2" style={{ fontSize: "0.7rem" }}>
+                    <th className="py-2 py-md-4 text-center px-1 px-md-2" style={{ fontSize: "0.65rem", minWidth: "100px", width: "20%" }}>
                       Status Akses
                     </th>
-                    <th className="py-3 py-md-4 text-center px-2" style={{ fontSize: "0.7rem" }}>
-                      Navigasi
+                    <th className="py-2 py-md-4 text-center px-1 px-md-2" style={{ fontSize: "0.65rem", minWidth: "100px", width: "15%" }}>
+                      Aksi
                     </th>
                   </tr>
                 </thead>
@@ -355,16 +357,16 @@ const ManajemenAkun = () => {
                       }
                       return (
                         <tr key={user.id} style={{ verticalAlign: "middle", opacity: user.status === "Non-Aktif" ? 0.6 : 1 }}>
-                          <td className="py-4 px-4">
+                          <td className="py-2 py-md-4 px-2 px-md-4">
                             <div className="d-flex align-items-center">
-                              <div className="me-3 d-flex align-items-center justify-content-center rounded-circle shadow-sm" style={{ width: "45px", height: "45px", backgroundColor: `${color}15`, color: color }}>
-                                <UserCircle size={28} strokeWidth={1.5} />
+                              <div className="me-2 me-md-3 d-flex align-items-center justify-content-center rounded-circle shadow-sm" style={{ width: "35px", height: "35px", backgroundColor: `${color}15`, color: color }}>
+                                <UserCircle size={22} strokeWidth={1.5} />
                               </div>
-                              <div>
-                                <div className="fw-bold">{user.name}</div>
-                                <div className="text-muted small">{user.email}</div>
+                              <div className="min-w-0 flex-grow-1">
+                                <div className="fw-bold" style={{ fontSize: "0.85rem", wordBreak: "break-word" }}>{user.name}</div>
+                                <div className="text-muted small" style={{ fontSize: "0.75rem", wordBreak: "break-all" }}>{user.email}</div>
                                 {(activeTab === "klien" || activeTab === "eksternal") && user.institution && (
-                                  <div className="text-muted small">
+                                  <div className="text-muted small d-none d-md-block" style={{ fontSize: "0.7rem" }}>
                                     <i className="bi bi-building me-1"></i>
                                     {user.institution}
                                   </div>
@@ -372,23 +374,23 @@ const ManajemenAkun = () => {
                               </div>
                             </div>
                           </td>
-                          <td>
-                            <Badge bg="none" style={{ backgroundColor: `${color}15`, color: color, borderRadius: "8px", padding: "8px 12px", fontWeight: "600", fontSize: "11px", border: `1px solid ${color}25` }}>
+                          <td className="px-1 px-md-2">
+                            <Badge bg="none" style={{ backgroundColor: `${color}15`, color: color, borderRadius: "6px", padding: "4px 8px", fontWeight: "600", fontSize: "0.7rem", border: `1px solid ${color}25` }}>
                               {activeTab === "klien" ? "Klien Internal" : activeTab === "eksternal" ? "Klien Eksternal" : user.role}
                             </Badge>
                           </td>
-                          <td className="text-center">
-                            <div className="d-flex align-items-center justify-content-center gap-2">
-                              <div style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: user.status === "Aktif" ? "#2ECC71" : "#E74C3C" }}></div>
-                              <span className="fw-medium" style={{ fontSize: "13px", color: user.status === "Aktif" ? "#2ECC71" : "#E74C3C" }}>
+                          <td className="text-center px-1 px-md-2">
+                            <div className="d-flex align-items-center justify-content-center gap-1 gap-md-2">
+                              <div style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: user.status === "Aktif" ? "#2ECC71" : "#E74C3C" }}></div>
+                              <span className="fw-medium d-none d-sm-inline" style={{ fontSize: "0.7rem", color: user.status === "Aktif" ? "#2ECC71" : "#E74C3C" }}>
                                 {user.status || "Aktif"}
                               </span>
                             </div>
                           </td>
-                          <td className="text-center">
-                            <div className="d-flex justify-content-center gap-2">
+                          <td className="text-center px-1 px-md-2">
+                            <div className="d-flex justify-content-center gap-1">
                               <button title="Lihat" onClick={() => openView(user)} className="action-btn edit">
-                                <Eye size={16} />
+                                <Eye size={14} />
                               </button>
                               <button
                                 title={user.status === "Aktif" ? "Non-aktifkan Akun" : "Aktifkan Akun"}
@@ -398,7 +400,7 @@ const ManajemenAkun = () => {
                                 }}
                                 className={`action-btn ${user.status === "Aktif" ? "delete" : "activate"}`}
                               >
-                                {user.status === "Aktif" ? <EyeOff size={16} /> : <Eye size={16} />}
+                                {user.status === "Aktif" ? <EyeOff size={14} /> : <Eye size={14} />}
                               </button>
                             </div>
                           </td>
@@ -408,6 +410,7 @@ const ManajemenAkun = () => {
                   })()}
                 </tbody>
               </Table>
+              </div>
             </Card>
           </motion.div>
         </Container>
@@ -415,15 +418,20 @@ const ManajemenAkun = () => {
         {/* MODAL TAMBAH AKUN */}
         <Modal show={showModal} onHide={() => setShowModal(false)} centered size="md" contentClassName="border-0 shadow-lg custom-modal-content" style={{ zIndex: 1060 }}>
           <div className="p-2 text-end">
-            <Button variant="link" onClick={() => setShowModal(false)} className="text-muted p-2 shadow-none">
-              <X size={24} />
+            <Button variant="link" onClick={() => setShowModal(false)} className="text-muted p-1 shadow-none">
+              <X size={20} />
             </Button>
           </div>
-          <Modal.Body className="px-3 px-md-5 pb-4 pb-md-5 pt-0">
+          <Modal.Body className="px-2 px-md-5 pb-3 pb-md-5 pt-0">
             <Form onSubmit={submitCreate}>
               <Form.Group className="mb-3">
                 <Form.Label className="text-muted small ms-1">Nama Lengkap</Form.Label>
                 <Form.Control name="name" value={createForm.name} onChange={handleCreateChange} type="text" className="custom-input shadow-sm" placeholder="Masukkan nama lengkap" required />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label className="text-muted small ms-1">Username</Form.Label>
+                <Form.Control name="username" value={createForm.username} onChange={handleCreateChange} type="text" className="custom-input shadow-sm" placeholder="Masukkan username untuk login" required />
               </Form.Group>
 
               <Form.Group className="mb-3">
@@ -724,49 +732,72 @@ const ManajemenAkun = () => {
           /* Responsive improvements */
           @media (max-width: 768px) {
             .custom-modal-content {
-              border-radius: 20px !important;
-              margin: 10px;
+              border-radius: 16px !important;
+              margin: 8px;
+              max-height: 90vh;
+              overflow-y: auto;
             }
             
             .stat-card:hover {
               transform: translateY(-2px);
             }
             
-            .custom-table th,
-            .custom-table td {
-              padding: 0.5rem 0.25rem !important;
-              font-size: 0.8rem !important;
-            }
-            
             .custom-table {
               font-size: 0.75rem;
             }
             
-            .action-btn {
-              width: 32px !important;
-              height: 32px !important;
+            .custom-table th,
+            .custom-table td {
+              padding: 0.4rem 0.2rem !important;
             }
-          }
-
-          @media (max-width: 576px) {
-            .custom-input {
-              font-size: 16px !important; /* Prevent zoom on iOS */
+            
+            .action-btn {
+              width: 28px !important;
+              height: 28px !important;
+              font-size: 0.7rem;
             }
             
             .stat-card .card-body {
               padding: 0.75rem !important;
             }
             
-            .custom-table th,
-            .custom-table td {
-              padding: 0.4rem 0.2rem !important;
-              font-size: 0.75rem !important;
+            .stat-card h5 {
+              font-size: 0.9rem !important;
+            }
+            
+            .stat-card h6 {
+              font-size: 0.6rem !important;
+            }
+          }
+
+          @media (max-width: 576px) {
+            .custom-input {
+              font-size: 16px !important; /* Prevent zoom on iOS */
+              padding: 0.5rem 0.8rem !important;
+            }
+            
+            .custom-modal-content .modal-body {
+              padding: 0.75rem !important;
+            }
+            
+            .stat-card .card-body {
+              padding: 0.6rem !important;
             }
             
             .action-btn {
-              width: 30px !important;
-              height: 30px !important;
-              font-size: 0.8rem !important;
+              width: 26px !important;
+              height: 26px !important;
+            }
+            
+            .custom-table th,
+            .custom-table td {
+              padding: 0.3rem 0.15rem !important;
+              font-size: 0.7rem !important;
+            }
+            
+            .badge {
+              font-size: 0.6rem !important;
+              padding: 2px 6px !important;
             }
           }
 
@@ -775,10 +806,18 @@ const ManajemenAkun = () => {
             .custom-table td:nth-child(2) {
               display: none;
             }
+            
+            .stat-card h5 {
+              font-size: 0.8rem !important;
+            }
+            
+            .stat-card h6 {
+              font-size: 0.55rem !important;
+            }
           }
 
           .action-btn {
-            width: 36px; height: 36px; border-radius: 10px;
+            width: 32px; height: 32px; border-radius: 8px;
             border: 1px solid ${theme.accent}; background: white;
             display: flex; align-items: center; justify-content: center;
             transition: all 0.2s ease; color: ${theme.primary};

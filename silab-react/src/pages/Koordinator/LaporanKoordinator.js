@@ -114,8 +114,8 @@ const LaporanKoordinator = () => {
 
   return (
     <NavbarLoginKoordinator>
-      <div style={{ backgroundColor: theme.background, minHeight: "100vh", padding: "60px 0" }}>
-        <Container>
+      <div style={{ backgroundColor: theme.background, minHeight: "100vh", padding: "30px 0" }}>
+        <Container className="px-2 px-md-3">
           {/* Header Section */}
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-5">
             <div className="d-flex align-items-center gap-2 mb-2">
@@ -219,38 +219,38 @@ const LaporanKoordinator = () => {
               <span className="text-muted small">Total {tableData.length} data ditemukan</span>
             </div>
             <Card className="border-0 shadow-sm overflow-hidden mb-5" style={{ borderRadius: "24px" }}>
-              <div className="table-responsive">
-                <Table hover className="mb-0 custom-table">
+              <div className="table-responsive" style={{ overflowX: "auto" }}>
+                <Table hover className="mb-0 custom-table" style={{ minWidth: "900px", width: "100%" }}>
                   <thead>
                     <tr>
-                      <th className="ps-4">Tanggal</th>
-                      <th>
+                      <th className="ps-2 ps-md-4" style={{ minWidth: "100px", width: "12%" }}>Tanggal</th>
+                      <th style={{ minWidth: "120px", width: "15%" }}>
                         <Hash size={14} className="me-1" /> Batch
                       </th>
-                      <th>
+                      <th style={{ minWidth: "140px", width: "18%" }}>
                         <User size={14} className="me-1" /> Pemesan
                       </th>
-                      <th>
+                      <th style={{ minWidth: "160px", width: "25%" }}>
                         <Beaker size={14} className="me-1" /> Analisis
                       </th>
-                      <th className="text-end">Total Biaya</th>
-                      <th className="text-center">Status</th>
-                      <th className="text-center pe-4">Aksi</th>
+                      <th className="text-end" style={{ minWidth: "120px", width: "15%" }}>Total Biaya</th>
+                      <th className="text-center" style={{ minWidth: "100px", width: "10%" }}>Status</th>
+                      <th className="text-center pe-2 pe-md-4" style={{ minWidth: "100px", width: "10%" }}>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
                     {tableData.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="text-center py-5 text-muted">
+                        <td colSpan={7} className="text-center py-4 py-md-5 text-muted">
                           Data tidak tersedia
                         </td>
                       </tr>
                     ) : (
                       tableData.map((item, i) => (
                         <tr key={i}>
-                          <td className="ps-4 text-muted small">{item.tgl}</td>
-                          <td className="fw-bold text-dark">{item.kode_batch}</td>
-                          <td>{item.user_name}</td>
+                          <td className="ps-2 ps-md-4 text-muted small">{item.tgl}</td>
+                          <td className="fw-bold text-dark" style={{ wordBreak: "break-word" }}>{item.kode_batch}</td>
+                          <td style={{ wordBreak: "break-word" }}>{item.user_name}</td>
                           <td>
                             <div className="small fw-medium">{item.jenis_analisis}</div>
                             <div className="d-flex gap-1 mt-1 flex-wrap">
@@ -267,10 +267,12 @@ const LaporanKoordinator = () => {
                           <td className="text-center">
                             <span className="badge-status-finished">{item.status}</span>
                           </td>
-                          <td className="text-center pe-4">
+                          <td className="text-center pe-2 pe-md-4">
                             {item.pdf_path && (
-                              <Button as="a" target="_blank" href={`${API_URL.replace(/\/api$/, "")}/storage/${item.pdf_path}`} className="btn-table-action">
-                                <Eye size={14} /> Preview
+                              <Button as="a" target="_blank" href={`${API_URL.replace(/\/api$/, "")}/storage/${item.pdf_path}`} className="btn-table-action" size="sm">
+                                <Eye size={14} /> 
+                                <span className="d-none d-md-inline ms-1">Preview</span>
+                                <span className="d-md-none">📄</span>
                               </Button>
                             )}
                           </td>
@@ -287,38 +289,38 @@ const LaporanKoordinator = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
             <h5 className="fw-bold mb-3 px-1">Riwayat Dokumen Laporan Bulanan</h5>
             <Card className="border-0 shadow-sm overflow-hidden" style={{ borderRadius: "24px" }}>
-              <div className="table-responsive">
-                <Table hover className="mb-0 custom-table">
+              <div className="table-responsive" style={{ overflowX: "auto" }}>
+                <Table hover className="mb-0 custom-table" style={{ minWidth: "700px", width: "100%" }}>
                   <thead>
                     <tr>
-                      <th className="ps-4">Bulan / Periode</th>
-                      <th>Dokumen Tersedia</th>
-                      <th>Dibuat Pada</th>
-                      <th className="text-center pe-4">Status</th>
+                      <th className="ps-2 ps-md-4" style={{ minWidth: "140px", width: "25%" }}>Bulan / Periode</th>
+                      <th style={{ minWidth: "180px", width: "35%" }}>Dokumen Tersedia</th>
+                      <th style={{ minWidth: "120px", width: "20%" }}>Dibuat Pada</th>
+                      <th className="text-center pe-2 pe-md-4" style={{ minWidth: "100px", width: "20%" }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reportHistory.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="text-center py-5 text-muted">
+                        <td colSpan={4} className="text-center py-4 py-md-5 text-muted">
                           Belum ada riwayat dokumen
                         </td>
                       </tr>
                     ) : (
                       reportHistory.map((item, i) => (
                         <tr key={i}>
-                          <td className="ps-4 fw-bold">{item.bulan}</td>
+                          <td className="ps-2 ps-md-4 fw-bold" style={{ wordBreak: "break-word" }}>{item.bulan}</td>
                           <td>
                             <div className="d-flex flex-column gap-1">
                               {item.files?.map((f, idx) => (
-                                <a key={idx} href={f.url} target="_blank" className="text-primary text-decoration-none small d-flex align-items-center gap-2">
+                                <a key={idx} href={f.url} target="_blank" rel="noreferrer" className="text-primary text-decoration-none small d-flex align-items-center gap-2">
                                   <FileText size={14} /> {f.label}
                                 </a>
                               ))}
                             </div>
                           </td>
                           <td className="text-muted small">{item.tanggal_buat}</td>
-                          <td className="text-center pe-4">
+                          <td className="text-center pe-2 pe-md-4">
                             <span className="badge-status-info">{item.status}</span>
                           </td>
                         </tr>
@@ -343,25 +345,45 @@ const LaporanKoordinator = () => {
             text-transform: uppercase;
             font-size: 11px;
             letter-spacing: 0.5px;
-            padding: 20px 15px;
+            padding: 15px 10px;
             border-bottom: 1px solid #F1F2F6;
           }
 
+          @media (min-width: 768px) {
+            .custom-table thead th {
+              padding: 20px 15px;
+              font-size: 11px;
+            }
+          }
+
           .custom-table tbody td {
-            padding: 18px 15px;
+            padding: 12px 10px;
             vertical-align: middle;
             font-size: 14px;
             border-bottom: 1px solid #F1F2F6;
             color: #2D3436;
           }
 
+          @media (min-width: 768px) {
+            .custom-table tbody td {
+              padding: 18px 15px;
+            }
+          }
+
           .badge-param {
             background-color: #F1F2F6;
             color: #636E72;
-            padding: 3px 8px;
+            padding: 3px 6px;
             border-radius: 6px;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 500;
+          }
+
+          @media (min-width: 768px) {
+            .badge-param {
+              padding: 3px 8px;
+              font-size: 10px;
+            }
           }
 
           .badge-status-finished {

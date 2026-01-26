@@ -2,19 +2,14 @@ import React, { useEffect, useState } from "react";
 import { useParams, useHistory } from "react-router-dom";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
 import FooterSetelahLogin from "../FooterSetelahLogin";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import { getAllBookings, getBookingById, updateAnalysisResult, finalizeAnalysis } from "../../services/BookingService";
-import { Button, message, Card, Input, Typography, Tag, Space, Alert, Checkbox, Modal } from "antd";
+import { Button, Spin, message, Card, Input, Typography, Divider, Tag, Space, Alert, Checkbox, Modal } from "antd";
 import { SaveOutlined, ExperimentOutlined, UserOutlined, BarcodeOutlined, SettingOutlined, CheckCircleFilled } from "@ant-design/icons";
 import "@fontsource/poppins";
 
 const { Title, Text } = Typography;
 
 function FormInputNilaiAnalisis() {
-  useEffect(() => {
-    document.title = "SILAB-NTDK - Form Input Nilai Analisis";
-  }, []);
-
   const { id } = useParams();
   const history = useHistory();
   const [booking, setBooking] = useState(null);
@@ -27,6 +22,23 @@ function FormInputNilaiAnalisis() {
 
   // State untuk satuan per-item (independen)
   const [resultUnits, setResultUnits] = useState({});
+
+  // Set default satuan mg/dL untuk semua metabolit saat booking berubah
+  useEffect(() => {
+    if (booking && booking.analysis_items) {
+      setResultUnits((prev) => {
+        const updated = { ...prev };
+        booking.analysis_items.forEach((item) => {
+          // Deteksi metabolit (Kimia Klinik) dari stdConc
+          if (stdConc[item.nama_item] !== undefined && !updated[item.nama_item]) {
+            updated[item.nama_item] = "mg/dL";
+          }
+        });
+        return updated;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booking]);
 
   // Helper untuk set satuan per item
   const setResultUnitForItem = (itemName, unit) => {
@@ -78,12 +90,7 @@ function FormInputNilaiAnalisis() {
   };
 
   const hitungDiferensiasi = (v) => {
-    // Convert koma ke titik untuk handle CSV format Indonesia (46,92 → 46.92)
-    const toNum = (x) => {
-      if (!x) return 0;
-      const str = String(x).replace(",", ".");
-      return Number(str) || 0;
-    };
+    const toNum = (x) => Number(x) || 0;
 
     const Limfosit = toNum(v.Limfosit);
     const Heterofil = toNum(v.Heterofil);
@@ -93,38 +100,18 @@ function FormInputNilaiAnalisis() {
 
     const Total = Limfosit + Heterofil + Eosinofil + Monosit + Basofil;
 
-    // Hitung persentase tanpa pembulatan dulu
-    const persen = (x) => (Total > 0 ? (x / Total) * 100 : 0);
-
-    // Hanya bulatkan saat display (untuk format output saja)
-    const formatPersen = (x) => {
-      const val = persen(x);
-      // Jika angka asli memiliki 2 desimal, tampilkan 2 desimal
-      // Jika 1 desimal, tampilkan 1 desimal
-      if (String(val).includes(".")) {
-        return val.toFixed(2).replace(/\.?0+$/, ""); // hapus trailing zeros
-      }
-      return val.toFixed(2);
-    };
-
-    const LimfositPersen = formatPersen(Limfosit);
-    const HeterofilPersen = formatPersen(Heterofil);
-    const EosinofilPersen = formatPersen(Eosinofil);
-    const MonositPersen = formatPersen(Monosit);
-    const BasofilPersen = formatPersen(Basofil);
-
-    // Hitung total dengan akurasi penuh
-    const totalPersen = persen(Limfosit) + persen(Heterofil) + persen(Eosinofil) + persen(Monosit) + persen(Basofil);
-    const TotalPersen = Total > 0 ? totalPersen.toFixed(2).replace(/\.?0+$/, "") : "0";
+    const persen = (x) => (Total > 0 ? ((x / Total) * 100).toFixed(1) : "0.0");
 
     return {
       Total,
-      LimfositPersen,
-      HeterofilPersen,
-      EosinofilPersen,
-      MonositPersen,
-      BasofilPersen,
-      TotalPersen,
+      LimfositPersen: persen(Limfosit),
+      HeterofilPersen: persen(Heterofil),
+      EosinofilPersen: persen(Eosinofil),
+      MonositPersen: persen(Monosit),
+      BasofilPersen: persen(Basofil),
+
+      // 🔴 TOTAL %
+      TotalPersen: Total > 0 ? (persen(Limfosit) * 1 + persen(Heterofil) * 1 + persen(Eosinofil) * 1 + persen(Monosit) * 1 + persen(Basofil) * 1).toFixed(1) : "0.0",
     };
   };
 
@@ -233,7 +220,7 @@ function FormInputNilaiAnalisis() {
         // Diferensiasi Leukosit
         // ===============================
         if (item.nama_item === "Diferensiasi Leukosit") {
-          const regex = /(\w+):([\d.]+)/g;
+          const regex = /(\w+)=([\d.]+)/g;
           let m;
           while ((m = regex.exec(value)) !== null) {
             const labelMap = {
@@ -432,7 +419,7 @@ function FormInputNilaiAnalisis() {
             if (!valStd && !valSpl) return null;
 
             const hasilMg = calculateResult(namaItem, valStd, valSpl);
-            const hasilFinal = hasilMg === "-" || hasilMg === "" ? hasilMg : itemUnit === "g/dL" ? (parseFloat(hasilMg) / 1000).toFixed(3) : hasilMg;
+            const hasilFinal = hasilMg === "-" || hasilMg === "" ? hasilMg : itemUnit === "g/dL" && !(namaItem === "Total Protein" || namaItem === "Albumin") ? (parseFloat(hasilMg) / 1000).toFixed(3) : hasilMg;
             // Format: [CODE]: STD=valStd SPL=valSpl HASIL=hasilFinal unit
             return `[${code}]: STD=${valStd} SPL=${valSpl} HASIL=${hasilFinal} ${itemUnit}`;
           })
@@ -488,9 +475,8 @@ function FormInputNilaiAnalisis() {
             // Skip jika tidak ada input sama sekali
             if (!v.Limfosit && !v.Heterofil && !v.Eosinofil && !v.Monosit && !v.Basofil) return null;
 
-            const h = hitungDiferensiasi(v);
-            const jenis = jenisDL === "ruminansia" ? "Neutrofil" : "Heterofil";
-            return `[${code}]: Lim:${h.LimfositPersen}%, Het:${h.HeterofilPersen}%, Eos:${h.EosinofilPersen}%, Mon:${h.MonositPersen}%, Bas:${h.BasofilPersen}% (${jenis})`;
+            // Simpan inputan (jumlah sel), bukan persentase
+            return `[${code}]: Lim=${v.Limfosit}, Het=${v.Heterofil}, Eos=${v.Eosinofil}, Mon=${v.Monosit}, Bas=${v.Basofil}, Jenis=${jenisDL}`;
           })
           .filter(Boolean);
         hasilString = results.join(" | ");
@@ -619,7 +605,7 @@ function FormInputNilaiAnalisis() {
       // Redirect ke halaman generate PDF (preview only, tidak otomatis download atau kirim)
       history.push({
         pathname: "/teknisi/dashboard/generatePdfAnalysis",
-        state: { booking: { id: booking.id }, autoGenerate: false },
+        state: { booking: { id: booking.id, resultUnits: { ...resultUnits } }, autoGenerate: false },
       });
     } catch (error) {
       console.error("Gagal menyelesaikan:", error);
@@ -645,7 +631,7 @@ function FormInputNilaiAnalisis() {
     return (
       <NavbarLoginTeknisi>
         <div className="py-5 text-center">
-          <LoadingSpinner spinning={loading} tip="Memuat data..." />
+          <Spin size="large" />
         </div>
       </NavbarLoginTeknisi>
     );
@@ -744,7 +730,7 @@ function FormInputNilaiAnalisis() {
                         Hasil (mg/dL)
                       </Checkbox>
 
-                      <Checkbox checked={getResultUnitForItem(item.nama_item) === "g/dL"} onChange={() => setResultUnitForItem(item.namaItem, "g/dL")}>
+                      <Checkbox checked={getResultUnitForItem(item.nama_item) === "g/dL"} onChange={() => setResultUnitForItem(item.nama_item, "g/dL")}>
                         Hasil (g/dL)
                       </Checkbox>
                     </div>
@@ -765,9 +751,8 @@ function FormInputNilaiAnalisis() {
                             const valSpl = nilaiAnalisis[`${item.nama_item}-spl-${code}`] || "";
 
                             const hasilMg = calculateResult(item.nama_item, valStd, valSpl);
-                            const itemUnit = getResultUnitForItem(item.nama_item);
-
-                            const hasilFinal = hasilMg === "-" || hasilMg === "" ? hasilMg : itemUnit === "g/dL" ? (parseFloat(hasilMg) / 1000).toFixed(3) : hasilMg;
+                            // Nilai hasil tidak berubah, hanya label satuan yang berubah
+                            const hasilFinal = hasilMg;
 
                             return (
                               <tr key={i}>
@@ -781,7 +766,7 @@ function FormInputNilaiAnalisis() {
                                   <Input type="number" step="0.001" className="text-center" placeholder="0.000" value={valSpl} onChange={(e) => handleInputChange(`${item.nama_item}-spl-${code}`, e.target.value)} />
                                 </td>
                                 <td className="bg-light">
-                                  <Input className="text-center fw-bold text-primary" value={hasilFinal} disabled />
+                                  <Input className="text-center fw-bold text-primary" value={hasilFinal} disabled addonAfter={getResultUnitForItem(item.nama_item)} />
                                 </td>
                               </tr>
                             );

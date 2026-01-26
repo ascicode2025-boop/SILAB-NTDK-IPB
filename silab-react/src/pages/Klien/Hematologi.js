@@ -20,8 +20,8 @@ export default function Hematologi() {
 
   const [analyses, setAnalyses] = useState([]);
   const [analysisPrices, setAnalysisPrices] = useState({});
-  const [jumlahSampel, setJumlahSampel] = useState(1);
-  const [kodeSampel, setKodeSampel] = useState(["01"]);
+  const [jumlahSampel, setJumlahSampel] = useState("");
+  const [kodeSampel, setKodeSampel] = useState([]);
 
   const [jenisHewan, setJenisHewan] = useState("");
   const [jenisHewanLain, setJenisHewanLain] = useState("");
@@ -177,7 +177,7 @@ export default function Hematologi() {
   };
 
   // Hitung total harga analisis terpilih
-  const totalHarga = jumlahSampel * analyses.reduce((sum, item) => sum + (Number(analysisPrices[item]) || 0), 0);
+  const totalHarga = (Number(jumlahSampel) || 0) * analyses.reduce((sum, item) => sum + (Number(analysisPrices[item]) || 0), 0);
 
   return (
     <NavbarLogin>
@@ -297,9 +297,15 @@ export default function Hematologi() {
                       className="py-2 shadow-sm border-0 bg-light w-50"
                       value={jumlahSampel}
                       onChange={(e) => {
-                        const num = Number(e.target.value || 0);
-                        setJumlahSampel(num);
-                        setKodeSampel(Array.from({ length: num }, (_, i) => String(i + 1).padStart(2, "0")));
+                        const inputValue = e.target.value;
+                        if (inputValue === "") {
+                          setJumlahSampel("");
+                          setKodeSampel([]);
+                        } else {
+                          const num = Number(inputValue);
+                          setJumlahSampel(num);
+                          setKodeSampel(Array.from({ length: num }, (_, i) => String(i + 1).padStart(2, "0")));
+                        }
                       }}
                       required
                     />

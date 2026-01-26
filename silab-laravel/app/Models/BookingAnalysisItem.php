@@ -16,6 +16,7 @@ class BookingAnalysisItem extends Model
         'hasil',
         'metode',
         'nama_analisis',
+        'status',
     ];
 
     public function booking()

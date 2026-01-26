@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Image, Nav, Dropdown, Badge } from "react-bootstrap";
 import { useHistory, useLocation } from "react-router-dom";
-import { FaTachometerAlt, FaFileAlt, FaCalendarAlt, FaClipboardList, FaClock, FaFlask, FaHistory, FaBars, FaUserCircle, FaBell } from "react-icons/fa";
+import { FaTachometerAlt, FaFileAlt, FaCalendarAlt, FaClipboardList, FaClock, FaFlask, FaHistory, FaBars, FaTimes, FaUserCircle, FaBell } from "react-icons/fa";
 import { getUnreadNotifications, getAllNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "../../services/NotificationService";
 import "@fontsource/poppins";
 import ConfirmModal from "../../components/Common/ConfirmModal";
@@ -114,7 +114,7 @@ function NavbarLoginTeknisi({ children }) {
         {/* Bagian Kiri: Burger Menu & Logo */}
         <div className="d-flex align-items-center">
           <button className="btn btn-light border-0 me-3 d-lg-none rounded-circle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle sidebar">
-            <FaBars size={20} className="text-secondary" />
+            {sidebarOpen ? <FaTimes size={20} className="text-secondary" /> : <FaBars size={20} className="text-secondary" />}
           </button>
 
           <div className="d-flex align-items-center gap-3">
@@ -208,7 +208,7 @@ function NavbarLoginTeknisi({ children }) {
 
             <Dropdown.Menu className="shadow-lg border-0 mt-2" style={{ borderRadius: "10px" }}>
               <Dropdown.Item className="py-2" onClick={() => history.push("/teknisi/dashboard/profile")}>
-                Profil Akun
+                <i className="bi bi-person me-2"></i> Profil Akun
               </Dropdown.Item>
               <hr className="dropdown-divider opacity-50" />
               <Dropdown.Item className="py-2 text-danger" onClick={() => setShowLogout(true)}>

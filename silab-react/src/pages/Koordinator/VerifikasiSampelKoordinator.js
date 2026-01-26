@@ -8,6 +8,28 @@ import FooterSetelahLogin from "../FooterSetelahLogin";
 const VerifikasiSampelKoordinator = () => {
   useEffect(() => {
     document.title = "SILAB-NTDK - Verifikasi Sampel";
+
+    // Add responsive styles
+    const style = document.createElement("style");
+    style.textContent = `
+      @media (min-width: 768px) {
+        .btn-responsive {
+          font-size: 0.8rem !important;
+          padding: 6px 16px !important;
+          min-width: 100px !important;
+        }
+        .btn-responsive-action {
+          font-size: 0.8rem !important;
+          padding: 6px 16px !important;
+          min-width: 120px !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      document.head.removeChild(style);
+    };
   }, []);
 
   const history = useHistory();
@@ -160,50 +182,63 @@ const VerifikasiSampelKoordinator = () => {
           flexDirection: "column",
         }}
       >
+        {/* Modal style fix: prevent modal from overlapping navbar */}
+        <style>{`
+          .modal.show .modal-dialog {
+            margin-top: 70px !important;
+          }
+          @media (max-width: 768px) {
+            .modal.show .modal-dialog {
+              margin-top: 56px !important;
+            }
+          }
+        `}</style>
         <div style={{ flex: "1" }}>
-          <Container fluid className="py-5 px-4 px-md-5">
+          <Container fluid className="py-3 py-md-5 px-2 px-md-4 px-lg-5">
             <Card className="border-0 shadow-sm" style={{ borderRadius: "20px", overflow: "hidden" }}>
               <div
-                className="card-header border-0 py-3"
+                className="card-header border-0 py-2 py-md-3"
                 style={{
                   backgroundColor: customColors.brown,
                   color: "white",
                   borderBottomRightRadius: "50px",
-                  paddingLeft: "30px",
+                  paddingLeft: "20px",
+                  paddingRight: "15px",
                 }}
               >
-                <h4 className="mb-0 fw-normal" style={{ fontFamily: "serif" }}>
-                  Verifikasi Hasil Analisis
+                <h4 className="mb-0 fw-normal" style={{ fontFamily: "serif", fontSize: "1.1rem" }}>
+                  <span className="d-none d-md-inline">Verifikasi Hasil Analisis</span>
+                  <span className="d-md-none">Verifikasi Analisis</span>
                 </h4>
               </div>
 
-              <div className="card-body p-4 bg-white">
+              <div className="card-body p-2 p-md-4 bg-white">
                 {loading ? (
                   <div className="text-center py-5">
                     <Spinner animation="border" style={{ color: customColors.brown }} />
                     <p className="mt-2 text-muted">Mengambil data...</p>
                   </div>
                 ) : (
-                  <div className="table-responsive">
-                    <Table bordered hover className="align-middle text-center mb-0 w-100">
+                  <div className="table-responsive" style={{ overflowX: "auto" }}>
+                    <Table bordered hover className="align-middle text-center mb-0" style={{ minWidth: "800px", width: "100%" }}>
                       <thead className="table-light">
                         <tr>
-                          <th className="py-3 fw-bold text-nowrap" style={{ width: "20%" }}>
+                          <th className="py-3 fw-bold text-nowrap" style={{ width: "18%", minWidth: "140px" }}>
                             Kode Batch
                           </th>
-                          <th className="py-3 fw-bold text-nowrap" style={{ width: "15%" }}>
+                          <th className="py-3 fw-bold text-nowrap" style={{ width: "16%", minWidth: "120px" }}>
                             Pemesan
                           </th>
-                          <th className="py-3 fw-bold text-nowrap" style={{ width: "15%" }}>
+                          <th className="py-3 fw-bold text-nowrap" style={{ width: "18%", minWidth: "140px" }}>
                             Jenis Analisis
                           </th>
-                          <th className="py-3 fw-bold text-nowrap" style={{ width: "15%" }}>
+                          <th className="py-3 fw-bold text-nowrap" style={{ width: "12%", minWidth: "100px" }}>
                             Tanggal
                           </th>
-                          <th className="py-3 fw-bold text-nowrap" style={{ width: "15%" }}>
+                          <th className="py-3 fw-bold text-nowrap" style={{ width: "18%", minWidth: "140px" }}>
                             Status
                           </th>
-                          <th className="py-3 fw-bold text-nowrap" style={{ width: "20%" }}>
+                          <th className="py-3 fw-bold text-nowrap" style={{ width: "18%", minWidth: "160px" }}>
                             Aksi
                           </th>
                         </tr>
@@ -211,20 +246,27 @@ const VerifikasiSampelKoordinator = () => {
                       <tbody>
                         {bookings.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="py-5 text-muted">
-                              Tidak ada sampel yang menunggu verifikasi saat ini.
+                            <td colSpan={6} className="py-4 py-md-5 text-muted" style={{ fontSize: "0.9rem" }}>
+                              <div className="d-none d-md-block">Tidak ada sampel yang menunggu verifikasi saat ini.</div>
+                              <div className="d-md-none">Tidak ada sampel yang perlu diverifikasi.</div>
                             </td>
                           </tr>
                         ) : (
                           bookings.map((item) => (
                             <tr key={item.id}>
-                              <td className="py-3 fw-bold text-dark">{parseKodeSampel(item.kode_batch || item.kode_sampel)}</td>
-                              <td className="py-3">{item.user?.full_name || item.user?.name || "-"}</td>
-                              <td className="py-3" style={{ maxWidth: "200px", lineHeight: "1.2" }}>
+                              <td className="py-2 py-md-3 fw-bold text-dark" style={{ wordBreak: "break-word" }}>
+                                {parseKodeSampel(item.kode_batch || item.kode_sampel)}
+                              </td>
+                              <td className="py-2 py-md-3" style={{ wordBreak: "break-word" }}>
+                                {item.user?.full_name || item.user?.name || "-"}
+                              </td>
+                              <td className="py-2 py-md-3" style={{ lineHeight: "1.2", wordBreak: "break-word" }}>
                                 {item.jenis_analisis}
                               </td>
-                              <td className="py-3 text-nowrap">{item.created_at ? new Date(item.created_at).toLocaleDateString("id-ID") : "-"}</td>
-                              <td className="py-3 text-secondary" style={{ fontSize: "0.9rem" }}>
+                              <td className="py-2 py-md-3 text-nowrap" style={{ fontSize: "0.85rem" }}>
+                                {item.created_at ? new Date(item.created_at).toLocaleDateString("id-ID") : "-"}
+                              </td>
+                              <td className="py-2 py-md-3 text-secondary" style={{ fontSize: "0.85rem", lineHeight: "1.3" }}>
                                 {/* Friendly status labels mapped from DB values */}
                                 {(() => {
                                   const st = item.status || "";
@@ -248,35 +290,59 @@ const VerifikasiSampelKoordinator = () => {
 
                                 {item.status === "ditolak_kepala" && item.alasan_tolak && <div className="text-danger mt-2 small">Ditolak Kepala: {item.alasan_tolak}</div>}
                               </td>
-                              <td className="py-3">
-                                <div className="d-flex justify-content-center align-items-center gap-2 flex-wrap">
+                              <td className="py-2 py-md-3">
+                                <div className="d-flex justify-content-center align-items-center gap-1 gap-md-2 flex-wrap">
                                   {/* Tombol Lihat PDF */}
                                   <Button
                                     size="sm"
-                                    className="border-0 shadow-sm text-nowrap"
+                                    className="border-0 shadow-sm text-nowrap btn-responsive"
                                     style={{
                                       backgroundColor: customColors.brown,
-                                      borderRadius: "8px",
-                                      fontSize: "0.8rem",
-                                      padding: "6px 16px",
-                                      minWidth: "100px",
+                                      borderRadius: "6px",
+                                      fontSize: "0.75rem",
+                                      padding: "4px 8px",
+                                      minWidth: "70px",
                                     }}
                                     onClick={() => history.push(`/koordinator/dashboard/verifikasiSampelKoordinator/lihatHasilPdfKoordinator/${item.id}`)}
                                   >
-                                    Lihat PDF
+                                    <span className="d-none d-md-inline">Lihat PDF</span>
+                                    <span className="d-md-none">PDF</span>
                                   </Button>
 
                                   {/* Tombol Kirim ke Teknisi (Jika Ditolak Kepala) */}
                                   {item.status === "ditolak_kepala" && (
-                                    <Button variant="danger" size="sm" className="rounded-pill text-nowrap" style={{ fontSize: "0.8rem", padding: "6px 16px" }} onClick={() => handleKirimTeknisi(item)}>
-                                      Kirim ke Teknisi
+                                    <Button
+                                      variant="danger"
+                                      size="sm"
+                                      className="rounded-pill text-nowrap btn-responsive"
+                                      style={{
+                                        fontSize: "0.75rem",
+                                        padding: "4px 8px",
+                                        minWidth: "80px",
+                                      }}
+                                      onClick={() => handleKirimTeknisi(item)}
+                                    >
+                                      <span className="d-none d-md-inline">Kirim ke Teknisi</span>
+                                      <span className="d-md-none">Kirim</span>
                                     </Button>
                                   )}
 
                                   {/* Tombol Sudah Dikirim (DISABLED) */}
                                   {item.status === "menunggu_verifikasi_kepala" && (
-                                    <Button variant="secondary" size="sm" className="rounded-pill text-nowrap" style={{ fontSize: "0.8rem", padding: "6px 16px", cursor: "not-allowed" }} disabled>
-                                      Sudah Dikirim
+                                    <Button
+                                      variant="secondary"
+                                      size="sm"
+                                      className="rounded-pill text-nowrap btn-responsive"
+                                      style={{
+                                        fontSize: "0.75rem",
+                                        padding: "4px 8px",
+                                        cursor: "not-allowed",
+                                        minWidth: "80px",
+                                      }}
+                                      disabled
+                                    >
+                                      <span className="d-none d-md-inline">Sudah Dikirim</span>
+                                      <span className="d-md-none">Terkirim</span>
                                     </Button>
                                   )}
 
@@ -285,17 +351,18 @@ const VerifikasiSampelKoordinator = () => {
                                     <Button
                                       variant="primary"
                                       size="sm"
-                                      className="rounded-pill shadow-sm text-nowrap"
+                                      className="rounded-pill shadow-sm text-nowrap btn-responsive-action"
                                       style={{
-                                        fontSize: "0.8rem",
-                                        padding: "6px 16px",
+                                        fontSize: "0.75rem",
+                                        padding: "4px 8px",
                                         backgroundColor: "#0d6efd",
                                         borderColor: "#0d6efd",
-                                        minWidth: "120px",
+                                        minWidth: "90px",
                                       }}
                                       onClick={() => handleOpenConfirm(item)}
                                     >
-                                      Kirim ke Kepala
+                                      <span className="d-none d-md-inline">Kirim ke Kepala</span>
+                                      <span className="d-md-none">Kirim</span>
                                     </Button>
                                   )}
                                 </div>

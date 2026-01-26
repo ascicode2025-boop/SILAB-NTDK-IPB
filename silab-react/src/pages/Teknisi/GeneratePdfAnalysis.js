@@ -30,7 +30,11 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const bookingFromRoute = propBooking || location.state?.booking;
+  // Gabungkan resultUnits dari state jika ada
+  let bookingFromRoute = propBooking || location.state?.booking;
+  if (location.state?.booking && location.state.booking.resultUnits) {
+    bookingFromRoute = { ...location.state.booking, resultUnits: location.state.booking.resultUnits };
+  }
 
   const instituteHeader = [
     "KEMENTERIAN RISET, TEKNOLOGI DAN PENDIDIKAN TINGGI",
@@ -51,7 +55,7 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
       jenis_kelamin: "****",
       umur: "**** minggu",
       status_fisiologis: "****",
-      title1: "Tabel 1. Hasil Analisis BDM, BDP, HB, PCV, Limfosit, Neutrofil, Eosinofil, Monosit, Basofil dan Differensiasi Leukosit pada hewan ternak Puyuh",
+      title1: "Tabel 1. Hasil Analisis Hematologi",
       title2: "Tabel 2. Hasil Analisis Metabolit",
     },
     table1: [
@@ -89,8 +93,7 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
       const response = await getAllBookings();
       const allBookings = response?.data || [];
 
-      // Filter status: Tampilkan semua booking yang relevan untuk teknisi
-      // Termasuk yang belum dikirim (proses/draft) dan yang sudah dikirim
+      // Tambahkan status baru jika ada, misal: 'revised', 'diperbaiki', dsb
       const visibleStatuses = [
         "proses",
         "draft",
@@ -100,10 +103,52 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
         "menunggu_ttd_koordinator",
         "menunggu_pembayaran",
         "selesai",
-        "disetujui", // Jika ada
+        "disetujui",
+        "diperbaiki_teknisi",
+        "revised",
+        "diperbaiki",
       ];
 
-      const verificationBookings = allBookings.filter((b) => visibleStatuses.includes((b.status || "").toLowerCase()));
+      // FILTER: Booking yang statusnya relevan ATAU memiliki analysis_items dengan status 'revised'
+      const statusForAnalysis = allBookings.filter((b) => {
+        const status = (b.status || "").toLowerCase();
+        // Cek apakah ada analysis_items dengan status 'revised'
+        const hasRevisedItem = Array.isArray(b.analysis_items) && b.analysis_items.some((ai) => (ai.status || "").toLowerCase() === "revised");
+        return (visibleStatuses.includes(status) || hasRevisedItem) && status !== "menunggu_pembayaran_awal" && status !== "pending" && status !== "dibatalkan" && status !== "rejected";
+      });
+
+      // FILTER: Hanya booking yang memiliki jenis_analisis (sudah siap untuk analisis)
+      // Jika status 'proses', pastikan minimal satu item memiliki hasil atau status 'revised'
+      const verificationBookings = statusForAnalysis.filter((b) => {
+        if (!b.jenis_analisis || b.jenis_analisis.trim() === "") return false;
+        const st = (b.status || "").toLowerCase();
+        if (st === "proses") {
+          // pastikan minimal satu item memiliki hasil terisi atau status 'revised'
+          return Array.isArray(b.analysis_items) && b.analysis_items.some((ai) => (ai.hasil && ai.hasil.toString().trim() !== "") || (ai.status || "").toLowerCase() === "revised");
+        }
+        // Jika status booking bukan 'proses', tetap tampilkan jika ada item 'revised'
+        if (Array.isArray(b.analysis_items) && b.analysis_items.some((ai) => (ai.status || "").toLowerCase() === "revised")) {
+          return true;
+        }
+        return true;
+      });
+
+      // DEBUG: Log untuk melihat hasil filter
+      console.log("=== DEBUG FILTER TEKNISI ===");
+      console.log("All bookings count:", allBookings.length);
+      console.log("After status filter:", statusForAnalysis.length);
+      console.log("Final booking count (with analysis):", verificationBookings.length);
+
+      const uniqueStatuses = [...new Set(allBookings.map((b) => b.status))];
+      console.log("All unique statuses:", uniqueStatuses);
+
+      const filteredStatuses = [...new Set(verificationBookings.map((b) => b.status))];
+      console.log("Teknisi filtered statuses:", filteredStatuses);
+
+      // Log jenis analisis yang ada
+      const jenisAnalisisList = [...new Set(verificationBookings.map((b) => b.jenis_analisis))];
+      console.log("Jenis analisis yang ada:", jenisAnalisisList);
+      console.log("=============================");
 
       // Sorting: Prioritaskan yang BUTUH AKSI (menunggu_verifikasi) di paling atas
       verificationBookings.sort((a, b) => {
@@ -235,7 +280,7 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
     let headerY = 10;
     const offsetX = 15;
     doc.setFontSize(12);
-    doc.setFont("Times New Roman", "bold");
+    doc.setFont("times", "bold");
     instituteHeader.forEach((line) => {
       doc.text(line, pageWidth / 2 + offsetX, headerY, { align: "center" });
       headerY += 6;
@@ -247,7 +292,7 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
     cursorY = headerY + 10;
 
     doc.setFontSize(11);
-    doc.setFont("Times New Roman", "normal");
+    doc.setFont("times", "normal");
     doc.text(payload.header.kepada, leftMargin, cursorY);
     if (payload.header.tanggal) {
       doc.text(`Tanggal: ${payload.header.tanggal}`, pageWidth - rightMargin, cursorY, { align: "right" });
@@ -260,10 +305,10 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
 
     // Tambahkan informasi hewan
     doc.setFontSize(10);
-    doc.setFont("Times New Roman", "bold");
+    doc.setFont("times", "bold");
     doc.text("Informasi Hewan:", leftMargin, cursorY);
     cursorY += 5;
-    doc.setFont("Times New Roman", "normal");
+    doc.setFont("times", "normal");
     doc.text(`Jenis Kelamin: ${payload.header.jenis_kelamin || "-"}`, leftMargin, cursorY);
     cursorY += 4;
     doc.text(`Umur: ${payload.header.umur || "-"}`, leftMargin, cursorY);
@@ -273,35 +318,32 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
 
     if (payload.table1 && payload.table1.length > 0 && payload.header.title1) {
       doc.setFontSize(11);
-      doc.setFont("Times New Roman", "bold");
+      doc.setFont("times", "bold");
       const title1Lines = doc.splitTextToSize(payload.header.title1, usableWidth);
       doc.text(title1Lines, leftMargin, cursorY);
       cursorY += title1Lines.length * 5 + 2;
       const [, ...table1Body] = payload.table1;
 
-      // Pastikan header menggunakan satuan yang benar
-      const correctedTable1Head = ["No", "Kode", "BDM x10^6\n(Butir/mm³)", "BDP x10^3\n(Butir/mm³)", "HB\n(G%)", "PCV\n(%)", "Limfosit\n(%)", "Neutrofil\n(%)", "Eosinofil\n(%)", "Monosit\n(%)", "Basofil\n(%)"];
+      // Gunakan header dinamis dari payload
+      const [dynamicTable1Head, ...dynamicTable1Body] = payload.table1;
 
       const colNoWidth = 12;
       const colKodeWidth = 30;
-      const bdmWidth = 25; // Lebih lebar untuk BDM
-      const bdpWidth = 25; // Lebih lebar untuk BDP
-      const remainingWidth = usableWidth - colNoWidth - colKodeWidth - bdmWidth - bdpWidth;
-      const paramColCount = correctedTable1Head.length - 4;
+      const remainingWidth = usableWidth - colNoWidth - colKodeWidth;
+      const paramColCount = dynamicTable1Head.length - 2; // No dan Kode sudah dikurangi
       const paramColWidth = remainingWidth / (paramColCount > 0 ? paramColCount : 1);
       let columnStylesT1 = {
         0: { cellWidth: colNoWidth },
-        1: { cellWidth: colKodeWidth },
-        2: { cellWidth: bdmWidth },
-        3: { cellWidth: bdpWidth },
+        1: { cellWidth: colKodeWidth, whiteSpace: "nowrap", overflow: "hidden" },
       };
-      for (let i = 4; i < correctedTable1Head.length; i++) {
+      // Set width untuk kolom parameter secara dinamis
+      for (let i = 2; i < dynamicTable1Head.length; i++) {
         columnStylesT1[i] = { cellWidth: paramColWidth };
       }
       autoTable(doc, {
         startY: cursorY,
-        head: [correctedTable1Head],
-        body: table1Body,
+        head: [dynamicTable1Head],
+        body: dynamicTable1Body,
         theme: "grid",
         styles: commonTableStyles,
         headStyles: commonHeadStyles,
@@ -319,7 +361,7 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
         cursorY = 20;
       }
       doc.setFontSize(11);
-      doc.setFont("Times New Roman", "bold");
+      doc.setFont("times", "bold");
       const title2Lines = doc.splitTextToSize(payload.header.title2, usableWidth);
       doc.text(title2Lines, leftMargin, cursorY);
       cursorY += title2Lines.length * 5 + 2;
@@ -329,7 +371,10 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
       const remainingWidth = usableWidth - colNoWidth - colKodeWidth;
       const paramColCount = table2Head.length - 2;
       const paramColWidth = remainingWidth / (paramColCount > 0 ? paramColCount : 1);
-      let columnStylesT2 = { 0: { cellWidth: colNoWidth }, 1: { cellWidth: colKodeWidth } };
+      let columnStylesT2 = {
+        0: { cellWidth: colNoWidth },
+        1: { cellWidth: colKodeWidth, whiteSpace: "nowrap", overflow: "hidden" },
+      };
       for (let i = 2; i < table2Head.length; i++) {
         columnStylesT2[i] = { cellWidth: paramColWidth };
       }
@@ -356,7 +401,7 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
     }
     const signatureCenterPoint = pageWidth - 45;
     doc.setFontSize(10);
-    doc.setFont("Times New Roman", "normal");
+    doc.setFont("times", "normal");
     doc.text("Penanggungjawab Lab. Analisis", signatureCenterPoint, cursorY, { align: "center" });
     cursorY += 5;
     doc.text("Ilmu Nutrisi Ternak Daging dan Kerja", signatureCenterPoint, cursorY, { align: "center" });
@@ -387,7 +432,10 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
       a.download = file.name;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      // Pastikan node masih ada sebelum dihapus
+      if (a.parentNode) {
+        a.parentNode.removeChild(a);
+      }
       URL.revokeObjectURL(url);
     }
   }
@@ -407,11 +455,13 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
       if (!file) {
         message.error("Gagal membuat file PDF. Silakan coba lagi.");
         setUploading(false);
+        setUploadProgress(0);
         return;
       }
       if (!(file instanceof File)) {
         message.error("File PDF tidak valid. Silakan coba lagi.");
         setUploading(false);
+        setUploadProgress(0);
         return;
       }
       // Upload PDF ke server
@@ -432,14 +482,14 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
       // Fetch ulang data agar status terupdate di UI
       await fetchBookingData(bookingData.id);
       setUploadProgress(100);
+      setTimeout(() => setUploadProgress(0), 800); // Reset progress bar setelah 0.8 detik
       message.success({ content: "Hasil analisis berhasil dikirim ke Koordinator Lab!", duration: 2 });
     } catch (error) {
       console.error("Gagal kirim ke koordinator:", error);
       message.error("Terjadi kesalahan saat mengirim ke koordinator.");
+      setUploadProgress(0);
     } finally {
       setUploading(false);
-      // small delay to allow UI to show 100% progress
-      setTimeout(() => setUploadProgress(0), 800);
     }
   };
 
@@ -452,20 +502,40 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
   }, [bookingData, viewMode]);
   // Do not auto-download even if routed with autoGenerate flag; keep preview only
 
-  // --- KOLOM TABEL (Status Dinamis) ---
+  // --- KOLOM TABEL (Status Dinamis & Responsive) ---
   const columns = [
     {
       title: "Kode Sampel",
       dataIndex: "kode_batch",
       key: "kode_batch",
-      width: 200,
-      fixed: "left",
+      width: 150, // Reduced width for mobile
       render: (text, record) => {
         const kodeBatch = text || record.kode_sampel || "-";
+        const user = record.user?.full_name || record.user?.name || "-";
+        const jenisAnalisis = record.jenis_analisis || "-";
+        const tanggal = record.tanggal_booking || record.created_at;
+        const formattedDate = tanggal
+          ? new Date(tanggal).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })
+          : "-";
+
         return (
-          <Tag color="blue" style={{ fontSize: "12px" }}>
-            {kodeBatch}
-          </Tag>
+          <div>
+            <div>
+              <Tag color="blue" style={{ fontSize: "12px", marginBottom: "4px" }}>
+                {kodeBatch}
+              </Tag>
+            </div>
+            {/* Mobile condensed info */}
+            <div className="d-block d-md-none" style={{ fontSize: "11px", color: "#666", lineHeight: "1.3" }}>
+              <div style={{ fontWeight: "500", color: "#333", marginBottom: "2px" }}>{user}</div>
+              <div style={{ marginBottom: "2px" }}>{jenisAnalisis}</div>
+              <div style={{ color: "#888" }}>{formattedDate}</div>
+            </div>
+          </div>
         );
       },
     },
@@ -473,20 +543,23 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
       title: "Nama Lengkap",
       dataIndex: "user",
       key: "user",
-      width: 180,
+      width: 150,
+      className: "d-none d-md-table-cell", // Hidden on mobile
       render: (user) => user?.full_name || user?.name || "-",
     },
     {
       title: "Jenis Analisis",
       dataIndex: "jenis_analisis",
       key: "jenis_analisis",
-      width: 200,
+      width: 180,
+      className: "d-none d-lg-table-cell", // Hidden on mobile and tablet
       render: (text) => text || "-",
     },
     {
       title: "Tanggal Pemesanan",
       key: "tanggal_pemesanan",
-      width: 150,
+      width: 120,
+      className: "d-none d-lg-table-cell", // Hidden on mobile and tablet
       render: (_, record) => {
         const tanggal = record.tanggal_booking || record.created_at;
         if (!tanggal) return "-";
@@ -501,53 +574,73 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 170,
+      width: 120, // Reduced width
       align: "center",
       render: (status) => {
         let color = "default";
         let text = status;
+        let shortText = status; // For mobile
 
         switch (status) {
           case "proses":
           case "draft":
             color = "warning";
             text = "Perlu Kirim Koordinator";
+            shortText = "Perlu Kirim";
             break;
           case "menunggu_verifikasi":
             // Already sent by teknisi, waiting Koordinator verification
             color = "processing";
             text = "Sudah Dikirim ke Koordinator";
+            shortText = "Dikirim";
             break;
           case "menunggu_verifikasi_kepala":
             color = "processing";
             text = "Di Koordinator";
+            shortText = "Di Koordinator";
             break;
           case "menunggu_ttd":
           case "menunggu_ttd_koordinator":
             color = "purple";
             text = "Menunggu TTD";
+            shortText = "TTD";
             break;
           case "menunggu_pembayaran":
           case "selesai":
             color = "success";
             text = "Selesai";
+            shortText = "Selesai";
             break;
           default:
             text = status?.replace(/_/g, " ") || "-";
+            shortText = text;
         }
 
-        return <Tag color={color}>{text}</Tag>;
+        return (
+          <>
+            {/* Desktop version */}
+            <span className="d-none d-md-inline">
+              <Tag color={color}>{text}</Tag>
+            </span>
+            {/* Mobile version - shorter text */}
+            <span className="d-inline d-md-none">
+              <Tag color={color} style={{ fontSize: "10px", padding: "2px 4px" }}>
+                {shortText}
+              </Tag>
+            </span>
+          </>
+        );
       },
     },
     {
       title: "Aksi",
       key: "aksi",
-      width: 150,
-      fixed: "right",
+      width: 80, // Reduced width
       align: "center",
       render: (_, record) => (
-        <Button type="primary" icon={<EyeOutlined />} size="small" onClick={() => handleViewDetail(record)}>
-          Lihat PDF
+        <Button type="primary" icon={<EyeOutlined />} size="small" className="responsive-btn" onClick={() => handleViewDetail(record)}>
+          <span className="d-none d-sm-inline">PDF</span>
+          <span className="d-inline d-sm-none">PDF</span>
         </Button>
       ),
     },
@@ -582,7 +675,7 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
               </h5>
             </div>
 
-            <div className="card-body" style={{ backgroundColor: "#FAF8F6" }}>
+            <div className="card-body responsive-table-container" style={{ backgroundColor: "#FAF8F6" }}>
               <Table
                 columns={columns}
                 dataSource={bookingList}
@@ -590,11 +683,17 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
                 pagination={{
                   pageSize: 10,
                   style: { marginTop: "20px" },
+                  showSizeChanger: false,
+                  showQuickJumper: false,
+                  responsive: true,
                 }}
-                scroll={{ x: 1100 }}
+                scroll={{
+                  scrollToFirstRowOnChange: true,
+                  // Removed x scroll to prevent horizontal scrolling on mobile
+                }}
                 locale={{ emptyText: "Tidak ada data analisis" }}
-                // Menambahkan class custom untuk styling baris & header tabel
-                className="custom-brown-table"
+                className="custom-brown-table responsive-analysis-table"
+                size="small" // Use small size for mobile
               />
             </div>
           </div>
@@ -634,7 +733,7 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
 
                 {uploading && (
                   <div style={{ minWidth: 240, marginLeft: 12 }}>
-                    <Progress percent={uploadProgress} status={uploadProgress < 100 ? "active" : "success"} />
+                    <Progress percent={uploadProgress} status={uploadProgress === 0 ? undefined : uploadProgress < 100 ? "active" : "success"} />
                   </div>
                 )}
 
@@ -662,6 +761,178 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
         )}
       </div>
       <FooterSetelahLogin />
+
+      <style>{`
+        .responsive-table-container {
+          overflow-x: visible; /* Remove horizontal overflow */
+          -webkit-overflow-scrolling: touch;
+        }
+        
+        .responsive-analysis-table {
+          font-size: clamp(11px, 2.5vw, 14px);
+          width: 100%;
+        }
+        
+        .responsive-analysis-table .ant-table {
+          width: 100% !important;
+        }
+        
+        .responsive-analysis-table .ant-table-thead > tr > th {
+          padding: clamp(8px, 2vw, 16px) clamp(4px, 1vw, 8px);
+          font-size: clamp(10px, 2.2vw, 13px);
+          font-weight: 600;
+          white-space: nowrap;
+        }
+        
+        .responsive-analysis-table .ant-table-tbody > tr > td {
+          padding: clamp(6px, 1.5vw, 12px) clamp(4px, 1vw, 8px);
+          font-size: clamp(10px, 2vw, 12px);
+        }
+        
+        .responsive-btn {
+          font-size: clamp(10px, 2vw, 12px);
+          padding: clamp(2px, 0.5vw, 4px) clamp(4px, 1vw, 8px);
+        }
+        
+        @media (max-width: 768px) {
+          .responsive-table-container {
+            margin: 0;
+            padding: 0;
+            overflow-x: visible !important;
+          }
+          
+          .responsive-analysis-table {
+            width: 100% !important;
+          }
+          
+          .responsive-analysis-table .ant-table {
+            font-size: 11px;
+            width: 100% !important;
+          }
+          
+          .responsive-analysis-table .ant-table-thead > tr > th {
+            padding: 8px 4px;
+            font-size: 10px;
+            line-height: 1.2;
+          }
+          
+          .responsive-analysis-table .ant-table-tbody > tr > td {
+            padding: 6px 4px;
+            font-size: 10px;
+            line-height: 1.3;
+            word-break: break-word;
+          }
+          
+          .responsive-analysis-table .ant-tag {
+            font-size: 9px;
+            padding: 2px 4px;
+            line-height: 1.2;
+          }
+          
+          .responsive-btn {
+            font-size: 10px;
+            padding: 2px 6px;
+            height: auto;
+            min-height: 24px;
+          }
+          
+          .responsive-btn .anticon {
+            font-size: 12px;
+          }
+          
+          /* Ensure table columns distribute evenly on mobile */
+          .responsive-analysis-table .ant-table-thead > tr > th:nth-child(1) {
+            width: 40% !important;
+          }
+          
+          .responsive-analysis-table .ant-table-thead > tr > th:nth-child(2) {
+            width: 35% !important;
+          }
+          
+          .responsive-analysis-table .ant-table-thead > tr > th:nth-child(3) {
+            width: 25% !important;
+          }
+        }
+        
+        @media (max-width: 576px) {
+          .card-header h5 {
+            font-size: clamp(14px, 4vw, 18px);
+          }
+          
+          .responsive-analysis-table .ant-table {
+            font-size: 10px;
+          }
+          
+          .responsive-analysis-table .ant-table-thead > tr > th {
+            padding: 6px 2px;
+            font-size: 9px;
+          }
+          
+          .responsive-analysis-table .ant-table-tbody > tr > td {
+            padding: 4px 2px;
+            font-size: 9px;
+            vertical-align: top;
+          }
+          
+          .responsive-analysis-table .ant-pagination {
+            margin-top: 12px !important;
+          }
+          
+          .responsive-analysis-table .ant-pagination-item {
+            min-width: 28px;
+            height: 28px;
+            line-height: 26px;
+            font-size: 11px;
+          }
+        }
+        
+        @media (min-width: 769px) {
+          .d-md-table-cell {
+            display: table-cell !important;
+          }
+          
+          .d-md-block {
+            display: block !important;
+          }
+          
+          .d-md-none {
+            display: none !important;
+          }
+          
+          .d-md-inline {
+            display: inline !important;
+          }
+        }
+        
+        @media (min-width: 992px) {
+          .d-lg-table-cell {
+            display: table-cell !important;
+          }
+        }
+        
+        /* Ensure status column is always visible */
+        .responsive-analysis-table .ant-table-thead > tr > th,
+        .responsive-analysis-table .ant-table-tbody > tr > td {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        
+        /* Fix for very small screens */
+        @media (max-width: 400px) {
+          .responsive-analysis-table .ant-table-thead > tr > th:nth-child(1) {
+            width: 45% !important;
+          }
+          
+          .responsive-analysis-table .ant-table-thead > tr > th:nth-child(2) {
+            width: 30% !important;
+          }
+          
+          .responsive-analysis-table .ant-table-thead > tr > th:nth-child(3) {
+            width: 25% !important;
+          }
+        }
+      `}</style>
     </NavbarLoginTeknisi>
   );
 }

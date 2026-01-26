@@ -172,10 +172,10 @@ const LaporanKepala = () => {
 
   return (
     <NavbarLoginKepala>
-      <div style={{ backgroundColor: theme.background, minHeight: "100vh", padding: "40px 0" }}>
-        <Container>
+      <div style={{ backgroundColor: theme.background, minHeight: "100vh", padding: "20px 0" }}>
+        <Container className="px-2 px-md-3">
           {/* Filter Section (Berdasarkan Gambar d14b0c) */}
-          <Card className="border-0 shadow-sm p-4 mb-4" style={{ borderRadius: "20px" }}>
+          <Card className="border-0 shadow-sm p-2 p-md-4 mb-3 mb-md-4" style={{ borderRadius: "20px" }}>
             <Row className="align-items-end g-3">
               <Col md={3}>
                 <Form.Group>
@@ -233,73 +233,87 @@ const LaporanKepala = () => {
             </div>
 
             <Card className="border-0 shadow-sm overflow-hidden" style={{ borderRadius: "20px" }}>
-              <Table responsive hover className="mb-0 custom-table-style text-center align-middle">
-                <thead>
-                  <tr>
-                    <th>Kode Sampel</th>
-                    <th>Klien</th>
-                    <th>Jenis Analisis</th>
-                    <th>Status</th>
-                    <th style={{ width: "250px" }}>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading && (
+              <div className="table-responsive" style={{ overflowX: "auto" }}>
+                <Table hover className="mb-0 custom-table-style text-center align-middle" style={{ minWidth: "700px", width: "100%" }}>
+                  <thead>
                     <tr>
-                      <td colSpan={5} className="py-4 text-center">
-                        Memuat data...
-                      </td>
+                      <th style={{ width: "18%", minWidth: "120px" }}>Kode Sampel</th>
+                      <th style={{ width: "20%", minWidth: "130px" }}>Klien</th>
+                      <th style={{ width: "22%", minWidth: "140px" }}>Jenis Analisis</th>
+                      <th style={{ width: "18%", minWidth: "110px" }}>Status</th>
+                      <th style={{ width: "22%", minWidth: "180px" }}>Aksi</th>
                     </tr>
-                  )}
-                  {!loading && unauthenticated && (
-                    <tr>
-                      <td colSpan={5} className="py-4 text-center text-muted">
-                        Silakan login untuk melihat laporan.
-                      </td>
-                    </tr>
-                  )}
-                  {!loading && !unauthenticated && reportData.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="py-4 text-center text-muted">
-                        Tidak ada data laporan
-                      </td>
-                    </tr>
-                  )}
-                  {!loading &&
-                    reportData
-                      .filter((item) => {
-                        if (!searchTerm) return true;
-                        const q = searchTerm.toLowerCase();
-                        return (
-                          String(item.kode || "")
-                            .toLowerCase()
-                            .includes(q) ||
-                          String(item.klien || "")
-                            .toLowerCase()
-                            .includes(q) ||
-                          String(item.jenis || "")
-                            .toLowerCase()
-                            .includes(q)
-                        );
-                      })
-                      .map((item, index) => (
-                        <tr key={index}>
-                          <td className="py-4 border-end">{item.kode}</td>
-                          <td className="py-4 border-end">{item.klien}</td>
-                          <td className="py-4 border-end">{item.jenis}</td>
-                          <td className="py-4 border-end">{item.status}</td>
-                          <td className="py-4 d-flex justify-content-center gap-2">
-                            <Button className="btn-action-unduh" onClick={() => handleDownload(item)} disabled={!item.id && !item.pdf_url}>
-                              Unduh
-                            </Button>
-                            <Button className="btn-action-arsip" onClick={() => handlePreview(item)} disabled={!item.id && !item.pdf_url}>
-                              Preview
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                </tbody>
-              </Table>
+                  </thead>
+                  <tbody>
+                    {loading && (
+                      <tr>
+                        <td colSpan={5} className="py-3 py-md-4 text-center">
+                          Memuat data...
+                        </td>
+                      </tr>
+                    )}
+                    {!loading && unauthenticated && (
+                      <tr>
+                        <td colSpan={5} className="py-3 py-md-4 text-center text-muted">
+                          Silakan login untuk melihat laporan.
+                        </td>
+                      </tr>
+                    )}
+                    {!loading && !unauthenticated && reportData.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-3 py-md-4 text-center text-muted">
+                          Tidak ada data laporan
+                        </td>
+                      </tr>
+                    )}
+                    {!loading &&
+                      reportData
+                        .filter((item) => {
+                          if (!searchTerm) return true;
+                          const q = searchTerm.toLowerCase();
+                          return (
+                            String(item.kode || "")
+                              .toLowerCase()
+                              .includes(q) ||
+                            String(item.klien || "")
+                              .toLowerCase()
+                              .includes(q) ||
+                            String(item.jenis || "")
+                              .toLowerCase()
+                              .includes(q)
+                          );
+                        })
+                        .map((item, index) => (
+                          <tr key={index}>
+                            <td className="py-2 py-md-4 border-end" style={{ wordBreak: "break-word" }}>
+                              {item.kode}
+                            </td>
+                            <td className="py-2 py-md-4 border-end" style={{ wordBreak: "break-word" }}>
+                              {item.klien}
+                            </td>
+                            <td className="py-2 py-md-4 border-end" style={{ wordBreak: "break-word" }}>
+                              {item.jenis}
+                            </td>
+                            <td className="py-2 py-md-4 border-end" style={{ fontSize: "0.85rem" }}>
+                              {item.status}
+                            </td>
+                            <td className="py-2 py-md-4">
+                              <div className="d-flex justify-content-center gap-1 gap-md-2 flex-wrap">
+                                <Button className="btn-action-unduh btn-responsive" onClick={() => handleDownload(item)} disabled={!item.id && !item.pdf_url} size="sm">
+                                  <span className="d-none d-md-inline">Unduh</span>
+                                  <span className="d-md-none">📄</span>
+                                </Button>
+                                <Button className="btn-action-arsip btn-responsive" onClick={() => handlePreview(item)} disabled={!item.id && !item.pdf_url} size="sm">
+                                  <span className="d-none d-md-inline">Preview</span>
+                                  <span className="d-md-none">👁</span>
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                  </tbody>
+                </Table>
+              </div>
             </Card>
           </motion.div>
         </Container>
@@ -334,27 +348,45 @@ const LaporanKepala = () => {
 
           .custom-table-style thead th {
             font-weight: 800;
-            padding: 20px;
+            padding: 15px 8px;
             background-color: #FFFFFF;
             border-bottom: 1px solid #F0F0F0;
+            font-size: 0.9rem;
+          }
+
+          @media (min-width: 768px) {
+            .custom-table-style thead th {
+              padding: 20px;
+              font-size: 1rem;
+            }
           }
 
           .btn-action-unduh {
             background-color: ${theme.btnCokelat} !important;
             border: none !important;
-            padding: 6px 25px !important;
+            padding: 4px 12px !important;
             border-radius: 50px !important;
-            font-size: 14px !important;
+            font-size: 12px !important;
             box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+            min-width: 60px;
           }
 
           .btn-action-arsip {
             background-color: ${theme.btnAbu} !important;
             border: none !important;
-            padding: 6px 25px !important;
+            padding: 4px 12px !important;
             border-radius: 50px !important;
-            font-size: 14px !important;
+            font-size: 12px !important;
             box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+            min-width: 60px;
+          }
+
+          @media (min-width: 768px) {
+            .btn-action-unduh, .btn-action-arsip {
+              padding: 6px 25px !important;
+              font-size: 14px !important;
+              min-width: auto;
+            }
           }
 
           .border-end { border-right: 1px solid #F0F0F0 !important; }

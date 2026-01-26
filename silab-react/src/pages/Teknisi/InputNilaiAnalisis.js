@@ -28,11 +28,9 @@ function InputNilaiAnalisis() {
         const data = await getAllBookings();
         const allBookings = data?.data || [];
 
-        // Filter status untuk input/edit
-        const approved = allBookings.filter((booking) => {
-          const status = (booking.status || "").toLowerCase();
-          return status === "proses" || status === "selesai_di_analisis" || status === "menunggu_verifikasi" || status === "draft" || status === "ditolak" || status === "dikirim_ke_teknisi" || status === "dikirim ke teknisi";
-        });
+        // Filter status untuk input/edit (exclude rejected bookings)
+        const allowed = ["proses", "selesai_di_analisis", "menunggu_verifikasi", "draft", "dikirim_ke_teknisi", "dikirim ke teknisi"];
+        const approved = allBookings.filter((booking) => allowed.includes((booking.status || "").toLowerCase()));
 
         if (mounted) {
           setApprovedSamples(approved);
@@ -74,6 +72,7 @@ function InputNilaiAnalisis() {
       key: "index",
       render: (text, record, index) => index + 1,
       width: 60,
+      responsive: ["lg"],
     },
     {
       title: "Kode Batch",
@@ -81,9 +80,25 @@ function InputNilaiAnalisis() {
       key: "kode_batch",
       width: 220, // Perlebar kolom agar kode batch tidak terpotong
       render: (text, record) => (
-        <Tag color="blue" style={{ marginBottom: "2px", fontWeight: 600, fontSize: "1rem", letterSpacing: "1px", whiteSpace: "nowrap" }}>
-          {record.kode_batch || "-"}
-        </Tag>
+        <div>
+          <Tag color="blue" style={{ marginBottom: "2px", fontWeight: 600, fontSize: "1rem", letterSpacing: "1px", whiteSpace: "nowrap" }}>
+            {record.kode_batch || "-"}
+          </Tag>
+          <div className="d-lg-none mt-1" style={{ fontSize: "11px", color: "#666" }}>
+            <div>👤 {record.user?.full_name || record.user?.name || "-"}</div>
+            <div>📊 {record.jenis_analisis}</div>
+            {Array.isArray(record.analysis_items) && record.analysis_items.length > 0 && (
+              <div>
+                🔬{" "}
+                {record.analysis_items
+                  .slice(0, 2)
+                  .map((i) => i.nama_item)
+                  .join(", ")}
+                {record.analysis_items.length > 2 && ` +${record.analysis_items.length - 2} lainnya`}
+              </div>
+            )}
+          </div>
+        </div>
       ),
     },
 
@@ -92,6 +107,7 @@ function InputNilaiAnalisis() {
       dataIndex: ["user", "full_name"],
       key: "client_name",
       width: 150,
+      responsive: ["lg"],
       render: (text, record) => text || record.user?.name || "-",
     },
     {
@@ -99,12 +115,14 @@ function InputNilaiAnalisis() {
       dataIndex: "jenis_analisis",
       key: "jenis_analisis",
       width: 150,
+      responsive: ["lg"],
     },
     {
       title: "Analisis Item",
       dataIndex: "analysis_items",
       key: "analysis_items",
       width: 200,
+      responsive: ["lg"],
       render: (items) => (
         <div
           style={{
@@ -157,7 +175,6 @@ function InputNilaiAnalisis() {
       key: "action",
       align: "center",
       width: 200,
-      fixed: "right",
       render: (_, record) => {
         let buttonText = "Input";
         let disabled = false;
@@ -179,8 +196,9 @@ function InputNilaiAnalisis() {
           disabled = false; // Bisa edit jika ditolak
         }
         return (
-          <Button type="primary" icon={<EditOutlined />} size="middle" disabled={disabled} onClick={() => handleInputNilai(record)}>
-            {buttonText}
+          <Button type="primary" icon={<EditOutlined />} size="middle" disabled={disabled} onClick={() => handleInputNilai(record)} style={{ fontSize: "12px" }}>
+            <span className="d-none d-md-inline">{buttonText}</span>
+            <span className="d-md-none">Edit</span>
           </Button>
         );
       },
@@ -205,7 +223,7 @@ function InputNilaiAnalisis() {
             <Text type="secondary">Silahkan masukkan parameter nilai untuk sampel yang telah dikonfirmasi diterima.</Text>
           </div>
 
-          <Card bordered={false} className="shadow-sm" style={{ borderRadius: "12px", overflow: "hidden" }}>
+          <Card bordered={false} className="shadow-sm responsive-table-card" style={{ borderRadius: "12px", overflow: "hidden" }}>
             {loading ? (
               <div className="text-center py-5">
                 <LoadingSpinner spinning={loading} tip="Memuat data sampel..." />
@@ -215,14 +233,81 @@ function InputNilaiAnalisis() {
                 dataSource={approvedSamples}
                 columns={columns}
                 rowKey="id"
-                pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} sampel` }}
+                pagination={{
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  showTotal: (total) => `Total ${total} sampel`,
+                  responsive: true,
+                  size: "small",
+                }}
                 locale={{ emptyText: <Empty description="Belum ada sampel yang disetujui" /> }}
-                scroll={{ x: 1200 }}
+                scroll={{ x: "max-content" }}
                 size="middle"
               />
             )}
           </Card>
         </div>
+
+        <style jsx>{`
+          .d-none {
+            display: none !important;
+          }
+          .d-md-inline {
+            display: none !important;
+          }
+          .d-md-none {
+            display: inline !important;
+          }
+
+          @media (min-width: 768px) {
+            .d-md-inline {
+              display: inline !important;
+            }
+            .d-md-none {
+              display: none !important;
+            }
+          }
+
+          @media (max-width: 768px) {
+            .responsive-table-card .ant-table-thead > tr > th {
+              font-size: 12px;
+              padding: 8px 4px;
+            }
+
+            .responsive-table-card .ant-table-tbody > tr > td {
+              font-size: 12px;
+              padding: 8px 4px;
+            }
+
+            .ant-btn {
+              font-size: 11px !important;
+              padding: 4px 8px;
+            }
+
+            .ant-tag {
+              font-size: 10px;
+              padding: 1px 4px;
+              margin: 1px;
+            }
+          }
+
+          @media (max-width: 576px) {
+            .responsive-table-card .ant-table-thead > tr > th {
+              font-size: 11px;
+              padding: 6px 2px;
+            }
+
+            .responsive-table-card .ant-table-tbody > tr > td {
+              font-size: 11px;
+              padding: 6px 2px;
+            }
+
+            .ant-btn {
+              font-size: 10px !important;
+              padding: 2px 6px;
+            }
+          }
+        `}</style>
       </div>
       <FooterSetelahLogin />
     </NavbarLoginTeknisi>

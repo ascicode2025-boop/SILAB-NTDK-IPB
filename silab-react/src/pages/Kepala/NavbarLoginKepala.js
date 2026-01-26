@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Image, Nav, Dropdown, Badge } from "react-bootstrap";
 import { useHistory, useLocation } from "react-router-dom";
-import { FaTachometerAlt, FaClipboardCheck, FaChartLine, FaFileAlt, FaCog, FaBars, FaUserCircle, FaBell } from "react-icons/fa";
+import { FaTachometerAlt, FaClipboardCheck, FaChartLine, FaFileAlt, FaCog, FaBars, FaTimes, FaUserCircle, FaBell } from "react-icons/fa";
 import { getUnreadNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "../../services/NotificationService";
 import "@fontsource/poppins";
 import ConfirmModal from "../../components/Common/ConfirmModal";
 
-function NavbarLoginKoordinator({ children }) {
+function NavbarLoginKepala({ children }) {
   const history = useHistory();
   const location = useLocation();
 
@@ -26,8 +26,11 @@ function NavbarLoginKoordinator({ children }) {
   const fetchNotifications = async () => {
     try {
       const response = await getUnreadNotifications();
-      setNotifications(response.data || []);
-      setNotifCount(response.count || 0);
+      const fetched = response.data || [];
+      const currentUser = JSON.parse(localStorage.getItem("user")) || user;
+      const filtered = currentUser && currentUser.id ? fetched.filter((n) => n.user_id === currentUser.id) : fetched;
+      setNotifications(filtered);
+      setNotifCount(Array.isArray(response.data) ? filtered.length : response.count || filtered.length);
     } catch (error) {
       console.error("Error fetching notifications:", error);
     }
@@ -99,8 +102,8 @@ function NavbarLoginKoordinator({ children }) {
       <header className="dashboard-header d-flex justify-content-between align-items-center px-4 py-2 shadow-sm bg-white border-bottom sticky-top">
         {/* Bagian Kiri: Burger Menu & Logo */}
         <div className="d-flex align-items-center">
-          <button className="btn btn-light border-0 me-3 d-lg-none rounded-circle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle sidebar">
-            <FaBars size={20} className="text-secondary" />
+          <button className="btn btn-light border-0 me-2 d-lg-none rounded-circle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle sidebar">
+            {sidebarOpen ? <FaTimes size={20} className="text-secondary" /> : <FaBars size={20} className="text-secondary" />}
           </button>
 
           <div className="d-flex align-items-center gap-3">
@@ -275,14 +278,26 @@ function NavbarLoginKoordinator({ children }) {
         }
 
         @media (max-width: 991.98px) {
-          .dashboard-sidebar { padding-top: 1rem; width: 75%; max-width: 260px; box-shadow: 2px 0 8px rgba(0,0,0,0.15); }
-          .dashboard-header img { width: 120px; }
-          .dashboard-header .subtitle-text { font-size: 0.4rem !important; white-space: nowrap !important; text-overflow: ellipsis; max-width: 180px; }
-          .dashboard-sidebar .nav-link { font-size: 0.9rem; }
+          .dashboard-sidebar { padding-top: 1rem; width: 85%; max-width: 280px; box-shadow: 2px 0 15px rgba(0,0,0,0.2); }
+          .dashboard-header img { width: 100px; height: auto; }
+          .dashboard-header .d-flex.align-items-center.gap-3 { gap: 0.5rem !important; }
+          .dashboard-header .vr { display: none !important; }
+          .dashboard-header .d-none.d-md-flex { display: none !important; }
+          .dashboard-sidebar .nav-link { font-size: 0.85rem; padding: 0.6rem 0.8rem !important; }
+          .dashboard-header { padding: 0.5rem 1rem !important; }
+          .page-title-bar h5 { font-size: 1rem; padding: 0.8rem 1rem !important; }
+        }
+        
+        @media (max-width: 576px) {
+          .dashboard-header img { width: 80px; }
+          .dashboard-header { padding: 0.3rem 0.8rem !important; }
+          .dashboard-sidebar { width: 90%; max-width: 300px; }
+          .dashboard-sidebar .nav-link { font-size: 0.8rem; }
+          .page-title-bar h5 { font-size: 0.9rem; }
         }
       `}</style>
     </div>
   );
 }
 
-export default NavbarLoginKoordinator;
+export default NavbarLoginKepala;

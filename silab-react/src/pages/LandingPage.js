@@ -89,7 +89,7 @@ function LandingPage() {
         {/* ======================= GALERI ======================= */}
         <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
           <h4 className="text-center mb-5 gallery-title" style={{ marginTop: "4rem", padding: "1rem" }}>
-            Galeri Divisi INTP
+            Galeri Divisi NTDK
           </h4>
         </div>
 

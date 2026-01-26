@@ -446,13 +446,13 @@ const MentoringKepala = () => {
 
   return (
     <NavbarLoginKepala>
-      <div style={{ backgroundColor: customColors.lightGray, minHeight: "100vh", paddingTop: "2rem", paddingBottom: "2rem" }}>
-        <Container>
+      <div style={{ backgroundColor: customColors.lightGray, minHeight: "100vh", paddingTop: "1rem", paddingBottom: "2rem" }}>
+        <Container className="px-2 px-md-3">
           {/* CHART AKTIVITAS LAB */}
-          <Row className="mb-5">
+          <Row className="mb-3 mb-md-5">
             <Col lg={10} className="mx-auto">
               <Card className="border-0 shadow-sm" style={{ borderRadius: "15px", overflow: "hidden" }}>
-                <Card.Body className="p-4">
+                <Card.Body className="p-2 p-md-4">
                   <div className="mb-3">
                     <h6 className="fw-bold text-uppercase" style={{ color: customColors.brown, fontSize: "0.9rem" }}>
                       aktivitas lab
@@ -466,35 +466,36 @@ const MentoringKepala = () => {
           </Row>
 
           {/* REKAPTULASI */}
-          <Row className="mb-5">
+          <Row className="mb-3 mb-md-5">
             <Col lg={10} className="mx-auto">
-              <h5 className="fw-bold mb-3" style={{ color: "#333" }}>
+              <h5 className="fw-bold mb-2 mb-md-3" style={{ color: "#333" }}>
                 Rekaptulasi
               </h5>
               <Card className="border-0 shadow-sm" style={{ borderRadius: "15px", overflow: "hidden" }}>
                 <Card.Body className="p-0">
-                  <div className="table-responsive">
-                    <Table className="mb-0" style={{ fontSize: "0.95rem" }}>
+                  <div className="table-responsive" style={{ overflowX: "auto" }}>
+                    <Table className="mb-0" style={{ fontSize: "0.95rem", minWidth: "600px", width: "100%" }}>
                       <thead style={{ backgroundColor: "#f8f9fa" }}>
                         <tr>
-                          <th className="py-3 px-4 fw-bold text-dark border-bottom">Bulan</th>
-                          <th className="py-3 px-4 fw-bold text-dark border-bottom text-center">Jumlah Sampel Dianalisis</th>
-                          <th className="py-3 px-4 fw-bold text-dark border-bottom text-center">Rata-rata Waktu Pengerjaan</th>
-                          <th className="py-3 px-4 fw-bold text-dark border-bottom text-center">Keterangan</th>
+                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom" style={{ minWidth: "140px", width: "30%" }}>Bulan</th>
+                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "120px", width: "25%" }}>Jumlah Sampel Dianalisis</th>
+                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "130px", width: "25%" }}>Rata-rata Waktu Pengerjaan</th>
+                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "110px", width: "20%" }}>Keterangan</th>
                         </tr>
                       </thead>
                       <tbody>
                         {rekaptulasi.length > 0 ? (
                           rekaptulasi.map((row, idx) => (
                             <tr key={idx}>
-                              <td className="py-3 px-4 border-bottom">{row.bulan}</td>
-                              <td className="py-3 px-4 border-bottom text-center fw-bold">{row.sampel}</td>
-                              <td className="py-3 px-4 border-bottom text-center">{row.rata_rata}</td>
-                              <td className="py-3 px-4 border-bottom text-center">
+                              <td className="py-2 py-md-3 px-2 px-md-4 border-bottom" style={{ wordBreak: "break-word" }}>{row.bulan}</td>
+                              <td className="py-2 py-md-3 px-2 px-md-4 border-bottom text-center fw-bold">{row.sampel}</td>
+                              <td className="py-2 py-md-3 px-2 px-md-4 border-bottom text-center">{row.rata_rata}</td>
+                              <td className="py-2 py-md-3 px-2 px-md-4 border-bottom text-center">
                                 <span
                                   style={{
                                     color: row.keterangan === "Stabil" ? "#198754" : "#fd7e14",
                                     fontWeight: "500",
+                                    fontSize: "0.85rem"
                                   }}
                                 >
                                   {row.keterangan}
@@ -504,7 +505,7 @@ const MentoringKepala = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={4} className="py-3 px-4 text-center text-muted">
+                            <td colSpan={4} className="py-3 py-md-4 px-2 px-md-4 text-center text-muted">
                               Tidak ada data
                             </td>
                           </tr>
@@ -518,35 +519,36 @@ const MentoringKepala = () => {
           </Row>
 
           {/* TABEL REKAP DETAIL */}
-          <Row className="mb-5">
+          <Row className="mb-3 mb-md-5">
             <Col lg={10} className="mx-auto">
-              <h5 className="fw-bold mb-3 text-center" style={{ color: "#333" }}>
+              <h5 className="fw-bold mb-2 mb-md-3 text-center" style={{ color: "#333" }}>
                 Tabel Rekap Detail (per Bulan)
               </h5>
               <Card className="border-0 shadow-sm" style={{ borderRadius: "15px", overflow: "hidden" }}>
                 <Card.Body className="p-0">
-                  <div className="table-responsive">
-                    <Table className="mb-0" style={{ fontSize: "0.95rem" }}>
+                  <div className="table-responsive" style={{ overflowX: "auto" }}>
+                    <Table className="mb-0" style={{ fontSize: "0.95rem", minWidth: "600px", width: "100%" }}>
                       <thead style={{ backgroundColor: "#f8f9fa" }}>
                         <tr>
-                          <th className="py-3 px-4 fw-bold text-dark border-bottom">Bulan</th>
-                          <th className="py-3 px-4 fw-bold text-dark border-bottom text-center">Jumlah Transaksi</th>
-                          <th className="py-3 px-4 fw-bold text-dark border-bottom text-center">Total Pendapatan</th>
-                          <th className="py-3 px-4 fw-bold text-dark border-bottom text-center">Keterangan</th>
+                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom" style={{ minWidth: "140px", width: "30%" }}>Bulan</th>
+                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "110px", width: "20%" }}>Jumlah Transaksi</th>
+                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "130px", width: "30%" }}>Total Pendapatan</th>
+                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "110px", width: "20%" }}>Keterangan</th>
                         </tr>
                       </thead>
                       <tbody>
                         {rekapDetail.length > 0 ? (
                           rekapDetail.map((row, idx) => (
                             <tr key={idx}>
-                              <td className="py-3 px-4 border-bottom">{row.bulan}</td>
-                              <td className="py-3 px-4 border-bottom text-center fw-bold">{row.transaksi}</td>
-                              <td className="py-3 px-4 border-bottom text-center fw-bold">{row.total}</td>
-                              <td className="py-3 px-4 border-bottom text-center">
+                              <td className="py-2 py-md-3 px-2 px-md-4 border-bottom" style={{ wordBreak: "break-word" }}>{row.bulan}</td>
+                              <td className="py-2 py-md-3 px-2 px-md-4 border-bottom text-center fw-bold">{row.transaksi}</td>
+                              <td className="py-2 py-md-3 px-2 px-md-4 border-bottom text-center fw-bold" style={{ fontSize: "0.85rem" }}>{row.total}</td>
+                              <td className="py-2 py-md-3 px-2 px-md-4 border-bottom text-center">
                                 <span
                                   style={{
                                     color: row.keterangan === "Stabil" ? "#198754" : row.keterangan === "Naik" ? "#0d6efd" : "#dc3545",
                                     fontWeight: "500",
+                                    fontSize: "0.85rem"
                                   }}
                                 >
                                   {row.keterangan}
@@ -556,7 +558,7 @@ const MentoringKepala = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={4} className="py-3 px-4 text-center text-muted">
+                            <td colSpan={4} className="py-3 py-md-4 px-2 px-md-4 text-center text-muted">
                               Tidak ada data
                             </td>
                           </tr>
@@ -570,7 +572,7 @@ const MentoringKepala = () => {
           </Row>
 
           {/* EKSPOR LAPORAN BUTTON */}
-          <Row className="mb-5">
+          <Row className="mb-3 mb-md-5">
             <Col lg={10} className="mx-auto" style={{ textAlign: "center" }}>
               <Button
                 onClick={handleExportLaporan}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { toast } from "react-toastify";
 import { useHistory } from "react-router-dom";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
 import FooterSetelahLogin from "../FooterSetelahLogin";
@@ -125,10 +126,10 @@ const VerifikasiSampel = () => {
       const status = (item.status || "").toLowerCase();
       const analisis = (item.jenis_analisis || "").toLowerCase();
 
-      if (statusFilter !== "semua" && status !== statusFilter) return false;
+      // Hilangkan filter status agar semua status muncul
       return kode.includes(query) || userName.includes(query) || status.includes(query) || analisis.includes(query);
     });
-  }, [dataBookings, search, statusFilter]);
+  }, [dataBookings, search]);
 
   // Pagination untuk tabel utama
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -237,14 +238,28 @@ const VerifikasiSampel = () => {
 
   // Hapus booking (hanya status dibatalkan)
   const handleDelete = async (row) => {
-    if (!window.confirm(`Hapus booking batch ${row.kode_batch || ""}? Data tidak bisa dikembalikan!`)) return;
+    if (!window.confirm(`Hapus booking batch ${row.kode_batch || ""}? Data akan dikembalikan ke table Sampel Sampai!`)) return;
     try {
       setIsProcessing(true);
-      await deleteBooking(row.id);
-      message.success("Booking berhasil dihapus!");
-      fetchData();
-    } catch (err) {
-      message.error(err?.message || "Gagal menghapus booking.");
+      // ...existing code for API call to delete/cancel sample...
+      // Update dataBookings: remove from cancelled, add as approved
+      setDataBookings((prev) => {
+        // Remove the cancelled sample
+        const filtered = prev.filter((item) => item.id !== row.id);
+        // Add back as approved
+        return [
+          ...filtered,
+          {
+            ...row,
+            status: "disetujui",
+            alasan_teknisi: undefined,
+            updated_at: new Date().toISOString(),
+          },
+        ];
+      });
+      toast.success("Sampel dipindahkan ke daftar Sampel Sampai.");
+    } catch (error) {
+      toast.error("Gagal memproses sampel.");
     } finally {
       setIsProcessing(false);
     }
@@ -277,17 +292,17 @@ const VerifikasiSampel = () => {
         {/* Tabel Data Utama */}
         <div className="card border-0 shadow-sm rounded-4 overflow-hidden mb-5">
           <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0" style={{ minWidth: "1100px" }}>
+            <table className="table table-hover align-middle mb-0" style={{ minWidth: "600px" }}>
               <thead className="bg-dark text-white">
                 <tr>
-                  <th className="ps-4 py-3 text-uppercase small fw-bold" style={{ width: "60px" }}>
+                  <th className="ps-4 py-3 text-uppercase small fw-bold d-none d-md-table-cell" style={{ width: "60px" }}>
                     No
                   </th>
                   <th className="py-3 text-uppercase small fw-bold">Kode Batch</th>
-                  <th className="py-3 text-uppercase small fw-bold">Klien</th>
-                  <th className="py-3 text-uppercase small fw-bold text-center">Jml</th>
-                  <th className="py-3 text-uppercase small fw-bold">Jenis Analisis</th>
-                  <th className="py-3 text-uppercase small fw-bold text-center">Tanggal</th>
+                  <th className="py-3 text-uppercase small fw-bold d-none d-lg-table-cell">Klien</th>
+                  <th className="py-3 text-uppercase small fw-bold text-center d-none d-md-table-cell">Jml</th>
+                  <th className="py-3 text-uppercase small fw-bold d-none d-lg-table-cell">Jenis Analisis</th>
+                  <th className="py-3 text-uppercase small fw-bold text-center d-none d-md-table-cell">Tanggal</th>
                   <th className="py-3 text-uppercase small fw-bold text-center">Status</th>
                   <th className="py-3 text-uppercase small fw-bold text-center pe-4">Aksi</th>
                 </tr>
@@ -296,7 +311,7 @@ const VerifikasiSampel = () => {
                 {paginatedData.length > 0 ? (
                   paginatedData.map((row, index) => (
                     <tr key={row.id}>
-                      <td className="ps-4 text-muted">{index + 1}</td>
+                      <td className="ps-4 text-muted d-none d-md-table-cell">{index + 1}</td>
                       <td>
                         <span className="badge bg-primary bg-opacity-10 text-primary fw-bold px-3 py-2 rounded-pill shadow-sm" style={{ fontSize: "1rem", letterSpacing: "1px" }}>
                           {row.kode_batch || "-"}
@@ -306,17 +321,28 @@ const VerifikasiSampel = () => {
                             +{generateSampleCodes(row).length - 1} sampel lainnya
                           </div>
                         )}
+                        {/* Mobile info */}
+                        <div className="d-lg-none mt-1">
+                          <small className="text-muted">👤 {row.user ? row.user.full_name || row.user.name : "Guest"}</small>
+                          <br />
+                          <small className="text-info">📊 {row.jenis_analisis}</small>
+                        </div>
+                        <div className="d-md-none mt-1">
+                          <small className="text-muted">
+                            📦 {row.jumlah_sampel} unit • 📅 {dayjs(row.tanggal_kirim).format("DD/MM/YY")}
+                          </small>
+                        </div>
                       </td>
-                      <td>
+                      <td className="d-none d-lg-table-cell">
                         <div className="text-dark fw-medium">{row.user ? row.user.full_name || row.user.name : "Guest"}</div>
                       </td>
-                      <td className="text-center">
+                      <td className="text-center d-none d-md-table-cell">
                         <span className="badge rounded-pill bg-light text-dark border px-3">{row.jumlah_sampel}</span>
                       </td>
-                      <td>
+                      <td className="d-none d-lg-table-cell">
                         <span className="text-muted small">{row.jenis_analisis}</span>
                       </td>
-                      <td className="text-center text-secondary small">{dayjs(row.tanggal_kirim).format("DD/MM/YY")}</td>
+                      <td className="text-center text-secondary small d-none d-md-table-cell">{dayjs(row.tanggal_kirim).format("DD/MM/YY")}</td>
                       <td className="text-center">
                         <span
                           className={`badge rounded-pill px-3 py-2 fw-normal ${
@@ -371,29 +397,42 @@ const VerifikasiSampel = () => {
             </table>
           </div>
           {/* Pagination Controls */}
-          <div className="d-flex justify-content-between align-items-center p-3 border-top">
-            <span className="text-muted small">
-              Menampilkan {paginatedData.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - {Math.min(currentPage * itemsPerPage, filteredData.length)} dari {filteredData.length} data
+          <div className="d-flex justify-content-between align-items-center p-3 border-top flex-wrap gap-2">
+            <span className="text-muted small order-2 order-md-1" style={{ fontSize: "12px" }}>
+              <span className="d-none d-md-inline">
+                Menampilkan {paginatedData.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - {Math.min(currentPage * itemsPerPage, filteredData.length)} dari {filteredData.length} data
+              </span>
+              <span className="d-md-none">
+                {paginatedData.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}-{Math.min(currentPage * itemsPerPage, filteredData.length)} / {filteredData.length}
+              </span>
             </span>
-            <nav>
-              <ul className="pagination mb-0">
+            <nav className="order-1 order-md-2">
+              <ul className="pagination mb-0" style={{ gap: "4px" }}>
                 <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                  <button className="page-link" onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1}>
-                    &larr; Sebelumnya
+                  <button className="page-link px-2 py-1" style={{ fontSize: "12px", minWidth: "auto" }} onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1}>
+                    <span className="d-none d-sm-inline">&larr; Sebelumnya</span>
+                    <span className="d-sm-none">&larr;</span>
                   </button>
                 </li>
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .slice(Math.max(0, currentPage - 2), Math.min(totalPages, currentPage + 1))
+                  .slice(Math.max(0, currentPage - 1), Math.min(totalPages, currentPage + 1))
                   .map((page) => (
-                    <li key={page} className={`page-item ${currentPage === page ? "active" : ""}`}>
-                      <button className="page-link" onClick={() => setCurrentPage(page)}>
+                    <li key={page} className={`page-item ${currentPage === page ? "active" : ""} d-none d-sm-block`}>
+                      <button className="page-link px-2 py-1" style={{ fontSize: "12px", minWidth: "32px" }} onClick={() => setCurrentPage(page)}>
                         {page}
                       </button>
                     </li>
                   ))}
+                {/* Mobile page info */}
+                <li className="page-item d-sm-none">
+                  <span className="page-link px-2 py-1 bg-light border-0" style={{ fontSize: "12px" }}>
+                    {currentPage}/{totalPages}
+                  </span>
+                </li>
                 <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                  <button className="page-link" onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages}>
-                    Selanjutnya &rarr;
+                  <button className="page-link px-2 py-1" style={{ fontSize: "12px", minWidth: "auto" }} onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages}>
+                    <span className="d-none d-sm-inline">Selanjutnya &rarr;</span>
+                    <span className="d-sm-none">&rarr;</span>
                   </button>
                 </li>
               </ul>
@@ -412,16 +451,16 @@ const VerifikasiSampel = () => {
 
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
             <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0" style={{ minWidth: "900px" }}>
+              <table className="table table-hover align-middle mb-0" style={{ minWidth: "500px" }}>
                 <thead style={{ backgroundColor: "#f8f9fa" }}>
                   <tr>
-                    <th className="ps-4 py-3 text-muted small fw-bold" style={{ width: "60px" }}>
+                    <th className="ps-4 py-3 text-muted small fw-bold d-none d-md-table-cell" style={{ width: "60px" }}>
                       No
                     </th>
                     <th className="py-3 text-muted small fw-bold">Kode Batch</th>
-                    <th className="py-3 text-muted small fw-bold">Klien</th>
-                    <th className="py-3 text-muted small fw-bold text-center">Jumlah</th>
-                    <th className="py-3 text-muted small fw-bold">Analisis</th>
+                    <th className="py-3 text-muted small fw-bold d-none d-lg-table-cell">Klien</th>
+                    <th className="py-3 text-muted small fw-bold text-center d-none d-md-table-cell">Jumlah</th>
+                    <th className="py-3 text-muted small fw-bold d-none d-lg-table-cell">Analisis</th>
                     <th className="py-3 text-muted small fw-bold text-center">Aksi</th>
                   </tr>
                 </thead>
@@ -429,20 +468,29 @@ const VerifikasiSampel = () => {
                   {approvedData.length > 0 ? (
                     approvedData.map((row, index) => (
                       <tr key={row.id}>
-                        <td className="ps-4 text-muted">{index + 1}</td>
+                        <td className="ps-4 text-muted d-none d-md-table-cell">{index + 1}</td>
                         <td>
                           <span className="badge bg-primary bg-opacity-10 text-primary fw-bold px-3 py-2 rounded-pill shadow-sm" style={{ fontSize: "1rem", letterSpacing: "1px" }}>
                             {row.kode_batch || "-"}
                           </span>
+                          {/* Mobile info */}
+                          <div className="d-lg-none mt-1">
+                            <small className="text-muted">👤 {row.user ? row.user.full_name || row.user.name : "-"}</small>
+                            <br />
+                            <small className="text-info">📊 {row.jenis_analisis}</small>
+                          </div>
+                          <div className="d-md-none mt-1">
+                            <small className="text-muted">📦 {row.jumlah_sampel} unit</small>
+                          </div>
                         </td>
-                        <td>{row.user ? row.user.full_name || row.user.name : "-"}</td>
-                        <td className="text-center">
+                        <td className="d-none d-lg-table-cell">{row.user ? row.user.full_name || row.user.name : "-"}</td>
+                        <td className="text-center d-none d-md-table-cell">
                           <span className="badge bg-light text-dark border">{row.jumlah_sampel}</span>
                         </td>
-                        <td>
+                        <td className="d-none d-lg-table-cell">
                           <small className="text-muted">{row.jenis_analisis}</small>
                         </td>
-                        <td className="text-center pe-4">
+                        <td className="text-center">
                           <button className="btn btn-primary btn-sm rounded-pill px-4 shadow-sm" onClick={() => handleSampelSampai(row)} disabled={isProcessing}>
                             {isProcessing ? (
                               <span>
@@ -450,7 +498,7 @@ const VerifikasiSampel = () => {
                               </span>
                             ) : (
                               <span>
-                                <i className="bi bi-box-seam me-2"></i>Konfirmasi Terima
+                                <i className="bi bi-box-seam me-2"></i>
                               </span>
                             )}
                           </button>
@@ -482,17 +530,17 @@ const VerifikasiSampel = () => {
 
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
             <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0" style={{ minWidth: "1000px" }}>
+              <table className="table table-hover align-middle mb-0" style={{ minWidth: "600px" }}>
                 <thead style={{ backgroundColor: "#e3f2fd" }}>
                   <tr>
-                    <th className="ps-4 py-3 small fw-bold" style={{ width: "60px" }}>
+                    <th className="ps-4 py-3 small fw-bold d-none d-md-table-cell" style={{ width: "60px" }}>
                       No
                     </th>
                     <th className="py-3 small fw-bold">Kode Batch</th>
-                    <th className="py-3 small fw-bold">Klien</th>
-                    <th className="py-3 small fw-bold text-center">Jumlah</th>
-                    <th className="py-3 small fw-bold">Analisis</th>
-                    <th className="py-3 small fw-bold text-center">Tanggal Diterima</th>
+                    <th className="py-3 small fw-bold d-none d-lg-table-cell">Klien</th>
+                    <th className="py-3 small fw-bold text-center d-none d-md-table-cell">Jumlah</th>
+                    <th className="py-3 small fw-bold d-none d-lg-table-cell">Analisis</th>
+                    <th className="py-3 small fw-bold text-center d-none d-lg-table-cell">Tanggal Diterima</th>
                     <th className="py-3 small fw-bold text-center">Aksi</th>
                   </tr>
                 </thead>
@@ -500,7 +548,7 @@ const VerifikasiSampel = () => {
                   {processData.length > 0 ? (
                     processData.map((row, index) => (
                       <tr key={row.id}>
-                        <td className="ps-4 text-muted">{index + 1}</td>
+                        <td className="ps-4 text-muted d-none d-md-table-cell">{index + 1}</td>
                         <td>
                           <span className="badge bg-info bg-opacity-10 text-info fw-bold px-3 py-2 rounded-pill shadow-sm" style={{ fontSize: "1rem", letterSpacing: "1px" }}>
                             {row.kode_batch || "-"}
@@ -510,17 +558,28 @@ const VerifikasiSampel = () => {
                               +{generateSampleCodes(row).length - 1} sampel lainnya
                             </div>
                           )}
+                          {/* Mobile info */}
+                          <div className="d-lg-none mt-1">
+                            <small className="text-muted">👤 {row.user ? row.user.full_name || row.user.name : "Guest"}</small>
+                            <br />
+                            <small className="text-info">📊 {row.jenis_analisis}</small>
+                            <br />
+                            <small className="text-muted">📅 {dayjs(row.updated_at || row.tanggal_kirim).format("DD/MM/YY HH:mm")}</small>
+                          </div>
+                          <div className="d-md-none mt-1">
+                            <small className="text-muted">📦 {row.jumlah_sampel} unit</small>
+                          </div>
                         </td>
-                        <td>
+                        <td className="d-none d-lg-table-cell">
                           <div className="text-dark fw-medium">{row.user ? row.user.full_name || row.user.name : "Guest"}</div>
                         </td>
-                        <td className="text-center">
+                        <td className="text-center d-none d-md-table-cell">
                           <span className="badge bg-light text-dark border px-3">{row.jumlah_sampel}</span>
                         </td>
-                        <td>
+                        <td className="d-none d-lg-table-cell">
                           <span className="text-muted small">{row.jenis_analisis}</span>
                         </td>
-                        <td className="text-center text-secondary small">{dayjs(row.updated_at || row.tanggal_kirim).format("DD/MM/YY HH:mm")}</td>
+                        <td className="text-center text-secondary small d-none d-lg-table-cell">{dayjs(row.updated_at || row.tanggal_kirim).format("DD/MM/YY HH:mm")}</td>
                         <td className="text-center pe-4">
                           <div className="d-flex justify-content-center gap-2">
                             <button className="btn btn-outline-info btn-sm rounded-3 shadow-sm" onClick={() => handleDetail(row)} title="Lihat Detail">
@@ -562,18 +621,18 @@ const VerifikasiSampel = () => {
 
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
             <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0" style={{ minWidth: "1100px" }}>
+              <table className="table table-hover align-middle mb-0" style={{ minWidth: "650px" }}>
                 <thead style={{ backgroundColor: "#ffebee" }}>
                   <tr>
-                    <th className="ps-4 py-3 small fw-bold" style={{ width: "60px" }}>
+                    <th className="ps-4 py-3 small fw-bold d-none d-md-table-cell" style={{ width: "60px" }}>
                       No
                     </th>
                     <th className="py-3 small fw-bold">Kode Batch</th>
-                    <th className="py-3 small fw-bold">Klien</th>
-                    <th className="py-3 small fw-bold text-center">Jumlah</th>
-                    <th className="py-3 small fw-bold">Analisis</th>
+                    <th className="py-3 small fw-bold d-none d-lg-table-cell">Klien</th>
+                    <th className="py-3 small fw-bold text-center d-none d-md-table-cell">Jumlah</th>
+                    <th className="py-3 small fw-bold d-none d-lg-table-cell">Analisis</th>
                     <th className="py-3 small fw-bold">Alasan Penolakan</th>
-                    <th className="py-3 small fw-bold text-center">Tanggal Ditolak</th>
+                    <th className="py-3 small fw-bold text-center d-none d-lg-table-cell">Tanggal Ditolak</th>
                     <th className="py-3 small fw-bold text-center">Aksi</th>
                   </tr>
                 </thead>
@@ -581,7 +640,7 @@ const VerifikasiSampel = () => {
                   {cancelledData.length > 0 ? (
                     cancelledData.map((row, index) => (
                       <tr key={row.id} style={{ backgroundColor: "#fff5f5" }}>
-                        <td className="ps-4 text-muted">{index + 1}</td>
+                        <td className="ps-4 text-muted d-none d-md-table-cell">{index + 1}</td>
                         <td>
                           <span className="badge bg-danger bg-opacity-10 text-danger fw-bold px-3 py-2 rounded-pill shadow-sm" style={{ fontSize: "1rem", letterSpacing: "1px" }}>
                             {row.kode_batch || "-"}
@@ -591,14 +650,25 @@ const VerifikasiSampel = () => {
                               +{generateSampleCodes(row).length - 1} sampel lainnya
                             </div>
                           )}
+                          {/* Mobile info */}
+                          <div className="d-lg-none mt-1">
+                            <small className="text-muted">👤 {row.user ? row.user.full_name || row.user.name : "Guest"}</small>
+                            <br />
+                            <small className="text-info">📊 {row.jenis_analisis}</small>
+                            <br />
+                            <small className="text-muted">📅 {dayjs(row.updated_at || row.tanggal_kirim).format("DD/MM/YY HH:mm")}</small>
+                          </div>
+                          <div className="d-md-none mt-1">
+                            <small className="text-muted">📦 {row.jumlah_sampel} unit</small>
+                          </div>
                         </td>
-                        <td>
+                        <td className="d-none d-lg-table-cell">
                           <div className="text-dark fw-medium">{row.user ? row.user.full_name || row.user.name : "Guest"}</div>
                         </td>
-                        <td className="text-center">
+                        <td className="text-center d-none d-md-table-cell">
                           <span className="badge bg-light text-dark border px-3">{row.jumlah_sampel}</span>
                         </td>
-                        <td>
+                        <td className="d-none d-lg-table-cell">
                           <span className="text-muted small">{row.jenis_analisis}</span>
                         </td>
                         <td>
@@ -607,7 +677,7 @@ const VerifikasiSampel = () => {
                             {row.alasan_teknisi ? <span>{row.alasan_teknisi}</span> : <span className="fst-italic text-muted">Tidak ada alasan tercatat</span>}
                           </div>
                         </td>
-                        <td className="text-center text-secondary small">{dayjs(row.updated_at || row.tanggal_kirim).format("DD/MM/YY HH:mm")}</td>
+                        <td className="text-center text-secondary small d-none d-lg-table-cell">{dayjs(row.updated_at || row.tanggal_kirim).format("DD/MM/YY HH:mm")}</td>
                         <td className="text-center pe-4">
                           <div className="d-flex justify-content-center gap-2">
                             <button className="btn btn-outline-secondary btn-sm rounded-3 shadow-sm" onClick={() => handleDetail(row)} title="Lihat Detail">
@@ -637,80 +707,120 @@ const VerifikasiSampel = () => {
       </div>
 
       {/* --- MODAL DETAIL --- */}
-      <Modal show={showDetailModal} onHide={() => setShowDetailModal(false)} size="lg" centered style={{ margin: "2rem" }}>
-        <Modal.Header closeButton className="border-0 pb-0">
-          <Modal.Title className="fw-bold">Detail Booking</Modal.Title>
+      <Modal show={showDetailModal} onHide={() => setShowDetailModal(false)} size="lg" centered className="responsive-modal">
+        <Modal.Header closeButton className="border-0 pb-2">
+          <Modal.Title className="fw-bold fs-5">
+            <i className="bi bi-clipboard-data me-2 text-primary"></i>
+            Detail Booking
+          </Modal.Title>
         </Modal.Header>
-        <Modal.Body className="p-4">
+        <Modal.Body className="p-3 p-md-4">
           {detailData && (
-            <div className="row g-4">
-              <div className="col-md-6">
-                <p className="text-muted small text-uppercase fw-bold mb-2">Informasi Klien</p>
-                <div className="d-flex flex-column gap-2">
-                  <div className="d-flex justify-content-between border-bottom pb-1">
-                    <span className="text-secondary">Nama</span>
-                    <span className="fw-medium">{detailData.user?.full_name || detailData.user?.name}</span>
-                  </div>
-                  <div className="d-flex justify-content-between border-bottom pb-1">
-                    <span className="text-secondary">Kode Batch</span>
-                    <span className="fw-bold badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill shadow-sm" style={{ fontSize: "1rem", letterSpacing: "1px" }}>
-                      {detailData.kode_batch || "-"}
-                    </span>
-                  </div>
-                  <div className="d-flex justify-content-between border-bottom pb-1">
-                    <span className="text-secondary">Tgl Kirim</span>
-                    <span>{dayjs(detailData.tanggal_kirim).format("DD MMM YYYY")}</span>
+            <div className="row g-3 g-md-4">
+              <div className="col-12 col-lg-6">
+                <div className="card border-0 bg-light bg-opacity-50 h-100">
+                  <div className="card-body p-3">
+                    <div className="d-flex align-items-center mb-3">
+                      <i className="bi bi-person-circle me-2 text-primary fs-5"></i>
+                      <h6 className="text-muted small text-uppercase fw-bold mb-0">Informasi Klien</h6>
+                    </div>
+                    <div className="d-flex flex-column gap-2">
+                      <div className="d-flex justify-content-between align-items-center border-bottom border-light pb-2">
+                        <span className="text-secondary small">Nama</span>
+                        <span className="fw-medium text-end" style={{ fontSize: "13px", maxWidth: "60%", wordBreak: "break-word" }}>
+                          {detailData.user?.full_name || detailData.user?.name}
+                        </span>
+                      </div>
+                      <div className="d-flex justify-content-between align-items-center border-bottom border-light pb-2">
+                        <span className="text-secondary small">Kode Batch</span>
+                        <span className="badge bg-primary text-white px-2 py-1 rounded-pill shadow-sm fw-bold" style={{ fontSize: "12px", letterSpacing: "0.5px" }}>
+                          {detailData.kode_batch || "-"}
+                        </span>
+                      </div>
+                      <div className="d-flex justify-content-between align-items-center border-bottom border-light pb-2">
+                        <span className="text-secondary small">Tgl Kirim</span>
+                        <span className="small">{dayjs(detailData.tanggal_kirim).format("DD MMM YYYY")}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="col-md-6">
-                <p className="text-muted small text-uppercase fw-bold mb-2">Spesifikasi Sampel</p>
-                <div className="d-flex flex-column gap-2">
-                  <div className="d-flex justify-content-between border-bottom pb-1">
-                    <span className="text-secondary">Jenis Hewan</span>
-                    <span>{detailData.jenis_hewan === "Lainnya" ? detailData.jenis_hewan_lain : detailData.jenis_hewan}</span>
-                  </div>
-                  <div className="d-flex justify-content-between border-bottom pb-1">
-                    <span className="text-secondary">Jumlah</span>
-                    <span className="fw-bold text-success">{detailData.jumlah_sampel} Unit</span>
-                  </div>
-                  <div className="d-flex justify-content-between border-bottom pb-1">
-                    <span className="text-secondary">Status</span>
-                    <span className="badge bg-info">{formatStatus(detailData.status)}</span>
+
+              <div className="col-12 col-lg-6">
+                <div className="card border-0 bg-light bg-opacity-50 h-100">
+                  <div className="card-body p-3">
+                    <div className="d-flex align-items-center mb-3">
+                      <i className="bi bi-clipboard2-data me-2 text-success fs-5"></i>
+                      <h6 className="text-muted small text-uppercase fw-bold mb-0">Spesifikasi Sampel</h6>
+                    </div>
+                    <div className="d-flex flex-column gap-2">
+                      <div className="d-flex justify-content-between align-items-center border-bottom border-light pb-2">
+                        <span className="text-secondary small">Jenis Hewan</span>
+                        <span className="small text-end" style={{ maxWidth: "60%", wordBreak: "break-word" }}>
+                          {detailData.jenis_hewan === "Lainnya" ? detailData.jenis_hewan_lain : detailData.jenis_hewan}
+                        </span>
+                      </div>
+                      <div className="d-flex justify-content-between align-items-center border-bottom border-light pb-2">
+                        <span className="text-secondary small">Jumlah</span>
+                        <span className="badge bg-success text-white px-2 py-1 rounded-pill fw-bold small">{detailData.jumlah_sampel} Unit</span>
+                      </div>
+                      <div className="d-flex justify-content-between align-items-center border-bottom border-light pb-2">
+                        <span className="text-secondary small">Status</span>
+                        <span className="badge bg-info text-white px-2 py-1 rounded-pill small">{formatStatus(detailData.status)}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div className="col-12">
-                <p className="text-muted small text-uppercase fw-bold mb-2">Daftar Label</p>
-                <div className="d-flex flex-wrap gap-2">
-                  {generateSampleCodes(detailData).map((code, idx) => (
-                    <span key={idx} className="badge bg-light text-dark border fw-normal">
-                      {code}
-                    </span>
-                  ))}
+                <div className="card border-0 bg-warning bg-opacity-10">
+                  <div className="card-body p-3">
+                    <div className="d-flex align-items-center mb-3">
+                      <i className="bi bi-tags me-2 text-warning fs-5"></i>
+                      <h6 className="text-muted small text-uppercase fw-bold mb-0">Daftar Label Sampel</h6>
+                    </div>
+                    <div className="d-flex flex-wrap gap-2">
+                      {generateSampleCodes(detailData).map((code, idx) => (
+                        <span key={idx} className="badge bg-white border border-warning text-dark fw-normal px-2 py-1 rounded-pill shadow-sm small">
+                          📋 {code}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div className="col-12">
-                <p className="text-muted small text-uppercase fw-bold mb-2">Parameter Analisis</p>
-                <div className="d-flex flex-wrap gap-2">
-                  {detailData.analysis_items?.length > 0 ? (
-                    detailData.analysis_items.map((item, idx) => (
-                      <span key={idx} className="badge border text-secondary rounded-pill px-3">
-                        {item.nama_item}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-muted fst-italic">Full Package ({detailData.jenis_analisis})</span>
-                  )}
+                <div className="card border-0 bg-info bg-opacity-10">
+                  <div className="card-body p-3">
+                    <div className="d-flex align-items-center mb-3">
+                      <i className="bi bi-gear me-2 text-info fs-5"></i>
+                      <h6 className="text-muted small text-uppercase fw-bold mb-0">Parameter Analisis</h6>
+                    </div>
+                    <div className="d-flex flex-wrap gap-2">
+                      {detailData.analysis_items?.length > 0 ? (
+                        detailData.analysis_items.map((item, idx) => (
+                          <span key={idx} className="badge bg-white border border-info text-secondary rounded-pill px-3 py-1 shadow-sm small">
+                            🔬 {item.nama_item}
+                          </span>
+                        ))
+                      ) : (
+                        <div className="alert alert-info border-0 rounded-3 mb-0 py-2 px-3">
+                          <i className="bi bi-info-circle me-2"></i>
+                          <span className="small">Full Package ({detailData.jenis_analisis})</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
         </Modal.Body>
-        <Modal.Footer className="border-0">
-          <button className="btn btn-light px-4 rounded-3" onClick={() => setShowDetailModal(false)}>
+        <Modal.Footer className="border-0 pt-2 pb-3">
+          <button className="btn btn-secondary px-4 rounded-pill shadow-sm" onClick={() => setShowDetailModal(false)}>
+            <i className="bi bi-x-circle me-2"></i>
             Tutup
           </button>
         </Modal.Footer>
@@ -819,6 +929,86 @@ const VerifikasiSampel = () => {
         /* Ensure modals appear above navbar */
         .modal { z-index: 9999 !important; }
         .modal-backdrop { z-index: 9998 !important; }
+        
+        /* Responsive modal styles */
+        .responsive-modal .modal-dialog {
+          max-width: 95%;
+          margin: 1rem auto;
+        }
+        
+        @media (min-width: 768px) {
+          .responsive-modal .modal-dialog {
+            max-width: 700px;
+            margin: 2rem auto;
+          }
+        }
+        
+        @media (max-width: 576px) {
+          .responsive-modal .modal-dialog {
+            margin: 0.5rem;
+            max-width: calc(100% - 1rem);
+          }
+          
+          .responsive-modal .modal-body {
+            padding: 1rem !important;
+          }
+          
+          .responsive-modal .modal-header {
+            padding: 1rem 1rem 0.5rem !important;
+          }
+          
+          .responsive-modal .modal-footer {
+            padding: 0.5rem 1rem 1rem !important;
+          }
+          
+          .responsive-modal .card-body {
+            padding: 0.75rem !important;
+          }
+          
+          .responsive-modal .badge {
+            font-size: 10px !important;
+            padding: 0.25rem 0.5rem !important;
+          }
+        }
+        
+        /* Responsive table styles */
+        @media (max-width: 767px) {
+          .table-responsive {
+            font-size: 14px;
+          }
+          .table thead th {
+            font-size: 11px;
+            padding: 8px 4px;
+          }
+          .table tbody td {
+            padding: 8px 4px;
+            font-size: 12px;
+            line-height: 1.4;
+          }
+          .badge {
+            font-size: 10px;
+            padding: 4px 8px;
+          }
+          .btn-sm {
+            padding: 4px 8px;
+            font-size: 11px;
+          }
+        }
+        
+        @media (max-width: 575px) {
+          .table thead th {
+            font-size: 10px;
+            padding: 6px 2px;
+          }
+          .table tbody td {
+            padding: 6px 2px;
+            font-size: 11px;
+          }
+          .badge {
+            font-size: 9px;
+            padding: 2px 6px;
+          }
+        }
         
         @keyframes popupShow { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .popup-box { animation: popupShow 0.3s ease-out; }

@@ -119,86 +119,114 @@ const RiwayatAnalisisTeknisi = () => {
               </Card.Header>
 
               <div className="table-responsive">
-                <Table hover className="mb-0 custom-table">
-                  <thead>
-                    <tr>
-                      <th className="ps-4">No</th>
-                      <th>
-                        <Hash size={14} className="me-1" /> Kode Batch
-                      </th>
-                      <th>
-                        <User size={14} className="me-1" /> Nama Klien
-                      </th>
-                      <th>
-                        <Beaker size={14} className="me-1" /> Jenis Analisis
-                      </th>
-                      <th>
-                        <CalendarIcon size={14} className="me-1" /> Tanggal Selesai
-                      </th>
-                      <th className="text-center">Status</th>
-                      <th className="text-center pe-4">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
+                <div className="responsive-table-wrapper">
+                  <Table hover className="mb-0 custom-table responsive-riwayat-table">
+                    <thead>
                       <tr>
-                        <td colSpan={7} className="text-center py-5 text-muted">
-                          Memuat data...
-                        </td>
+                        <th className="ps-4">No</th>
+                        <th>
+                          <Hash size={14} className="me-1" /> Kode Batch
+                        </th>
+                        <th className="d-none d-md-table-cell">
+                          <User size={14} className="me-1" /> Nama Klien
+                        </th>
+                        <th className="d-none d-lg-table-cell">
+                          <Beaker size={14} className="me-1" /> Jenis Analisis
+                        </th>
+                        <th className="d-none d-lg-table-cell">
+                          <CalendarIcon size={14} className="me-1" /> Tanggal Selesai
+                        </th>
+                        <th className="text-center d-none d-sm-table-cell">Status</th>
+                        <th className="text-center pe-4">Aksi</th>
                       </tr>
-                    ) : filteredData.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="text-center py-5 text-muted">
-                          Tidak ada riwayat ditemukan.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredData.map((item, idx) => (
-                        <tr key={item.id}>
-                          <td className="ps-4 text-muted">{idx + 1}</td>
-                          <td className="fw-bold" style={{ color: theme.textDark, whiteSpace: "nowrap" }}>
-                            {item.kode_batch || "-"}
-                          </td>
-                          <td>{item.user?.full_name || "-"}</td>
-                          <td>
-                            <div className="text-truncate" style={{ maxWidth: "250px" }}>
-                              {item.analysis_items?.map((i) => i.jenis_analisis || i.nama_item || "-").join(", ")}
-                            </div>
-                          </td>
-                          <td className="text-muted">{item.updated_at ? new Date(item.updated_at).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" }) : "-"}</td>
-                          <td className="text-center">
-                            <span style={{ backgroundColor: "#E3F9E5", color: "#1F922B", padding: "6px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: "600" }}>Selesai</span>
-                          </td>
-                          <td className="text-center pe-4">
-                            <div className="d-flex justify-content-center gap-2">
-                              <Button
-                                variant="light"
-                                size="sm"
-                                className="d-inline-flex align-items-center gap-2 rounded-pill px-3"
-                                onClick={() => {
-                                  setSelectedBooking(item);
-                                  setShowModal(true);
-                                }}
-                              >
-                                <Eye size={14} /> Detail
-                              </Button>
-                              {item.pdf_path && (
-                                <Button
-                                  as="a"
-                                  href={`${process.env.REACT_APP_API_BASE_URL ? process.env.REACT_APP_API_BASE_URL.replace(/\/api$/, "") : "http://127.0.0.1:8000"}/storage/${item.pdf_path}`}
-                                  target="_blank"
-                                  className="btn-hasil-teknisi"
-                                >
-                                  Hasil <ChevronRight size={14} />
-                                </Button>
-                              )}
-                            </div>
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        <tr>
+                          <td colSpan={7} className="text-center py-5 text-muted">
+                            Memuat data...
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </Table>
+                      ) : filteredData.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="text-center py-5 text-muted">
+                            Tidak ada riwayat ditemukan.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredData.map((item, idx) => (
+                          <tr key={item.id}>
+                            <td className="ps-4 text-muted">{idx + 1}</td>
+                            <td className="fw-bold responsive-main-cell" style={{ color: theme.textDark }}>
+                              <div className="d-flex flex-column">
+                                <span className="main-code">{item.kode_batch || "-"}</span>
+                                {/* Mobile condensed info */}
+                                <div className="d-block d-md-none mobile-condensed-info">
+                                  <small className="text-muted d-block">
+                                    <User size={12} className="me-1" />
+                                    {item.user?.full_name || "-"}
+                                  </small>
+                                  <small className="text-muted d-block d-sm-none">
+                                    <span
+                                      style={{
+                                        backgroundColor: "#E3F9E5",
+                                        color: "#1F922B",
+                                        padding: "2px 8px",
+                                        borderRadius: "6px",
+                                        fontSize: "10px",
+                                        fontWeight: "600",
+                                      }}
+                                    >
+                                      Selesai
+                                    </span>
+                                  </small>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="d-none d-md-table-cell">{item.user?.full_name || "-"}</td>
+                            <td className="d-none d-lg-table-cell">
+                              <div className="text-truncate" style={{ maxWidth: "250px" }}>
+                                {item.analysis_items?.map((i) => i.jenis_analisis || i.nama_item || "-").join(", ")}
+                              </div>
+                            </td>
+                            <td className="d-none d-lg-table-cell text-muted">{item.updated_at ? new Date(item.updated_at).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" }) : "-"}</td>
+                            <td className="text-center d-none d-sm-table-cell">
+                              <span style={{ backgroundColor: "#E3F9E5", color: "#1F922B", padding: "6px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: "600" }}>Selesai</span>
+                            </td>
+                            <td className="text-center pe-4">
+                              <div className="d-flex justify-content-center gap-1 responsive-action-buttons">
+                                <Button
+                                  variant="light"
+                                  size="sm"
+                                  className="d-inline-flex align-items-center gap-1 rounded-pill px-2 px-md-3 responsive-btn"
+                                  onClick={() => {
+                                    setSelectedBooking(item);
+                                    setShowModal(true);
+                                  }}
+                                >
+                                  <Eye size={14} /> <span className="d-none d-sm-inline">Detail</span>
+                                </Button>
+                                {item.pdf_path && (
+                                  <Button
+                                    as="a"
+                                    href={`${process.env.REACT_APP_API_BASE_URL ? process.env.REACT_APP_API_BASE_URL.replace(/\/api$/, "") : "http://127.0.0.1:8000"}/storage/${item.pdf_path}`}
+                                    target="_blank"
+                                    className="btn-hasil-teknisi responsive-btn"
+                                    size="sm"
+                                  >
+                                    <FileText size={14} className="d-inline d-sm-none" />
+                                    <span className="d-none d-sm-inline">Hasil</span>
+                                    <ChevronRight size={14} className="d-none d-sm-inline" />
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </Table>
+                </div>
               </div>
             </Card>
           </motion.div>
@@ -232,7 +260,9 @@ const RiwayatAnalisisTeknisi = () => {
                     <small className="text-muted d-block text-uppercase fw-bold" style={{ fontSize: "10px" }}>
                       No. Telepon
                     </small>
-                    <span className="fw-bold">{selectedBooking.user?.nomor_telpon || selectedBooking.user?.nomor_telpon || selectedBooking.user?.nomor_telpon || selectedBooking.user?.nomor_telpon || selectedBooking.user?.nomor_telpon || "-"}</span>
+                    <span className="fw-bold">
+                      {selectedBooking.user?.nomor_telpon || selectedBooking.user?.nomor_telpon || selectedBooking.user?.nomor_telpon || selectedBooking.user?.nomor_telpon || selectedBooking.user?.nomor_telpon || "-"}
+                    </span>
                   </div>
                   <div>
                     <small className="text-muted d-block text-uppercase fw-bold" style={{ fontSize: "10px" }}>
@@ -318,6 +348,7 @@ const RiwayatAnalisisTeknisi = () => {
             font-family: 'Inter', sans-serif;
             border-collapse: separate;
             border-spacing: 0;
+            font-size: clamp(12px, 2.5vw, 14px);
           }
 
           .custom-table thead th {
@@ -325,32 +356,77 @@ const RiwayatAnalisisTeknisi = () => {
             color: #636E72;
             font-weight: 600;
             text-transform: uppercase;
-            font-size: 11px;
+            font-size: clamp(10px, 2vw, 11px);
             letter-spacing: 0.5px;
-            padding: 20px 15px;
+            padding: clamp(12px, 3vw, 20px) clamp(8px, 2vw, 15px);
             border-bottom: 1px solid #F1F2F6;
+            white-space: nowrap;
           }
 
           .custom-table tbody td {
-            padding: 20px 15px;
+            padding: clamp(12px, 3vw, 20px) clamp(8px, 2vw, 15px);
             vertical-align: middle;
-            font-size: 14px;
+            font-size: clamp(12px, 2.5vw, 14px);
             border-bottom: 1px solid #F1F2F6;
+          }
+          
+          .responsive-riwayat-table {
+            min-width: 100%;
+          }
+          
+          .responsive-table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+          
+          .responsive-main-cell {
+            min-width: 120px;
+          }
+          
+          .main-code {
+            white-space: nowrap;
+            font-weight: 700;
+            font-size: clamp(13px, 2.8vw, 15px);
+          }
+          
+          .mobile-condensed-info {
+            margin-top: 4px;
+            line-height: 1.3;
+          }
+          
+          .mobile-condensed-info small {
+            font-size: clamp(10px, 2vw, 12px);
+            margin-bottom: 2px;
+          }
+          
+          .responsive-action-buttons {
+            gap: clamp(2px, 1vw, 8px) !important;
+          }
+          
+          .responsive-btn {
+            font-size: clamp(10px, 2.2vw, 13px) !important;
+            padding: clamp(4px, 1vw, 6px) clamp(8px, 2vw, 16px) !important;
+            border-radius: clamp(6px, 1.5vw, 10px) !important;
+            min-height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
           }
 
           .btn-hasil-teknisi {
             background-color: ${theme.btnCokelat};
             border: none;
-            border-radius: 10px;
-            padding: 6px 16px;
-            font-size: 13px;
+            border-radius: clamp(6px, 1.5vw, 10px);
+            padding: clamp(4px, 1vw, 6px) clamp(8px, 2vw, 16px);
+            font-size: clamp(10px, 2.2vw, 13px);
             font-weight: 600;
             color: white;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: clamp(2px, 0.5vw, 6px);
             transition: 0.3s;
+            min-height: 32px;
           }
 
           .btn-hasil-teknisi:hover {
@@ -362,6 +438,131 @@ const RiwayatAnalisisTeknisi = () => {
           .custom-modal .modal-content {
             border-radius: 25px;
             border: none;
+          }
+          
+          /* Mobile optimizations */
+          @media (max-width: 768px) {
+            .responsive-table-wrapper {
+              margin: 0 -15px;
+              border-radius: 0;
+            }
+            
+            .custom-table {
+              font-size: 12px;
+            }
+            
+            .custom-table thead th {
+              padding: 12px 8px;
+              font-size: 10px;
+            }
+            
+            .custom-table tbody td {
+              padding: 12px 8px;
+              font-size: 12px;
+            }
+            
+            .responsive-main-cell {
+              min-width: 140px;
+            }
+            
+            .main-code {
+              font-size: 13px;
+            }
+            
+            .mobile-condensed-info small {
+              font-size: 11px;
+            }
+            
+            .responsive-btn {
+              font-size: 11px !important;
+              padding: 6px 10px !important;
+              min-height: 30px;
+            }
+            
+            .btn-hasil-teknisi {
+              font-size: 11px;
+              padding: 6px 10px;
+              min-height: 30px;
+            }
+          }
+          
+          /* Tablet adjustments */
+          @media (min-width: 769px) and (max-width: 1024px) {
+            .custom-table tbody td {
+              font-size: 13px;
+            }
+            
+            .responsive-btn {
+              font-size: 12px !important;
+            }
+            
+            .btn-hasil-teknisi {
+              font-size: 12px;
+            }
+          }
+          
+          /* Small mobile phones */
+          @media (max-width: 480px) {
+            .responsive-table-wrapper {
+              margin: 0 -10px;
+            }
+            
+            .custom-table thead th,
+            .custom-table tbody td {
+              padding: 10px 6px;
+            }
+            
+            .responsive-main-cell {
+              min-width: 120px;
+            }
+            
+            .main-code {
+              font-size: 12px;
+            }
+            
+            .mobile-condensed-info small {
+              font-size: 10px;
+            }
+            
+            .responsive-btn {
+              font-size: 10px !important;
+              padding: 5px 8px !important;
+              min-height: 28px;
+            }
+            
+            .btn-hasil-teknisi {
+              font-size: 10px;
+              padding: 5px 8px;
+              min-height: 28px;
+            }
+          }
+          
+          /* Desktop display classes */
+          @media (min-width: 768px) {
+            .d-md-table-cell {
+              display: table-cell !important;
+            }
+            .d-md-none {
+              display: none !important;
+            }
+          }
+          
+          @media (min-width: 992px) {
+            .d-lg-table-cell {
+              display: table-cell !important;
+            }
+          }
+          
+          @media (min-width: 576px) {
+            .d-sm-table-cell {
+              display: table-cell !important;
+            }
+            .d-sm-inline {
+              display: inline !important;
+            }
+            .d-sm-none {
+              display: none !important;
+            }
           }
         `}</style>
       </div>

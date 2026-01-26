@@ -5,7 +5,7 @@ import FooterSetelahLogin from "../FooterSetelahLogin";
 import { getInvoices, uploadInvoicePaymentProof, confirmInvoicePayment, getAllBookings, updateBookingStatus, verifikasiKoordinator } from "../../services/BookingService";
 import { sendInvoiceEmail } from "../../services/BookingService";
 import { getAuthHeader } from "../../services/AuthService";
-import * as XLSX from 'xlsx';
+import * as XLSX from "xlsx";
 
 // axios used for uploading payment proof
 import axios from "axios";
@@ -44,7 +44,7 @@ const ManajemenPembayaran = () => {
   const [pendingBookings, setPendingBookings] = useState([]);
   const [analysisSummary, setAnalysisSummary] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   // State untuk rekap keuangan bulanan
   const [showMonthlyRecap, setShowMonthlyRecap] = useState(false);
   const [monthlyData, setMonthlyData] = useState([]);
@@ -175,26 +175,26 @@ const ManajemenPembayaran = () => {
 
   useEffect(() => {
     fetchInvoicesFromServer();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount
 
   // Function untuk menghitung data rekap bulanan
   const calculateMonthlyData = useCallback(() => {
     const monthlyMap = {};
-    
-    console.log('Calculating monthly data for year:', selectedYear);
-    console.log('Invoices data:', invoices);
-    console.log('Pending bookings data:', pendingBookings);
-    
+
+    console.log("Calculating monthly data for year:", selectedYear);
+    console.log("Invoices data:", invoices);
+    console.log("Pending bookings data:", pendingBookings);
+
     // Process invoices
-    invoices.forEach(invoice => {
+    invoices.forEach((invoice) => {
       // Use raw created_at from the original server response instead of formatted tanggal
       let date;
       if (invoice.created_at) {
         date = new Date(invoice.created_at);
       } else {
         // Fallback: try to parse the formatted tanggal
-        const parts = invoice.tanggal?.split('/');
+        const parts = invoice.tanggal?.split("/");
         if (parts && parts.length === 3) {
           // Convert from DD/MM/YYYY to YYYY-MM-DD
           date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
@@ -202,35 +202,35 @@ const ManajemenPembayaran = () => {
           date = new Date(); // Current date as fallback
         }
       }
-      
+
       if (isNaN(date.getTime())) {
-        console.warn('Invalid date for invoice:', invoice);
+        console.warn("Invalid date for invoice:", invoice);
         return;
       }
-      
+
       if (date.getFullYear() !== selectedYear) return;
-      
+
       const monthKey = date.getMonth(); // 0-11
       if (!monthlyMap[monthKey]) {
         monthlyMap[monthKey] = {
           month: monthKey,
-          monthName: new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(new Date(selectedYear, monthKey, 1)),
+          monthName: new Intl.DateTimeFormat("id-ID", { month: "long" }).format(new Date(selectedYear, monthKey, 1)),
           totalInvoices: 0,
           paidAmount: 0,
           unpaidAmount: 0,
           pendingAmount: 0,
           invoiceCount: 0,
           paidCount: 0,
-          unpaidCount: 0
+          unpaidCount: 0,
         };
       }
-      
+
       const amount = Number(invoice.total) || 0;
       const isPaid = (invoice.status || "").toString().toUpperCase() === "PAID";
-      
+
       monthlyMap[monthKey].totalInvoices += amount;
       monthlyMap[monthKey].invoiceCount += 1;
-      
+
       if (isPaid) {
         monthlyMap[monthKey].paidAmount += amount;
         monthlyMap[monthKey].paidCount += 1;
@@ -239,9 +239,9 @@ const ManajemenPembayaran = () => {
         monthlyMap[monthKey].unpaidCount += 1;
       }
     });
-    
+
     // Process pending bookings
-    pendingBookings.forEach(booking => {
+    pendingBookings.forEach((booking) => {
       // Use raw created_at from booking data
       let date;
       if (booking.booking?.created_at) {
@@ -250,7 +250,7 @@ const ManajemenPembayaran = () => {
         date = new Date(booking.created_at);
       } else {
         // Fallback: try to parse the formatted tanggal
-        const parts = booking.tanggal?.split('/');
+        const parts = booking.tanggal?.split("/");
         if (parts && parts.length === 3) {
           // Convert from DD/MM/YYYY to YYYY-MM-DD
           date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
@@ -258,29 +258,29 @@ const ManajemenPembayaran = () => {
           date = new Date(); // Current date as fallback
         }
       }
-      
+
       if (isNaN(date.getTime())) {
-        console.warn('Invalid date for booking:', booking);
+        console.warn("Invalid date for booking:", booking);
         return;
       }
-      
+
       if (date.getFullYear() !== selectedYear) return;
-      
+
       const monthKey = date.getMonth();
       if (!monthlyMap[monthKey]) {
         monthlyMap[monthKey] = {
           month: monthKey,
-          monthName: new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(new Date(selectedYear, monthKey, 1)),
+          monthName: new Intl.DateTimeFormat("id-ID", { month: "long" }).format(new Date(selectedYear, monthKey, 1)),
           totalInvoices: 0,
           paidAmount: 0,
           unpaidAmount: 0,
           pendingAmount: 0,
           invoiceCount: 0,
           paidCount: 0,
-          unpaidCount: 0
+          unpaidCount: 0,
         };
       }
-      
+
       const amount = Number(booking.total) || 0;
       monthlyMap[monthKey].pendingAmount += amount;
       monthlyMap[monthKey].unpaidAmount += amount;
@@ -288,10 +288,10 @@ const ManajemenPembayaran = () => {
       monthlyMap[monthKey].invoiceCount += 1;
       monthlyMap[monthKey].unpaidCount += 1;
     });
-    
+
     // Convert to array and sort by month
     const monthlyArray = Object.values(monthlyMap).sort((a, b) => a.month - b.month);
-    console.log('Monthly data calculated:', monthlyArray);
+    console.log("Monthly data calculated:", monthlyArray);
     setMonthlyData(monthlyArray);
   }, [invoices, pendingBookings, selectedYear]);
 
@@ -314,15 +314,15 @@ const ManajemenPembayaran = () => {
   const exportToExcel = () => {
     try {
       // Prepare data for Excel export
-      const exportData = monthlyData.map(month => ({
-        'Bulan': month.monthName,
-        'Total Pendapatan (Rp)': month.totalInvoices,
-        'Sudah Dibayar (Rp)': month.paidAmount,
-        'Belum Dibayar (Rp)': month.unpaidAmount,
-        'Jumlah Transaksi': month.invoiceCount,
-        'Transaksi Lunas': month.paidCount,
-        'Transaksi Pending': month.unpaidCount,
-        'Tingkat Pembayaran (%)': ((month.paidAmount / month.totalInvoices) * 100).toFixed(1)
+      const exportData = monthlyData.map((month) => ({
+        Bulan: month.monthName,
+        "Total Pendapatan (Rp)": month.totalInvoices,
+        "Sudah Dibayar (Rp)": month.paidAmount,
+        "Belum Dibayar (Rp)": month.unpaidAmount,
+        "Jumlah Transaksi": month.invoiceCount,
+        "Transaksi Lunas": month.paidCount,
+        "Transaksi Pending": month.unpaidCount,
+        "Tingkat Pembayaran (%)": ((month.paidAmount / month.totalInvoices) * 100).toFixed(1),
       }));
 
       // Add summary row
@@ -332,28 +332,28 @@ const ManajemenPembayaran = () => {
       const totalTransaksi = monthlyData.reduce((sum, month) => sum + month.invoiceCount, 0);
       const totalLunas = monthlyData.reduce((sum, month) => sum + month.paidCount, 0);
       const totalPending = monthlyData.reduce((sum, month) => sum + month.unpaidCount, 0);
-      const overallRate = totalPendapatan > 0 ? ((totalDibayar / totalPendapatan) * 100).toFixed(1) : '0.0';
+      const overallRate = totalPendapatan > 0 ? ((totalDibayar / totalPendapatan) * 100).toFixed(1) : "0.0";
 
       exportData.push({
-        'Bulan': '',
-        'Total Pendapatan (Rp)': '',
-        'Sudah Dibayar (Rp)': '',
-        'Belum Dibayar (Rp)': '',
-        'Jumlah Transaksi': '',
-        'Transaksi Lunas': '',
-        'Transaksi Pending': '',
-        'Tingkat Pembayaran (%)': ''
+        Bulan: "",
+        "Total Pendapatan (Rp)": "",
+        "Sudah Dibayar (Rp)": "",
+        "Belum Dibayar (Rp)": "",
+        "Jumlah Transaksi": "",
+        "Transaksi Lunas": "",
+        "Transaksi Pending": "",
+        "Tingkat Pembayaran (%)": "",
       });
 
       exportData.push({
-        'Bulan': 'TOTAL TAHUNAN',
-        'Total Pendapatan (Rp)': totalPendapatan,
-        'Sudah Dibayar (Rp)': totalDibayar,
-        'Belum Dibayar (Rp)': totalBelumBayar,
-        'Jumlah Transaksi': totalTransaksi,
-        'Transaksi Lunas': totalLunas,
-        'Transaksi Pending': totalPending,
-        'Tingkat Pembayaran (%)': overallRate
+        Bulan: "TOTAL TAHUNAN",
+        "Total Pendapatan (Rp)": totalPendapatan,
+        "Sudah Dibayar (Rp)": totalDibayar,
+        "Belum Dibayar (Rp)": totalBelumBayar,
+        "Jumlah Transaksi": totalTransaksi,
+        "Transaksi Lunas": totalLunas,
+        "Transaksi Pending": totalPending,
+        "Tingkat Pembayaran (%)": overallRate,
       });
 
       // Create workbook and worksheet
@@ -369,16 +369,16 @@ const ManajemenPembayaran = () => {
         { wch: 15 }, // Jumlah Transaksi
         { wch: 15 }, // Transaksi Lunas
         { wch: 15 }, // Transaksi Pending
-        { wch: 20 }  // Tingkat Pembayaran
+        { wch: 20 }, // Tingkat Pembayaran
       ];
-      ws['!cols'] = colWidths;
+      ws["!cols"] = colWidths;
 
       // Add worksheet to workbook
       XLSX.utils.book_append_sheet(wb, ws, `Rekap ${selectedYear}`);
 
       // Generate filename with current date and time
       const now = new Date();
-      const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
+      const timestamp = now.toISOString().slice(0, 19).replace(/:/g, "-");
       const filename = `Rekap_Keuangan_${selectedYear}_${timestamp}.xlsx`;
 
       // Save file
@@ -387,8 +387,8 @@ const ManajemenPembayaran = () => {
       // Show success message
       alert(`Data berhasil diekspor ke file: ${filename}`);
     } catch (error) {
-      console.error('Error exporting to Excel:', error);
-      alert('Gagal mengekspor data ke Excel. Pastikan browser mendukung download file.');
+      console.error("Error exporting to Excel:", error);
+      alert("Gagal mengekspor data ke Excel. Pastikan browser mendukung download file.");
     }
   };
 
@@ -531,7 +531,7 @@ const ManajemenPembayaran = () => {
         }
 
         setSummaryTotals({ totalAll, paid, unpaid });
-        
+
         // Trigger monthly calculation if recap is shown
         if (showMonthlyRecap) {
           // Use setTimeout to ensure state is updated first
@@ -580,7 +580,7 @@ const ManajemenPembayaran = () => {
   return (
     <NavbarLoginKoordinator>
       <div style={{ backgroundColor: customColors.lightGray, minHeight: "100vh" }}>
-        <Container className="py-5">
+        <Container className="py-3 py-md-5 px-2 px-md-3">
           {/* STATS SUMMARY SECTION */}
           <Row className="mb-4 g-3 text-center">
             {[
@@ -610,15 +610,9 @@ const ManajemenPembayaran = () => {
                 Manajemen Invoice
               </h4>
               <div>
-                <Button 
-                  variant="light" 
-                  size="sm" 
-                  className="rounded-pill px-3 fw-bold" 
-                  onClick={handleToggleMonthlyRecap}
-                  style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
-                >
-                  <i className={`bi ${showMonthlyRecap ? 'bi-eye-slash' : 'bi-bar-chart'} me-2`}></i>
-                  {showMonthlyRecap ? 'Sembunyikan Rekap' : 'Rekap Keuangan'}
+                <Button variant="light" size="sm" className="rounded-pill px-3 fw-bold" onClick={handleToggleMonthlyRecap} style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+                  <i className={`bi ${showMonthlyRecap ? "bi-eye-slash" : "bi-bar-chart"} me-2`}></i>
+                  {showMonthlyRecap ? "Sembunyikan Rekap" : "Rekap Keuangan"}
                 </Button>
               </div>
             </div>
@@ -633,48 +627,47 @@ const ManajemenPembayaran = () => {
                     </h5>
                     <div className="d-flex align-items-center gap-3">
                       <label className="fw-bold text-muted mb-0">Tahun:</label>
-                      <Form.Select 
-                        value={selectedYear} 
-                        onChange={(e) => setSelectedYear(Number(e.target.value))}
-                        size="sm"
-                        style={{ width: "120px", borderRadius: "15px" }}
-                      >
+                      <Form.Select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} size="sm" style={{ width: "120px", borderRadius: "15px" }}>
                         {Array.from({ length: 5 }, (_, i) => {
                           const year = new Date().getFullYear() - 2 + i;
-                          return <option key={year} value={year}>{year}</option>;
+                          return (
+                            <option key={year} value={year}>
+                              {year}
+                            </option>
+                          );
                         })}
                       </Form.Select>
                     </div>
                   </div>
-                  
+
                   {/* Yearly Summary Cards */}
                   <Row className="g-3 mb-4">
                     {[
-                      { 
-                        label: "Total Pendapatan", 
+                      {
+                        label: "Total Pendapatan",
                         value: monthlyData.reduce((sum, month) => sum + month.totalInvoices, 0),
                         color: customColors.brown,
-                        icon: "bi-cash-stack"
+                        icon: "bi-cash-stack",
                       },
-                      { 
-                        label: "Sudah Dibayar", 
+                      {
+                        label: "Sudah Dibayar",
                         value: monthlyData.reduce((sum, month) => sum + month.paidAmount, 0),
                         color: "#198754",
-                        icon: "bi-check-circle"
+                        icon: "bi-check-circle",
                       },
-                      { 
-                        label: "Belum Dibayar", 
+                      {
+                        label: "Belum Dibayar",
                         value: monthlyData.reduce((sum, month) => sum + month.unpaidAmount, 0),
                         color: "#dc3545",
-                        icon: "bi-clock-history"
+                        icon: "bi-clock-history",
                       },
-                      { 
-                        label: "Total Transaksi", 
+                      {
+                        label: "Total Transaksi",
                         value: monthlyData.reduce((sum, month) => sum + month.invoiceCount, 0),
                         color: "#6f42c1",
                         icon: "bi-receipt",
-                        isCount: true
-                      }
+                        isCount: true,
+                      },
                     ].map((stat, idx) => (
                       <Col md={3} key={idx}>
                         <Card className="border-0 shadow-sm h-100" style={{ borderRadius: "15px", backgroundColor: "#fdfcfc" }}>
@@ -696,16 +689,28 @@ const ManajemenPembayaran = () => {
 
                   {/* Monthly Breakdown Table */}
                   {monthlyData.length > 0 ? (
-                    <div className="table-responsive">
-                      <Table className="mb-0" hover style={{ fontSize: "0.9rem" }}>
+                    <div className="table-responsive" style={{ overflowX: "auto" }}>
+                      <Table className="mb-0" hover style={{ fontSize: "0.9rem", minWidth: "800px", width: "100%" }}>
                         <thead style={{ backgroundColor: "#f8f9fa" }}>
                           <tr>
-                            <th className="py-3 ps-3 fw-bold border-0" style={{ color: customColors.brown }}>Bulan</th>
-                            <th className="py-3 text-center fw-bold border-0" style={{ color: customColors.brown }}>Total Pendapatan</th>
-                            <th className="py-3 text-center fw-bold border-0" style={{ color: customColors.brown }}>Sudah Dibayar</th>
-                            <th className="py-3 text-center fw-bold border-0" style={{ color: customColors.brown }}>Belum Dibayar</th>
-                            <th className="py-3 text-center fw-bold border-0" style={{ color: customColors.brown }}>Transaksi</th>
-                            <th className="py-3 text-center fw-bold border-0" style={{ color: customColors.brown }}>Tingkat Pembayaran</th>
+                            <th className="py-2 py-md-3 ps-2 ps-md-3 fw-bold border-0" style={{ color: customColors.brown, minWidth: "100px", width: "15%" }}>
+                              Bulan
+                            </th>
+                            <th className="py-2 py-md-3 text-center fw-bold border-0" style={{ color: customColors.brown, minWidth: "140px", width: "20%" }}>
+                              Total Pendapatan
+                            </th>
+                            <th className="py-2 py-md-3 text-center fw-bold border-0" style={{ color: customColors.brown, minWidth: "130px", width: "18%" }}>
+                              Sudah Dibayar
+                            </th>
+                            <th className="py-2 py-md-3 text-center fw-bold border-0" style={{ color: customColors.brown, minWidth: "130px", width: "18%" }}>
+                              Belum Dibayar
+                            </th>
+                            <th className="py-2 py-md-3 text-center fw-bold border-0" style={{ color: customColors.brown, minWidth: "100px", width: "12%" }}>
+                              Transaksi
+                            </th>
+                            <th className="py-2 py-md-3 text-center fw-bold border-0" style={{ color: customColors.brown, minWidth: "150px", width: "17%" }}>
+                              Tingkat Pembayaran
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -713,39 +718,38 @@ const ManajemenPembayaran = () => {
                             const paymentRate = month.totalInvoices > 0 ? (month.paidAmount / month.totalInvoices) * 100 : 0;
                             return (
                               <tr key={idx} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                                <td className="py-3 ps-3 fw-bold" style={{ color: customColors.brown }}>
+                                <td className="py-2 py-md-3 ps-2 ps-md-3 fw-bold" style={{ color: customColors.brown }}>
                                   {month.monthName}
                                 </td>
-                                <td className="py-3 text-center fw-bold">
-                                  Rp {month.totalInvoices.toLocaleString("id-ID")}
-                                </td>
-                                <td className="py-3 text-center">
-                                  <div className="fw-bold" style={{ color: "#198754" }}>Rp {month.paidAmount.toLocaleString("id-ID")}</div>
+                                <td className="py-2 py-md-3 text-center fw-bold">Rp {month.totalInvoices.toLocaleString("id-ID")}</td>
+                                <td className="py-2 py-md-3 text-center">
+                                  <div className="fw-bold" style={{ color: "#198754" }}>
+                                    Rp {month.paidAmount.toLocaleString("id-ID")}
+                                  </div>
                                   <small className="text-muted">({month.paidCount} transaksi)</small>
                                 </td>
-                                <td className="py-3 text-center">
-                                  <div className="fw-bold" style={{ color: "#dc3545" }}>Rp {month.unpaidAmount.toLocaleString("id-ID")}</div>
+                                <td className="py-2 py-md-3 text-center">
+                                  <div className="fw-bold" style={{ color: "#dc3545" }}>
+                                    Rp {month.unpaidAmount.toLocaleString("id-ID")}
+                                  </div>
                                   <small className="text-muted">({month.unpaidCount} transaksi)</small>
                                 </td>
-                                <td className="py-3 text-center fw-bold">
-                                  {month.invoiceCount}
-                                </td>
-                                <td className="py-3 text-center">
+                                <td className="py-2 py-md-3 text-center fw-bold">{month.invoiceCount}</td>
+                                <td className="py-2 py-md-3 text-center">
                                   <div className="d-flex align-items-center justify-content-center gap-2">
-                                    <div 
-                                      className="progress" 
-                                      style={{ width: "60px", height: "8px", borderRadius: "4px", backgroundColor: "#e9ecef" }}
-                                    >
-                                      <div 
-                                        className="progress-bar" 
-                                        style={{ 
-                                          width: `${paymentRate}%`, 
+                                    <div className="progress" style={{ width: "60px", height: "8px", borderRadius: "4px", backgroundColor: "#e9ecef" }}>
+                                      <div
+                                        className="progress-bar"
+                                        style={{
+                                          width: `${paymentRate}%`,
                                           backgroundColor: paymentRate >= 80 ? "#198754" : paymentRate >= 50 ? "#ffc107" : "#dc3545",
-                                          borderRadius: "4px"
+                                          borderRadius: "4px",
                                         }}
                                       ></div>
                                     </div>
-                                    <small className="fw-bold" style={{ minWidth: "45px" }}>{paymentRate.toFixed(1)}%</small>
+                                    <small className="fw-bold" style={{ minWidth: "45px" }}>
+                                      {paymentRate.toFixed(1)}%
+                                    </small>
                                   </div>
                                 </td>
                               </tr>
@@ -761,25 +765,20 @@ const ManajemenPembayaran = () => {
                       <p className="text-muted mb-0">Belum ada transaksi untuk tahun {selectedYear}</p>
                     </div>
                   )}
-                  
+
                   {/* Export Button */}
                   {monthlyData.length > 0 && (
                     <div className="text-end mt-3">
-                      <Button 
-                        variant="success" 
-                        size="sm"
-                        className="rounded-pill px-3 me-2"
-                        onClick={exportToExcel}
-                      >
+                      <Button variant="success" size="sm" className="rounded-pill px-3 me-2" onClick={exportToExcel}>
                         <i className="bi bi-file-earmark-excel me-2"></i>Export Excel
                       </Button>
                     </div>
                   )}
-                  
+
                   <hr className="my-4" style={{ border: "2px solid #f0f0f0", borderRadius: "2px" }} />
                 </div>
               )}
-              
+
               <div className="mb-4" style={{ maxWidth: "400px" }}>
                 <InputGroup className="shadow-sm rounded-pill overflow-hidden border">
                   <Form.Control placeholder="Cari klien, invoice, atau status..." className="border-0 ps-4" style={{ fontSize: "0.9rem" }} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
@@ -794,15 +793,25 @@ const ManajemenPembayaran = () => {
                 </InputGroup>
               </div>
 
-              <div className="table-responsive">
-                <table className="table table-bordered align-middle text-center mb-0">
+              <div className="table-responsive" style={{ overflowX: "auto" }}>
+                <table className="table table-bordered align-middle text-center mb-0" style={{ minWidth: "700px", width: "100%" }}>
                   <thead className="table-light">
                     <tr>
-                      <th className="py-3">No Invoice</th>
-                      <th className="py-3">Klien</th>
-                      <th className="py-3">Total</th>
-                      <th className="py-3">Status</th>
-                      <th className="py-3">Aksi</th>
+                      <th className="py-2 py-md-3" style={{ minWidth: "120px", width: "20%" }}>
+                        No Invoice
+                      </th>
+                      <th className="py-2 py-md-3" style={{ minWidth: "140px", width: "25%" }}>
+                        Klien
+                      </th>
+                      <th className="py-2 py-md-3" style={{ minWidth: "100px", width: "15%" }}>
+                        Total
+                      </th>
+                      <th className="py-2 py-md-3" style={{ minWidth: "100px", width: "15%" }}>
+                        Status
+                      </th>
+                      <th className="py-2 py-md-3" style={{ minWidth: "180px", width: "25%" }}>
+                        Aksi
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -837,7 +846,7 @@ const ManajemenPembayaran = () => {
                       if (combined.length === 0) {
                         return (
                           <tr>
-                            <td colSpan={5} className="py-4 text-center text-muted">
+                            <td colSpan={5} className="py-3 py-md-4 text-center text-muted">
                               {searchQuery.trim() ? `Tidak ditemukan hasil untuk "${searchQuery}"` : "Belum ada invoice atau booking menunggu pembayaran"}
                             </td>
                           </tr>
@@ -846,51 +855,58 @@ const ManajemenPembayaran = () => {
 
                       return combined.map((item) => (
                         <tr key={item.type === "invoice" ? item.invoiceId : `booking-${item.bookingId}`}>
-                          <td className="py-3 fw-bold text-primary">{item.invoiceId}</td>
-                          <td className="py-3 text-start ps-4">
+                          <td className="py-2 py-md-3 fw-bold text-primary" style={{ wordBreak: "break-word" }}>
+                            {item.invoiceId}
+                          </td>
+                          <td className="py-2 py-md-3 text-start ps-2 ps-md-4" style={{ wordBreak: "break-word" }}>
                             <div className="fw-bold">{item.namaKlien}</div>
                           </td>
-                          <td className="py-3 fw-bold">Rp {item.total.toLocaleString("id-ID")}</td>
-                          <td className="py-3">{getStatusBadge(item.status)}</td>
-                          <td className="py-3">
-                            <Stack direction="horizontal" gap={2} className="justify-content-center">
-                              <Button size="sm" className="text-white px-3" style={{ backgroundColor: customColors.brown, border: "none", borderRadius: "15px" }} onClick={() => handleShowDetail(item)}>
-                                Detail
+                          <td className="py-2 py-md-3 fw-bold">Rp {item.total.toLocaleString("id-ID")}</td>
+                          <td className="py-2 py-md-3">{getStatusBadge(item.status)}</td>
+                          <td className="py-2 py-md-3">
+                            <Stack direction="horizontal" gap={1} className="justify-content-center flex-wrap">
+                              <Button size="sm" className="text-white px-2 px-md-3" style={{ backgroundColor: customColors.brown, border: "none", borderRadius: "15px", fontSize: "0.75rem" }} onClick={() => handleShowDetail(item)}>
+                                <span className="d-none d-md-inline">Detail</span>
+                                <span className="d-md-none">📄</span>
                               </Button>
-                              {item.type === "invoice" && item.uploadedProof && item.status === "UNPAID" && (
+                              {/* Konfirmasi button for pending bookings (type=booking) */}
+                              {item.type === "booking" && (
                                 <Button
                                   size="sm"
                                   variant="success"
-                                  style={{ borderRadius: "15px" }}
-                                  onClick={() => {
-                                    setPaymentToConfirm({
-                                      type: "invoice",
-                                      invoiceId: item.invoiceId,
-                                      invoiceIdRaw: item.invoiceIdRaw,
-                                      bookingId: item.bookingId,
-                                      displayId: item.invoiceId,
-                                    });
-                                    setShowConfirmPaymentModal(true);
-                                  }}
-                                >
-                                  Konfirmasi Pembayaran
-                                </Button>
-                              )}
-                              {item.type === "booking" && item.uploadedProof && (item.status === "menunggu_konfirmasi_pembayaran" || (item.status || "").toLowerCase() === "menunggu_konfirmasi_pembayaran") && (
-                                <Button
-                                  size="sm"
-                                  variant="success"
-                                  style={{ borderRadius: "15px" }}
+                                  style={{ borderRadius: "15px", fontSize: "0.75rem", padding: "4px 8px" }}
                                   onClick={() => {
                                     setPaymentToConfirm({
                                       type: "booking",
                                       bookingId: item.bookingId,
                                       displayId: item.invoiceId || item.bookingId,
+                                      namaKlien: item.namaKlien || "-",
                                     });
                                     setShowConfirmPaymentModal(true);
                                   }}
                                 >
-                                  Konfirmasi
+                                  <span className="d-none d-md-inline">Konfirmasi</span>
+                                  <span className="d-md-none">✓</span>
+                                </Button>
+                              )}
+                              {/* Konfirmasi button for invoices with uploadedProof and status UNPAID */}
+                              {item.type === "invoice" && item.uploadedProof && item.status === "UNPAID" && (
+                                <Button
+                                  size="sm"
+                                  variant="success"
+                                  style={{ borderRadius: "15px", fontSize: "0.75rem", padding: "4px 8px" }}
+                                  onClick={() => {
+                                    setPaymentToConfirm({
+                                      type: "invoice",
+                                      bookingId: item.bookingId,
+                                      displayId: item.invoiceId || item.bookingId,
+                                      namaKlien: item.namaKlien || "-",
+                                    });
+                                    setShowConfirmPaymentModal(true);
+                                  }}
+                                >
+                                  <span className="d-none d-md-inline">Konfirmasi</span>
+                                  <span className="d-md-none">✓</span>
                                 </Button>
                               )}
                             </Stack>

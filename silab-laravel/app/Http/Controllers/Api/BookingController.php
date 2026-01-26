@@ -764,9 +764,13 @@ class BookingController extends Controller
                     $item->hasil = $itemData['hasil'] ?? null;
                     $item->metode = $itemData['metode'] ?? null;
                     $item->nama_analisis = $itemData['nama_analisis'] ?? null;
+                    // Update status jika dikirim dari frontend
+                    if (isset($itemData['status'])) {
+                        $item->status = $itemData['status'];
+                    }
                     $item->save();
 
-                    Log::info("Saved item {$item->id}: {$item->nama_item} = {$item->hasil}");
+                    Log::info("Saved item {$item->id}: {$item->nama_item} = {$item->hasil}, status = {$item->status}");
                 }
             }
         }
