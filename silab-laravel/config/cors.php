@@ -15,10 +15,13 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-         'http://localhost:5173',
-         'http://localhost:3000',
-    ],
+'allowed_origins' => [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://10.20.20.2:3000',   // React CRA
+    'http://10.20.20.2:5173',   // React Vite (jika pakai)
+],
+
 
     'allowed_origins_patterns' => [],
 

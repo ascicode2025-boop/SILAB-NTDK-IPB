@@ -175,31 +175,6 @@ function Dashboard() {
         </div>
       </div>
 
-      <div
-        onClick={() => window.open("https://wa.me/6282111485562?text=Halo%2C%20saya%20ingin%20bertanya%20tentang%20layanan%20laboratorium", "_blank")}
-        style={{
-          position: "fixed",
-          bottom: "30px",
-          right: "30px",
-          width: "70px",
-          height: "70px",
-          borderRadius: "50%",
-          color: "#fff",
-          fontSize: "32px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          boxShadow: "0 6px 20px rgba(141, 110, 99, 0.35)",
-          transition: "all 0.3s ease",
-          zIndex: 999,
-          border: "none",
-        }}
-        title="Hubungi Kami via WhatsApp"
-      >
-        ❓
-      </div>
-
       <style>{`
         @keyframes float {
           0%, 100% {

@@ -27,6 +27,9 @@ const statusToStep = (status) => {
     case "cancelled":
     case "dibatalkan":
       return -1; // Status khusus untuk ditolak
+    case "ditolak_kepala":
+    case "ditolak kepala":
+      return 3; // treat as 'menunggu verifikasi'
     case "menunggu_verifikasi":
     case "menunggu verifikasi":
     case "menunggu_verifikasi_kepala":
@@ -59,6 +62,9 @@ const formatStatus = (status) => {
   if (lowerStatus === "analisis_ditolak" || lowerStatus === "analisis ditolak" || lowerStatus === "rejected" || lowerStatus === "cancelled" || lowerStatus === "dibatalkan") {
     return "Analisis Ditolak";
   }
+  if (lowerStatus === "ditolak_kepala" || lowerStatus === "ditolak kepala") {
+    return "Menunggu Verifikasi";
+  }
   if (lowerStatus === "menunggu_verifikasi_kepala" || lowerStatus === "menunggu verifikasi kepala") {
     return "Menunggu Verifikasi";
   }
@@ -85,6 +91,7 @@ const getStatusBadge = (status) => {
     case "menunggu_ttd_koordinator":
     case "menunggu ttd_koordinator":
     case "menunggu ttd koordinator":
+    case "ditolak_kepala":
       return "bg-warning";
     case "analisis_ditolak":
     case "analisis ditolak":
@@ -95,11 +102,9 @@ const getStatusBadge = (status) => {
     case "proses":
     case "sedang dianalisis":
     case "sedang_dianalisis":
-      return "bg-primary";
     case "dikirim_ke_teknisi":
     case "dikirim ke_teknisi":
-    case "dikirim ke teknisi":
-      return "bg-secondary";
+      return "bg-primary";
     default:
       return "bg-secondary";
   }
@@ -192,7 +197,9 @@ const ProsesAnalisis = () => {
             status === "menunggu_ttd_koordinator" ||
             status === "menunggu_pembayaran" ||
             status === "selesai" ||
-            status === "ditandatangani"
+            status === "ditandatangani" ||
+            status === "ditolak_kepala" ||
+            status === "ditolak kepala"
           );
         });
 

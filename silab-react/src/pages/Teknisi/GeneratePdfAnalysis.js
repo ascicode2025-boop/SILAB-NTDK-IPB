@@ -30,11 +30,11 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Gabungkan resultUnits dari state jika ada
-  let bookingFromRoute = propBooking || location.state?.booking;
-  if (location.state?.booking && location.state.booking.resultUnits) {
-    bookingFromRoute = { ...location.state.booking, resultUnits: location.state.booking.resultUnits };
-  }
+  // Booking data possibly passed via route state (only id + resultUnits expected)
+  const routeBooking = propBooking || location.state?.booking;
+  // keep only id for effect dependency to avoid recreating object each render
+  const routeBookingId = routeBooking?.id;
+  const routeResultUnits = routeBooking?.resultUnits;
 
   const instituteHeader = [
     "KEMENTERIAN RISET, TEKNOLOGI DAN PENDIDIKAN TINGGI",
@@ -69,14 +69,17 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
   };
 
   useEffect(() => {
-    if (bookingFromRoute?.id) {
-      fetchBookingData(bookingFromRoute.id);
+    if (routeBookingId) {
+      // fetch booking by id and show detail
+      fetchBookingData(routeBookingId);
       setViewMode("detail");
     } else {
       fetchAllVerificationBookings();
       setViewMode("list");
     }
-  }, [bookingFromRoute]);
+    // only depend on the booking id (primitive) to prevent effect-loop from recreated objects
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeBookingId]);
 
   // --- PATCH: Pastikan status tidak auto-kirim ---
   useEffect(() => {
@@ -179,8 +182,15 @@ export default function GeneratePdfAnalysis({ autoGenerate = false, filename = "
       const booking = allBookings.find((b) => b.id === bookingId);
 
       if (booking) {
-        setBookingData(booking);
-        setSelectedBooking(booking);
+        // If route included resultUnits (from input form), merge them so PDF formatter can use per-item units
+        if (routeResultUnits) {
+          const merged = { ...booking, resultUnits: routeResultUnits };
+          setBookingData(merged);
+          setSelectedBooking(merged);
+        } else {
+          setBookingData(booking);
+          setSelectedBooking(booking);
+        }
       } else {
         message.error("Data booking tidak ditemukan!");
       }

@@ -268,6 +268,7 @@ const LaporanKepala = () => {
                     )}
                     {!loading &&
                       reportData
+                        .filter((item) => String(item.status).toLowerCase() === "selesai")
                         .filter((item) => {
                           if (!searchTerm) return true;
                           const q = searchTerm.toLowerCase();

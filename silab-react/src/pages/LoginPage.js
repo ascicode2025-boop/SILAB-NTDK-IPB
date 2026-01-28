@@ -251,7 +251,7 @@ function LoginPage() {
 
       {/* TOMBOL FAQ WHATSAPP - FLOATING */}
       <a
-        href="https://wa.me/6282111485562?text=Halo%20Admin%20SILAB-NTDK%2C%20saya%20ingin%20bertanya."
+        href="https://wa.me/6285691552140?text=Halo%20Admin%20SILAB-NTDK%2C%20saya%20ingin%20bertanya."
         target="_blank"
         rel="noopener noreferrer"
         className="faq-whatsapp-btn"

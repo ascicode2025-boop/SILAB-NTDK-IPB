@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Image, Nav, Dropdown, Badge } from "react-bootstrap";
 import { useHistory, useLocation } from "react-router-dom";
-import { FaTachometerAlt, FaFileAlt, FaCalendarAlt, FaClipboardList, FaClock, FaFlask, FaCreditCard, FaHistory, FaBars, FaUserCircle, FaBell } from "react-icons/fa";
+import { FaTachometerAlt, FaFileAlt, FaCalendarAlt, FaClipboardList, FaClock, FaFlask, FaCreditCard, FaHistory, FaBars, FaUserCircle, FaBell, FaTimes } from "react-icons/fa";
 import { getUnreadNotifications, getAllNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "../../services/NotificationService";
 import "@fontsource/poppins";
 import ConfirmModal from "../../components/Common/ConfirmModal";
@@ -159,7 +159,7 @@ function NavbarLogin({ children }) {
         {/* Bagian Kiri: Burger Menu & Logo */}
         <div className="d-flex align-items-center">
           <button className="btn btn-light border-0 me-3 d-lg-none rounded-circle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle sidebar">
-            <FaBars size={20} className="text-secondary" />
+            {sidebarOpen ? <FaTimes size={22} className="text-secondary" /> : <FaBars size={20} className="text-secondary" />}
           </button>
 
           <div className="d-flex align-items-center gap-3">

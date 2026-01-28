@@ -1007,35 +1007,40 @@ function FormInputNilaiAnalisis() {
 
           {/* Action Footer */}
           <div
-            className="d-flex justify-content-between align-items-center mt-5 p-4 bg-white shadow-sm"
+            className="d-flex flex-wrap flex-md-nowrap justify-content-between align-items-center mt-5 p-4 bg-white shadow-sm gap-3 gap-md-0"
             style={{
               borderRadius: "12px",
               position: "sticky",
               bottom: 0,
               zIndex: 10,
+              rowGap: "16px",
             }}
           >
-            <Button
-              size="large"
-              onClick={handleBack}
-              style={{
-                minWidth: "120px",
-                height: "48px",
-                borderRadius: "8px",
-                fontWeight: 500,
-                border: "1px solid #d9d9d9",
-              }}
-            >
-              Kembali
-            </Button>
+            <div className="flex-grow-1 flex-basis-100 mb-2 mb-md-0" style={{ maxWidth: "220px" }}>
+              <Button
+                size="large"
+                block
+                onClick={handleBack}
+                style={{
+                  minWidth: "120px",
+                  height: "48px",
+                  borderRadius: "8px",
+                  fontWeight: 500,
+                  border: "1px solid #d9d9d9",
+                }}
+              >
+                Kembali
+              </Button>
+            </div>
 
-            <div className="d-flex" style={{ gap: "12px" }}>
+            <div className="d-flex flex-wrap flex-md-nowrap justify-content-end flex-grow-1 gap-2 gap-md-3" style={{ minWidth: 0 }}>
               <Button
                 type="default"
                 size="large"
                 icon={<SaveOutlined />}
                 loading={loading}
                 onClick={handleSimpan}
+                block
                 style={{
                   minWidth: "160px",
                   height: "48px",
@@ -1043,6 +1048,8 @@ function FormInputNilaiAnalisis() {
                   fontWeight: 500,
                   borderColor: "#1890ff",
                   color: "#1890ff",
+                  flex: 1,
+                  maxWidth: "220px",
                 }}
               >
                 Simpan Draft
@@ -1053,11 +1060,14 @@ function FormInputNilaiAnalisis() {
                 size="large"
                 loading={loading}
                 onClick={handleResetForm}
+                block
                 style={{
                   minWidth: "140px",
                   height: "48px",
                   borderRadius: "8px",
                   fontWeight: 500,
+                  flex: 1,
+                  maxWidth: "180px",
                 }}
               >
                 Reset Form
@@ -1069,6 +1079,7 @@ function FormInputNilaiAnalisis() {
                 icon={<CheckCircleFilled />}
                 loading={loading}
                 onClick={handleSelesaikan}
+                block
                 style={{
                   minWidth: "200px",
                   height: "48px",
@@ -1077,6 +1088,8 @@ function FormInputNilaiAnalisis() {
                   background: "#52c41a",
                   borderColor: "#52c41a",
                   boxShadow: "0 2px 8px rgba(82, 196, 26, 0.2)",
+                  flex: 2,
+                  maxWidth: "260px",
                 }}
               >
                 Selesaikan Analisis

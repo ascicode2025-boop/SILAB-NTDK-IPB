@@ -37,7 +37,8 @@ const MentoringKepala = () => {
       const bookingsRes = await getAllBookings();
       const invoicesRes = await getInvoices();
 
-      const bookings = bookingsRes?.data || [];
+      // Filter hanya status selesai
+      const bookings = (bookingsRes?.data || []).filter((b) => String(b.status).toLowerCase() === "selesai");
       const invoices = invoicesRes?.data || [];
 
       // Process chart data - aktivitas per bulan
@@ -477,17 +478,27 @@ const MentoringKepala = () => {
                     <Table className="mb-0" style={{ fontSize: "0.95rem", minWidth: "600px", width: "100%" }}>
                       <thead style={{ backgroundColor: "#f8f9fa" }}>
                         <tr>
-                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom" style={{ minWidth: "140px", width: "30%" }}>Bulan</th>
-                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "120px", width: "25%" }}>Jumlah Sampel Dianalisis</th>
-                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "130px", width: "25%" }}>Rata-rata Waktu Pengerjaan</th>
-                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "110px", width: "20%" }}>Keterangan</th>
+                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom" style={{ minWidth: "140px", width: "30%" }}>
+                            Bulan
+                          </th>
+                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "120px", width: "25%" }}>
+                            Jumlah Sampel Dianalisis
+                          </th>
+                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "130px", width: "25%" }}>
+                            Rata-rata Waktu Pengerjaan
+                          </th>
+                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "110px", width: "20%" }}>
+                            Keterangan
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {rekaptulasi.length > 0 ? (
                           rekaptulasi.map((row, idx) => (
                             <tr key={idx}>
-                              <td className="py-2 py-md-3 px-2 px-md-4 border-bottom" style={{ wordBreak: "break-word" }}>{row.bulan}</td>
+                              <td className="py-2 py-md-3 px-2 px-md-4 border-bottom" style={{ wordBreak: "break-word" }}>
+                                {row.bulan}
+                              </td>
                               <td className="py-2 py-md-3 px-2 px-md-4 border-bottom text-center fw-bold">{row.sampel}</td>
                               <td className="py-2 py-md-3 px-2 px-md-4 border-bottom text-center">{row.rata_rata}</td>
                               <td className="py-2 py-md-3 px-2 px-md-4 border-bottom text-center">
@@ -495,7 +506,7 @@ const MentoringKepala = () => {
                                   style={{
                                     color: row.keterangan === "Stabil" ? "#198754" : "#fd7e14",
                                     fontWeight: "500",
-                                    fontSize: "0.85rem"
+                                    fontSize: "0.85rem",
                                   }}
                                 >
                                   {row.keterangan}
@@ -530,25 +541,37 @@ const MentoringKepala = () => {
                     <Table className="mb-0" style={{ fontSize: "0.95rem", minWidth: "600px", width: "100%" }}>
                       <thead style={{ backgroundColor: "#f8f9fa" }}>
                         <tr>
-                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom" style={{ minWidth: "140px", width: "30%" }}>Bulan</th>
-                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "110px", width: "20%" }}>Jumlah Transaksi</th>
-                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "130px", width: "30%" }}>Total Pendapatan</th>
-                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "110px", width: "20%" }}>Keterangan</th>
+                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom" style={{ minWidth: "140px", width: "30%" }}>
+                            Bulan
+                          </th>
+                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "110px", width: "20%" }}>
+                            Jumlah Transaksi
+                          </th>
+                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "130px", width: "30%" }}>
+                            Total Pendapatan
+                          </th>
+                          <th className="py-2 py-md-3 px-2 px-md-4 fw-bold text-dark border-bottom text-center" style={{ minWidth: "110px", width: "20%" }}>
+                            Keterangan
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {rekapDetail.length > 0 ? (
                           rekapDetail.map((row, idx) => (
                             <tr key={idx}>
-                              <td className="py-2 py-md-3 px-2 px-md-4 border-bottom" style={{ wordBreak: "break-word" }}>{row.bulan}</td>
+                              <td className="py-2 py-md-3 px-2 px-md-4 border-bottom" style={{ wordBreak: "break-word" }}>
+                                {row.bulan}
+                              </td>
                               <td className="py-2 py-md-3 px-2 px-md-4 border-bottom text-center fw-bold">{row.transaksi}</td>
-                              <td className="py-2 py-md-3 px-2 px-md-4 border-bottom text-center fw-bold" style={{ fontSize: "0.85rem" }}>{row.total}</td>
+                              <td className="py-2 py-md-3 px-2 px-md-4 border-bottom text-center fw-bold" style={{ fontSize: "0.85rem" }}>
+                                {row.total}
+                              </td>
                               <td className="py-2 py-md-3 px-2 px-md-4 border-bottom text-center">
                                 <span
                                   style={{
                                     color: row.keterangan === "Stabil" ? "#198754" : row.keterangan === "Naik" ? "#0d6efd" : "#dc3545",
                                     fontWeight: "500",
-                                    fontSize: "0.85rem"
+                                    fontSize: "0.85rem",
                                   }}
                                 >
                                   {row.keterangan}

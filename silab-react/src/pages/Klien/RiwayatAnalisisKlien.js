@@ -111,12 +111,6 @@ const RiwayatAnalisisKlien = () => {
         <Container>
           {/* Header Section */}
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-5">
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <div style={{ width: "30px", height: "3px", backgroundColor: theme.primary }}></div>
-              <span className="text-uppercase fw-bold" style={{ color: theme.primary, fontSize: "12px", letterSpacing: "1px" }}>
-                Client Dashboard
-              </span>
-            </div>
             <h2 className="fw-bold" style={{ color: theme.textDark, fontSize: "2.2rem" }}>
               Riwayat Analisis
             </h2>

@@ -157,7 +157,7 @@ const MenungguPersetujuan = () => {
   // PERBAIKAN DI SINI: Logika WA Link
   const getWALink = () => {
     if (!selectedBooking) return "#";
-    const phone = "6282111485562";
+    const phone = "+628128910251";
     const allCodes = generateSampleCodes(selectedBooking);
 
     // Ambil nama spesifik dari booking yang dipilih (jika ada relasi user), atau gunakan state global
