@@ -19,6 +19,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Register security headers middleware to API and Web groups
+        try {
+            $router = $this->app->make(\Illuminate\Routing\Router::class);
+            // Push middleware to api and web groups if they exist
+            if (method_exists($router, 'pushMiddlewareToGroup')) {
+                $router->pushMiddlewareToGroup('api', \App\Http\Middleware\SecurityHeaders::class);
+                $router->pushMiddlewareToGroup('web', \App\Http\Middleware\SecurityHeaders::class);
+            }
+        } catch (\Throwable $e) {
+            // Do not break boot on consoles or during install; fail silently
+        }
     }
 }

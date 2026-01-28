@@ -31,7 +31,7 @@ class DatabaseSeeder extends Seeder
 
         // 1. Akun Teknisi
         User::firstOrCreate(
-            ['name' => 'Petugas Teknisi'],
+            ['name' => 'yudha.teknisi'],
             [
                 'email' => 'teknisi@lab.com',
                 'password' => Hash::make('123456'),
@@ -43,7 +43,7 @@ class DatabaseSeeder extends Seeder
 
         // 2. Akun Koordinator
         User::firstOrCreate(
-            ['name' => 'Bu Siti Koordinator'],
+            ['name' => 'kokom.koordinator'],
             [
                 'email' => 'koordinator@lab.com',
                 'password' => Hash::make('123456'),
@@ -55,7 +55,7 @@ class DatabaseSeeder extends Seeder
 
         // 3. Akun Kepala Lab
         User::firstOrCreate(
-            ['name' => 'Prof. Andi Kepala'],
+            ['name' => 'prof.dewi'],
             [
                 'email' => 'kepala@lab.com',
                 'password' => Hash::make('123456'),

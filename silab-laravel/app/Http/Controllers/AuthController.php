@@ -7,6 +7,8 @@ use App\Mail\WelcomeEmail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -77,10 +79,34 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
-        if (!Auth::attempt($request->only('name', 'password'))) {
-            return response()->json([
-                'message' => 'Username atau password salah.'
-            ], 401);
+        // Rate limiter key: combine username + IP to avoid global lockouts
+        $loginName = (string) $request->input('name');
+        $key = Str::lower($loginName) . '|' . $request->ip();
+        $maxAttempts = 5;
+        $decaySeconds = 5 * 60; // 5 minutes
+
+        // If too many attempts, still try to authenticate: allow successful login to bypass lockout
+        if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
+            // Attempt authentication even if locked
+            if (Auth::attempt($request->only('name', 'password'))) {
+                // Clear attempts on successful login
+                RateLimiter::clear($key);
+            } else {
+                // Increment hit and respond with 429 and Retry-After
+                $seconds = RateLimiter::availableIn($key) ?: $decaySeconds;
+                RateLimiter::hit($key, $decaySeconds);
+                return response()->json([
+                    'message' => 'Terlalu banyak percobaan. Silakan coba lagi nanti.'
+                ], 429)->header('Retry-After', $seconds);
+            }
+        } else {
+            // Normal flow: attempt authentication and increment on failure
+            if (!Auth::attempt($request->only('name', 'password'))) {
+                RateLimiter::hit($key, $decaySeconds);
+                return response()->json([
+                    'message' => 'Username atau password salah.'
+                ], 401);
+            }
         }
 
         /** @var \App\Models\User $user */

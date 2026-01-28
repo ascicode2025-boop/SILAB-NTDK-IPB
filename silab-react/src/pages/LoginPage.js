@@ -132,6 +132,16 @@ function LoginPage() {
             errorMessage += err.response.data.message || "Periksa input Anda.";
           }
           setError(errorMessage);
+        } else if (err.response.status === 429) {
+          // Throttle / Too Many Requests - show friendly message (use server message if provided)
+          const retryAfter = err.response.headers && (err.response.headers['retry-after'] || err.response.headers['Retry-After']);
+          let minutes = null;
+          if (retryAfter) {
+            const secs = Number(retryAfter);
+            if (!isNaN(secs) && secs > 0) minutes = Math.ceil(secs / 60);
+          }
+          const serverMsg = err.response.data && err.response.data.message;
+          setError(serverMsg || (minutes ? `Terlalu banyak percobaan. Silakan coba lagi dalam ${minutes} menit.` : "Terlalu banyak percobaan. Silakan coba lagi nanti."));
         } else {
           setError(`Error ${err.response.status}: ${err.response.data.message || "Terjadi kesalahan di server."}`);
         }

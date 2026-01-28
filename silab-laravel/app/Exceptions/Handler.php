@@ -48,6 +48,25 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $exception)
     {
+        // Custom handling for throttle (rate limit) exceptions to return a friendly message for API clients
+        if ($exception instanceof \Illuminate\Http\Exceptions\ThrottleRequestsException) {
+            // If API request, return JSON with a clear message and include Retry-After header if present
+            if ($request->expectsJson() || $request->is('api/*')) {
+                $headers = method_exists($exception, 'getHeaders') ? $exception->getHeaders() : [];
+                $retryAfter = null;
+                if (isset($headers['Retry-After'])) {
+                    $retryAfter = (int) $headers['Retry-After'];
+                } elseif (isset($headers['retry-after'])) {
+                    $retryAfter = (int) $headers['retry-after'];
+                }
+
+                $minutes = $retryAfter ? ceil($retryAfter / 60) : null;
+                $msg = $minutes ? "Terlalu banyak percobaan. Silakan coba lagi dalam {$minutes} menit." : 'Terlalu banyak percobaan. Silakan coba lagi nanti.';
+
+                return response()->json(['message' => $msg], 429, $headers);
+            }
+        }
+
         return parent::render($request, $exception);
     }
 

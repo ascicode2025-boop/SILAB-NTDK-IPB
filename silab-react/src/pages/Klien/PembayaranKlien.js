@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import NavbarLogin from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
 import { motion } from "framer-motion";
-import { Copy, Clock, CheckCircle, Wallet, Upload, RefreshCcw } from "lucide-react";
+import { Copy, Clock, CheckCircle, Wallet, Upload, Building } from "lucide-react";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 const PembayaranKlien = () => {
@@ -12,9 +12,9 @@ const PembayaranKlien = () => {
 
   const [detailBooking, setDetailBooking] = useState(null);
   const [data, setData] = useState({
-    vaNumber: "02835230893",
+    vaNumber: "0504118998",
     expiryDate: "27 Oktober 2025, 13:00 WIB",
-    method: "Bank Mandiri",
+    method: "Bank BNI",
     total: "0",
   });
   const [invoiceIdRaw, setInvoiceIdRaw] = useState(null);
@@ -42,9 +42,9 @@ const PembayaranKlien = () => {
         const paid = (inv.status && inv.status.toUpperCase() === "PAID") || !!inv.paid_at;
         setPaymentSuccess(paid);
         setData({
-          vaNumber: "02835230893",
+          vaNumber: "0504118998",
           expiryDate: inv.due_date ? new Date(inv.due_date).toLocaleDateString("id-ID") : "7 hari dari sekarang",
-          method: "Bank Mandiri",
+          method: "Bank BNI",
           total: (inv.amount || 0).toLocaleString("id-ID"),
         });
         if (inv.booking) {
@@ -85,17 +85,17 @@ const PembayaranKlien = () => {
               }
               const total = (Number(b.jumlah_sampel) || 0) * sumPrices;
               setData({
-                vaNumber: "02835230893",
+                vaNumber: "0504118998",
                 expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString("id-ID"),
-                method: "Bank Mandiri",
+                method: "Bank BNI",
                 total: total.toLocaleString("id-ID"),
               });
             } catch (err) {
               const total = (Number(b.jumlah_sampel) || 0) * 50000;
-              setData({
-                vaNumber: "02835230893",
+                setData({
+                vaNumber: "0504118998",
                 expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString("id-ID"),
-                method: "Bank Mandiri",
+                method: "Bank BNI",
                 total: total.toLocaleString("id-ID"),
               });
             }
@@ -353,7 +353,10 @@ const PembayaranKlien = () => {
                 <div className="border rounded-4 p-4 mb-4 text-start position-relative">
                   <div className="d-flex justify-content-between align-items-center mb-3">
                     <span className="text-muted fw-bold small">Nomor Virtual Account</span>
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/a/ad/Bank_Mandiri_logo_2016.svg" alt="Mandiri" style={{ height: "14px" }} />
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <Building size={18} />
+                      <span className="small fw-bold" style={{ fontSize: 12 }}>BNI</span>
+                    </div>
                   </div>
                   <div className="bg-light p-3 rounded-3 d-flex justify-content-between align-items-center border">
                     <span className="fs-4 fw-bold letter-spacing-2" style={{ letterSpacing: "3px" }}>
@@ -479,7 +482,7 @@ const PembayaranKlien = () => {
 
                   {/* Tombol Cek Status */}
                   <button className="btn btn-light py-3 border-0 fw-bold d-flex align-items-center justify-content-center gap-2" style={{ borderRadius: "14px", color: "#666" }} onClick={() => fetchInvoiceForBooking(detailBooking?.id)}>
-                    <RefreshCcw size={18} />
+                    <span style={{ fontSize: 18 }}>↻</span>
                     Cek Status Otomatis
                   </button>
                 </div>
