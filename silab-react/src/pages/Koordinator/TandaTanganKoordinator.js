@@ -552,24 +552,7 @@ const TandaTanganKoordinator = () => {
                                 Download
                               </Button>
 
-                              {/* Button Kirim ke Kepala (visible when Koordinator should forward to Kepala) */}
-                              {item.status === "menunggu_ttd_koordinator" && (
-                                <Button
-                                  size="sm"
-                                  style={{ backgroundColor: "#1e88e5", borderColor: "#1e88e5" }}
-                                  onClick={async () => {
-                                    try {
-                                      await kirimKeKepala(item.id);
-                                      fetchData();
-                                    } catch (e) {
-                                      console.error(e);
-                                      alert("Gagal mengirim ke Kepala");
-                                    }
-                                  }}
-                                >
-                                  Kirim ke Kepala
-                                </Button>
-                              )}
+                              {/* Tombol Kirim ke Kepala dihapus sesuai permintaan */}
 
                               {/* Button Upload & Selesaikan: only allow upload when a signature record exists and is pending */}
                               {(() => {

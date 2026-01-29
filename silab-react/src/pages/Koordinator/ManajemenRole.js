@@ -123,7 +123,7 @@ const ManajemenAkun = () => {
     e.preventDefault();
     setCreating(true);
     // client-side validation: institution required for Kepala Lab and Koordinator
-    if (["Kepala Lab", "Koordinator"].includes(createForm.role) && !(createForm.institution || "").trim()) {
+    if (["Kepala", "Koordinator"].includes(createForm.role) && !(createForm.institution || "").trim()) {
       alert("Institusi/Laboratorium wajib diisi untuk role yang dipilih.");
       setCreating(false);
       return;
@@ -145,7 +145,19 @@ const ManajemenAkun = () => {
       fetchUsers();
     } catch (err) {
       console.error("Gagal membuat akun:", err);
-      alert("Gagal membuat akun. Periksa console untuk detail.");
+      // Tampilkan pesan error dari response jika ada
+      let msg = "Gagal membuat akun. Periksa console untuk detail.";
+      if (err && err.response && err.response.data) {
+        if (typeof err.response.data === "string") {
+          msg = err.response.data;
+        } else if (err.response.data.message) {
+          msg = err.response.data.message;
+        } else if (err.response.data.errors) {
+          // Gabungkan semua pesan error validasi
+          msg = Object.values(err.response.data.errors).flat().join("\n");
+        }
+      }
+      alert(msg);
     }
     setCreating(false);
   };
@@ -153,7 +165,7 @@ const ManajemenAkun = () => {
   // dynamic label for institution based on selected role
   const institutionLabel = () => {
     if (createForm.role === "Teknisi") return "Institusi";
-    if (createForm.role === "Kepala Lab") return "Laboratorium";
+    if (createForm.role === "Kepala") return "Laboratorium";
     if (createForm.role === "Koordinator") return "Institusi / Unit";
     return "Institusi";
   };
@@ -442,7 +454,7 @@ const ManajemenAkun = () => {
               <Form.Group className="mb-3">
                 <Form.Label className="text-muted small ms-1">
                   {institutionLabel()}
-                  {["Kepala Lab", "Koordinator"].includes(createForm.role) ? " *" : ""}
+                  {["Kepala", "Koordinator"].includes(createForm.role) ? " *" : ""}
                 </Form.Label>
                 <Form.Control
                   name="institution"
@@ -450,8 +462,8 @@ const ManajemenAkun = () => {
                   onChange={handleCreateChange}
                   type="text"
                   className="custom-input shadow-sm"
-                  placeholder={createForm.role === "Kepala Lab" ? "Nama laboratorium" : "Nama institusi / unit"}
-                  required={["Kepala Lab", "Koordinator"].includes(createForm.role)}
+                  placeholder={createForm.role === "Kepala" ? "Nama laboratorium" : "Nama institusi / unit"}
+                  required={["Kepala", "Koordinator"].includes(createForm.role)}
                 />
               </Form.Group>
 
@@ -463,9 +475,9 @@ const ManajemenAkun = () => {
               <Form.Group className="mb-3">
                 <Form.Label className="text-muted small ms-1">Role</Form.Label>
                 <Form.Select name="role" value={createForm.role} onChange={handleCreateChange} className="custom-input shadow-sm">
-                  <option value="Teknisi">Teknisi</option>
-                  <option value="Kepala Lab">Kepala Lab</option>
-                  <option value="Koordinator">Koordinator</option>
+                  <option value="teknisi">Teknisi</option>
+                  <option value="kepala">Kepala Lab</option>
+                  <option value="koordinator">Koordinator</option>
                 </Form.Select>
               </Form.Group>
 

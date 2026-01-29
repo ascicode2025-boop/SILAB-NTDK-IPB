@@ -12,6 +12,20 @@ import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import { getAllBookings, updateBookingStatus, deleteBooking } from "../../services/BookingService";
 
 const VerifikasiSampel = () => {
+    const handleDelete = async (row) => {
+      if (!window.confirm(`Hapus booking batch ${row.kode_batch || ""}? Data akan dihapus permanen!`)) return;
+      try {
+        setIsProcessing(true);
+        await deleteBooking(row.id); // Panggil API hapus
+        // Hapus dari state lokal agar tidak muncul lagi
+        setDataBookings((prev) => prev.filter((item) => item.id !== row.id));
+        toast.success("Sampel berhasil dihapus.");
+      } catch (error) {
+        toast.error("Gagal menghapus sampel.");
+      } finally {
+        setIsProcessing(false);
+      }
+    };
   useEffect(() => {
     document.title = "SILAB-NTDK - Verifikasi Sampel";
   }, []);
@@ -57,6 +71,7 @@ const VerifikasiSampel = () => {
   );
 
   // Memoize cancelled data (kualitas sampel buruk)
+  // Hanya tampilkan data yang statusnya 'dibatalkan' dan memang masih ada di dataBookings (belum dihapus dari database)
   const cancelledData = useMemo(
     () =>
       dataBookings.filter((item) => {
@@ -236,34 +251,7 @@ const VerifikasiSampel = () => {
     }
   };
 
-  // Hapus booking (hanya status dibatalkan)
-  const handleDelete = async (row) => {
-    if (!window.confirm(`Hapus booking batch ${row.kode_batch || ""}? Data akan dikembalikan ke table Sampel Sampai!`)) return;
-    try {
-      setIsProcessing(true);
-      // ...existing code for API call to delete/cancel sample...
-      // Update dataBookings: remove from cancelled, add as approved
-      setDataBookings((prev) => {
-        // Remove the cancelled sample
-        const filtered = prev.filter((item) => item.id !== row.id);
-        // Add back as approved
-        return [
-          ...filtered,
-          {
-            ...row,
-            status: "disetujui",
-            alasan_teknisi: undefined,
-            updated_at: new Date().toISOString(),
-          },
-        ];
-      });
-      toast.success("Sampel dipindahkan ke daftar Sampel Sampai.");
-    } catch (error) {
-      toast.error("Gagal memproses sampel.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  // (Sudah digantikan dengan versi yang benar di atas)
 
   return (
     <NavbarLoginTeknisi>
@@ -686,6 +674,20 @@ const VerifikasiSampel = () => {
                             <button className="btn btn-danger btn-sm rounded-3 shadow-sm" onClick={() => handleDelete(row)} disabled={isProcessing} title="Hapus booking dibatalkan">
                               <i className="bi bi-trash"></i>
                             </button>
+                            {/* Tombol WhatsApp untuk mengirim alasan penolakan */}
+                            {row.user?.nomor_telpon && row.alasan_teknisi && (
+                              <a
+                                className="btn btn-success btn-sm rounded-3 shadow-sm d-flex align-items-center gap-1"
+                                href={`https://wa.me/${row.user.nomor_telpon.replace(/^0/, '62')}?text=${encodeURIComponent(
+                                  `Halo ${row.user.full_name || row.user.name},\n\nBooking dengan kode batch: ${row.kode_batch || '-'} telah DITOLAK karena alasan berikut:\n${row.alasan_teknisi}\n\nSilakan hubungi admin untuk informasi lebih lanjut.\nTerima kasih.\n\nSILAB-NTDK IPB`
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Kirim WhatsApp ke klien"
+                              >
+                                <i className="bi bi-whatsapp"></i>
+                              </a>
+                            )}
                           </div>
                         </td>
                       </tr>

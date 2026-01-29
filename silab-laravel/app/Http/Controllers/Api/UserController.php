@@ -59,7 +59,7 @@ class UserController extends Controller
             'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:6',
             // Only allow creating the three specific roles
-            'role' => 'required|string|in:Teknisi,Koordinator,Kepala Lab',
+            'role' => 'required|string|in:Teknisi,Koordinator,kepala',
             // institution corresponds to frontend "institution" field
             'institution' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:30',

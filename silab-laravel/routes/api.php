@@ -14,6 +14,15 @@ use App\Http\Controllers\NotificationController;
 |--------------------------------------------------------------------------
 */
 
+
+// Blokir akses ke file sensitif via API
+Route::get('/.env', function () {
+    abort(404);
+});
+Route::get('/storage/{any}', function () {
+    abort(404);
+})->where('any', '.*\.env.*');
+
 // Public Routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);

@@ -4,6 +4,15 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 
+
+// Blokir akses ke file sensitif
+Route::get('/.env', function () {
+    abort(404);
+});
+Route::get('/storage/{any}', function () {
+    abort(404);
+})->where('any', '.*\.env.*');
+
 Route::get('/', function () {
     return response()->json([
         'message' => 'API Berhasil dijalankan.'
