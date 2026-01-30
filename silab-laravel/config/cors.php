@@ -1,37 +1,15 @@
 <?php
 
 return [
-
-    /*
-    |--------------------------------------------------------------------------
-    | CORS (Cross-Origin Resource Sharing) Options
-    |--------------------------------------------------------------------------
-    |
-    | Here you may configure your settings for cross-origin resource sharing
-    |
-    */
-
-    'paths' => ['api/*', 'storage/*'],
-
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'storage/*'],
     'allowed_methods' => ['*'],
 
-'allowed_origins' => [
-    'https://silab.ipb.ac.id', // Ganti dengan domain frontend produksi
-    //'http://localhost:5173',
-    //'http://localhost:3000',
-    //'http://10.20.20.2:3000',
-    //'http://10.20.20.2:5173',
-],
-
+    // Kode ini akan membaca domain silabntdk.com dari dashboard Coolify
+    'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'https://silabntdk.com')),
 
     'allowed_origins_patterns' => [],
-
     'allowed_headers' => ['*'],
-
     'exposed_headers' => [],
-
     'max_age' => 0,
-
     'supports_credentials' => true,
-
 ];
