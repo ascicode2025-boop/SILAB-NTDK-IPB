@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\URL; // Tambahkan ini
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +20,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // PENTING: Paksa HTTPS di lingkungan produksi agar link gambar dan API tidak rusak
+        if (config('app.env') === 'production') {
+            URL::forceScheme('https');
+        }
+
         // Register security headers middleware to API and Web groups
         try {
             $router = $this->app->make(\Illuminate\Routing\Router::class);
