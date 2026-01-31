@@ -32,7 +32,7 @@ function ProfileAkunTeknisi() {
     }
 
     axios
-      .get("https://api.silabntdk.com/api/api/me", {
+      .get("https://api.silabntdk.com/api/me", {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
@@ -85,7 +85,7 @@ function ProfileAkunTeknisi() {
     );
   }
 
-  const avatarUrl = user.avatar ? `https://api.silabntdk.com/api/storage/${user.avatar}` : null;
+  const avatarUrl = user.avatar ? `https://api.silabntdk.com/storage/${user.avatar}` : null;
 
   return (
     <>
