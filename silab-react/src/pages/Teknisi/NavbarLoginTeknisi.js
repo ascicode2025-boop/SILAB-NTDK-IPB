@@ -82,7 +82,7 @@ function NavbarLoginTeknisi({ children }) {
     { key: "riwayat", label: "Riwayat Analisis", icon: <FaHistory /> },
   ];
 
-  const avatarSrc = user?.avatar ? (user.avatar.startsWith("http") || user.avatar.startsWith("blob") ? user.avatar : `http://https://api.silabntdk.com/api/storage/${user.avatar}`) : null;
+  const avatarSrc = user?.avatar ? (user.avatar.startsWith("http") || user.avatar.startsWith("blob") ? user.avatar : `https://api.silabntdk.com/api/storage/${user.avatar}`) : null;
 
   // sinkronkan activeMenu berdasarkan URL
   useEffect(() => {
