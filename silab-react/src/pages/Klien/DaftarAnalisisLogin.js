@@ -20,7 +20,7 @@ function DaftarAnalisisLogin() {
 
   useEffect(() => {
     axios
-      .get("http://localhost:8000/api/analysis-prices-grouped")
+      .get("http://https://api.silabntdk.com/api/api/analysis-prices-grouped")
       .then((res) => {
         setDataAnalisis(res.data);
         setLoading(false);
