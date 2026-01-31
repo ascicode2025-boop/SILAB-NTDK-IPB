@@ -1,9 +1,11 @@
 import axios from "axios";
 import { getToken } from "../services/AuthService";
 
+// Pastikan baseURL menggunakan env var dengan fallback
+const baseURL = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
+
 const axiosClient = axios.create({
-  // Menggunakan process.env untuk Create React App
-  baseURL: process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api",
+  baseURL,
   headers: {
     Accept: "application/json",
     "Content-Type": "application/json",
