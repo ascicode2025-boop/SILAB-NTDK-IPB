@@ -61,7 +61,7 @@ const RiwayatAnalisisTeknisi = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const apiBase = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
+        const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await fetch(`${apiBase}/bookings/all`, { headers });
@@ -209,7 +209,7 @@ const RiwayatAnalisisTeknisi = () => {
                                 {item.pdf_path && (
                                   <Button
                                     as="a"
-                                    href={`${process.env.REACT_APP_API_BASE_URL ? process.env.REACT_APP_API_BASE_URL.replace(/\/api$/, "") : "http://127.0.0.1:8000"}/storage/${item.pdf_path}`}
+                                    href={`${process.env.REACT_APP_API_BASE_URL ? process.env.REACT_APP_API_BASE_URL.replace(/\/api$/, "") : "http://https://api.silabntdk.com"}/storage/${item.pdf_path}`}
                                     target="_blank"
                                     className="btn-hasil-teknisi responsive-btn"
                                     size="sm"

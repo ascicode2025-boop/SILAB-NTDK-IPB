@@ -2,7 +2,7 @@ import axios from "axios";
 
 import { getAuthHeader } from "./AuthService"; 
 
-const API_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
+const API_URL = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
 
 export const getMonthlyQuota = async (month, year, jenisAnalisis) => {
   try {

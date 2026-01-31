@@ -25,7 +25,7 @@ export default function LihatHasilPdfKoordinator() {
   // Fungsi Fetch Harga
   const fetchPrices = async () => {
     try {
-      const apiBase = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
+      const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
       const res = await fetch(`${apiBase}/analysis-prices`);
       if (res.ok) {
         const prices = await res.json();
@@ -93,7 +93,7 @@ export default function LihatHasilPdfKoordinator() {
 
   const getStoredPdfUrl = () => {
     if (!bookingData) return null;
-    const apiBase = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
+    const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
     const storageBase = apiBase.replace(/\/api\/?$/, "");
 
     if (bookingData.file_ttd_path) return `${storageBase}/storage/${bookingData.file_ttd_path}`;
@@ -102,7 +102,7 @@ export default function LihatHasilPdfKoordinator() {
   };
 
   const fetchPdfBlob = async (bookingId) => {
-    const apiBase = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
+    const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
     try {
       const res = await fetch(`${apiBase}/bookings/${bookingId}/pdf`, {
         headers: { ...getAuthHeader(), Accept: "application/pdf" },
@@ -164,7 +164,7 @@ export default function LihatHasilPdfKoordinator() {
 
   const handleDownload = async () => {
     const fileName = getFilename();
-    const apiBase = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
+    const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
     try {
       let blob;
       if (bookingData?.id) {

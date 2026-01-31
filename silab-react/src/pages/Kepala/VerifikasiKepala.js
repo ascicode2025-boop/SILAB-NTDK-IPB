@@ -117,7 +117,7 @@ const VerifikasiKepala = () => {
   // Fetch analysis prices from API
   const fetchPrices = async () => {
     try {
-      const apiBase = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000/api";
+      const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
       const res = await fetch(`${apiBase}/analysis-prices`);
       if (res.ok) {
         const prices = await res.json();
