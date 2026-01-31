@@ -3,7 +3,7 @@ import axios from "axios";
 import { useHistory } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
-const API_URL = "http://127.0.0.1:8000/api";
+const API_URL = " https://api.silabntdk.com/api";
 
 function ForgetPassword() {
   useEffect(() => {
