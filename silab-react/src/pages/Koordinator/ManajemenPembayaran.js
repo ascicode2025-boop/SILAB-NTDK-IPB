@@ -59,7 +59,7 @@ const ManajemenPembayaran = () => {
       const booking = item.booking || {};
       const enrich = async () => {
         try {
-          const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
+          const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
           const priceRes = await fetch(`${apiBase}/analysis-prices`);
           const priceData = await priceRes.json();
           const priceMap = {};
@@ -129,7 +129,7 @@ const ManajemenPembayaran = () => {
     // For invoices, enrich with itemized prices
     const enrich = async () => {
       try {
-        const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
+        const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
         const resp = await fetch(`${apiBase}/analysis-prices`);
         const prices = resp.ok ? await resp.json() : [];
         const priceMap = {};
@@ -437,7 +437,7 @@ const ManajemenPembayaran = () => {
             // Filter pending bookings: hanya yang status menunggu_pembayaran AND belum punya invoice
             const pend = bres.data.filter((b) => ["menunggu_pembayaran", "menunggu_konfirmasi_pembayaran"].includes((b.status || "").toLowerCase()) && !invoiceBookingIds.includes(b.id));
             // Fetch analysis prices for accurate calculation
-            const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
+            const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
             const priceRes = await fetch(`${apiBase}/analysis-prices`);
             const priceData = await priceRes.json();
             const priceMap = {};
@@ -948,7 +948,7 @@ const ManajemenPembayaran = () => {
               if (!uploadTarget || !fileToUpload) return alert("Pilih file terlebih dahulu.");
               setUploading(true);
               try {
-                const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
+                const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
                 const fd = new FormData();
                 fd.append("file", fileToUpload, fileToUpload.name);
                 const url = `${apiBase}/bookings/${uploadTarget.bookingId}/upload-payment-proof`;
@@ -1082,7 +1082,7 @@ const ManajemenPembayaran = () => {
                   className="rounded-pill px-4"
                   onClick={async () => {
                     try {
-                      const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
+                      const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
                       const headers = { ...getAuthHeader(), Accept: "application/pdf" };
                       const stored =
                         selectedInvoice.booking.file_ttd_path || selectedInvoice.booking.pdf_path ? apiBase.replace(/\/api\/?$/, "") + "/storage/" + (selectedInvoice.booking.file_ttd_path || selectedInvoice.booking.pdf_path) : null;
@@ -1127,7 +1127,7 @@ const ManajemenPembayaran = () => {
                   className="rounded-pill px-4"
                   onClick={async () => {
                     try {
-                      const apiBaseRoot = (process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api").replace(/\/api\/?$/, "");
+                      const apiBaseRoot = (process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api").replace(/\/api\/?$/, "");
                       const path = selectedInvoice.payment_proof_path || (selectedInvoice.booking && selectedInvoice.booking.payment_proof_path);
                       if (!path) return alert("Tidak ada bukti pembayaran untuk ditampilkan.");
                       const full = `${apiBaseRoot}/storage/${path}`;
@@ -1378,7 +1378,7 @@ const ManajemenPembayaran = () => {
                   setPaymentPopup({ show: true, type: "success", message: "Pembayaran berhasil dikonfirmasi!" });
                 } else if (paymentToConfirm.type === "detail") {
                   // Confirm from detail modal
-                  const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
+                  const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
                   const token = localStorage.getItem("token");
                   const headers = token ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` } : { "Content-Type": "application/json" };
                   const res = await fetch(`${apiBase}/bookings/${paymentToConfirm.bookingId}/verify-payment`, { method: "POST", headers });

@@ -137,7 +137,7 @@ export default function LihatHasilPdfKepala() {
       setBookingData(booking || null);
 
       if (booking) {
-        const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
+        const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
         const storageBase = apiBase.replace(/\/api\/?$/, "");
         let fileUrl = null;
         // 1. Prioritas: file_ttd_path (hasil upload ttd manual)
@@ -161,7 +161,7 @@ export default function LihatHasilPdfKepala() {
 
   const getStoredPdfUrl = () => {
     if (!bookingData) return null;
-    const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
+    const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
     const storageBase = apiBase.replace(/\/api\/?$/, "");
 
     if (bookingData.file_ttd_path) return `${storageBase}/storage/${bookingData.file_ttd_path}`;
@@ -193,7 +193,7 @@ export default function LihatHasilPdfKepala() {
   // --- Fetch PDF as blob with Authorization, fallback to local buildPDF if needed ---
   useEffect(() => {
     const fetchPdfBlob = async (bookingId) => {
-      const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
+      const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
       try {
         const res = await fetch(`${apiBase}/bookings/${bookingId}/pdf`, {
           headers: { ...getAuthHeader(), Accept: "application/pdf" },
@@ -266,7 +266,7 @@ export default function LihatHasilPdfKepala() {
 
   const handleDownload = async () => {
     const fileName = getFilename();
-    const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
+    const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
 
     try {
       let blob;

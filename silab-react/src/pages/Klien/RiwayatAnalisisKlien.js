@@ -19,7 +19,7 @@ const RiwayatAnalisisKlien = () => {
     const fetchHistory = async () => {
       setLoading(true);
       try {
-        const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
+        const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await fetch(`${apiBase}/bookings`, { headers });
@@ -215,7 +215,7 @@ const RiwayatAnalisisKlien = () => {
                             {item.pdf_path ? (
                               <Button
                                 as="a"
-                                href={`${process.env.REACT_APP_API_BASE_URL ? process.env.REACT_APP_API_BASE_URL.replace(/\/api$/, "") : "http://https://api.silabntdk.com"}/storage/${item.pdf_path}`}
+                                href={`${process.env.REACT_APP_API_BASE_URL ? process.env.REACT_APP_API_BASE_URL.replace(/\/api$/, "") : "https://api.silabntdk.com"}/storage/${item.pdf_path}`}
                                 target="_blank"
                                 className="btn-lihat-new"
                                 size="sm"

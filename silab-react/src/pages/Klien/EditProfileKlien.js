@@ -45,7 +45,7 @@ function EditProfileKlien() {
     }
 
     axios
-      .get("http://https://api.silabntdk.com/api/api/me", {
+      .get("https://api.silabntdk.com/api/api/me", {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
@@ -70,7 +70,7 @@ function EditProfileKlien() {
         });
 
         if (user.avatar) {
-          setPreviewAvatar(`http://https://api.silabntdk.com/api/storage/${user.avatar}`);
+          setPreviewAvatar(`https://api.silabntdk.com/api/storage/${user.avatar}`);
         }
       })
       .catch((err) => {
@@ -139,7 +139,7 @@ function EditProfileKlien() {
     }
 
     try {
-      const response = await axios.post("http://https://api.silabntdk.com/api/api/profile/update", dataToSend, {
+      const response = await axios.post("https://api.silabntdk.com/api/api/profile/update", dataToSend, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",

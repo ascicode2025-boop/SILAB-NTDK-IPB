@@ -120,7 +120,7 @@ const ProsesAnalisis = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [priceMap, setPriceMap] = useState({});
-  const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
+  const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
   const apiHost = apiBase.replace(/\/api$/, "");
   const [showPreview, setShowPreview] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
@@ -153,7 +153,7 @@ const ProsesAnalisis = () => {
     // Fetch analysis prices once
     const fetchPrices = async () => {
       try {
-        const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
+        const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
         const res = await fetch(`${apiBase}/analysis-prices`);
         if (res.ok) {
           const prices = await res.json();
@@ -511,7 +511,7 @@ const ProsesAnalisis = () => {
                   className="btn btn-success w-100 mt-3"
                   onClick={async () => {
                     try {
-                      const apiBase = process.env.REACT_APP_API_BASE_URL || "http://https://api.silabntdk.com/api";
+                      const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
                       const token = localStorage.getItem("token");
                       const authHeaders = token ? { Accept: "application/pdf", Authorization: `Bearer ${token}` } : { Accept: "application/pdf" };
                       let blob;
