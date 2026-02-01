@@ -55,7 +55,10 @@ function DaftarAnalisisLogin() {
             variant="top"
             src={`/asset/daftarAnalisis/${(item.jenis_analisis || item.nama).replace(/\s+/g, "_").replace(/[^\w_]/g, "")}.png`}
             onError={(e) => {
-              e.target.src = "/asset/daftarAnalisis/Spektro.jpg";
+              // Jika gambar tidak ditemukan, pakai default
+              if (!e.target.src.endsWith("Spektro.jpg")) {
+                e.target.src = "/asset/daftarAnalisis/Spektro.jpg";
+              }
             }}
             style={{ height: "180px", objectFit: "cover" }}
           />
