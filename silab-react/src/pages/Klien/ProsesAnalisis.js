@@ -8,6 +8,7 @@ import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import { getUserBookings } from "../../services/BookingService";
 import { message } from "antd";
 import dayjs from "dayjs";
+import { getApiBaseUrl, getStorageUrl } from "../../config/apiConfig";
 
 /* ================== STATUS → STEP ================== */
 const statusToStep = (status) => {
@@ -120,8 +121,8 @@ const ProsesAnalisis = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [priceMap, setPriceMap] = useState({});
-  const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
-  const apiHost = apiBase.replace(/\/api$/, "");
+  const apiBase = getApiBaseUrl();
+  const apiHost = getStorageUrl();
   const [showPreview, setShowPreview] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
 
@@ -153,7 +154,7 @@ const ProsesAnalisis = () => {
     // Fetch analysis prices once
     const fetchPrices = async () => {
       try {
-        const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
+        const apiBase = getApiBaseUrl();
         const res = await fetch(`${apiBase}/analysis-prices`);
         if (res.ok) {
           const prices = await res.json();
@@ -511,7 +512,7 @@ const ProsesAnalisis = () => {
                   className="btn btn-success w-100 mt-3"
                   onClick={async () => {
                     try {
-                      const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
+                      const apiBase = getApiBaseUrl();
                       const token = localStorage.getItem("token");
                       const authHeaders = token ? { Accept: "application/pdf", Authorization: `Bearer ${token}` } : { Accept: "application/pdf" };
                       let blob;

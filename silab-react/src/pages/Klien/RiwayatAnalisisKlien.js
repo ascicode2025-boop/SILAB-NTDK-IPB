@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import "bootstrap/dist/css/bootstrap.min.css";
 import NavbarLogin from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
+import { getApiBaseUrl, getStorageUrl } from "../../config/apiConfig";
 
 const RiwayatAnalisisKlien = () => {
   useEffect(() => {
@@ -19,7 +20,7 @@ const RiwayatAnalisisKlien = () => {
     const fetchHistory = async () => {
       setLoading(true);
       try {
-        const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
+        const apiBase = getApiBaseUrl();
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await fetch(`${apiBase}/bookings`, { headers });
@@ -215,7 +216,7 @@ const RiwayatAnalisisKlien = () => {
                             {item.pdf_path ? (
                               <Button
                                 as="a"
-                                href={`${process.env.REACT_APP_API_BASE_URL ? process.env.REACT_APP_API_BASE_URL.replace(/\/api$/, "") : "https://api.silabntdk.com"}/storage/${item.pdf_path}`}
+                                href={`${getStorageUrl()}/storage/${item.pdf_path}`}
                                 target="_blank"
                                 className="btn-lihat-new"
                                 size="sm"

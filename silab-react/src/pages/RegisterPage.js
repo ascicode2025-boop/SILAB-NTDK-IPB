@@ -4,8 +4,9 @@ import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
 import axios from "axios";
 import "../css/RegisterPage.css";
+import { getApiBaseUrl } from "../config/apiConfig";
 
-const API_URL = process.env.REACT_APP_API_BASE_URL;
+const API_URL = getApiBaseUrl();
 
 function RegisterPage() {
   useEffect(() => {

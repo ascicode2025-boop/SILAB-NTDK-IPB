@@ -7,6 +7,7 @@ import NavbarLoginKepala from "./NavbarLoginKepala";
 import FooterSetelahLogin from "../FooterSetelahLogin";
 import axios from "axios";
 import { getAuthHeader, getToken } from "../../services/AuthService";
+import { getApiBaseUrl } from "../../config/apiConfig";
 
 const LaporanKepala = () => {
   useEffect(() => {
@@ -26,7 +27,7 @@ const LaporanKepala = () => {
     fetchReport();
   }, []);
 
-  const API_URL = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
+  const API_URL = getApiBaseUrl();
 
   const fetchReport = async () => {
     setLoading(true);

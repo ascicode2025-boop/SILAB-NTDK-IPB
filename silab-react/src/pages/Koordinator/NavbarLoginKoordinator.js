@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Image, Nav, Dropdown, Badge } from "react-bootstrap";
 import { useHistory, useLocation } from "react-router-dom";
-import { FaTachometerAlt, FaClipboardCheck, FaMoneyBill, FaPenFancy, FaFileAlt, FaCog, FaBars, FaTimes, FaUserCircle, FaBell } from "react-icons/fa";
+import { FaBars, FaTimes, FaUserCircle, FaBell } from "react-icons/fa";
+import { RxDashboard } from "react-icons/rx";
+import { FiFileText, FiEdit3, FiClock, FiUsers, FiClipboard, FiCalendar } from "react-icons/fi";
 import { getUnreadNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "../../services/NotificationService";
 import "@fontsource/poppins";
 import ConfirmModal from "../../components/Common/ConfirmModal";
+import { getStorageUrl } from "../../config/apiConfig";
 
 function NavbarLoginKoordinator({ children }) {
   const history = useHistory();
@@ -61,29 +64,46 @@ function NavbarLoginKoordinator({ children }) {
     }
   };
 
-  const menus = [
-    { key: "dashboard", label: "dashboard", icon: <FaTachometerAlt /> },
-    { key: "verifikasiSampelKoordinator", label: "Verifikasi Hasil Analisis", icon: <FaClipboardCheck /> },
-    { key: "TandaTanganKoordinator", label: "Tanda Tangan", icon: <FaPenFancy /> },
-    { key: "manajemenPembayaran", label: "Manajemen Pembayaran", icon: <FaMoneyBill /> },
-    { key: "LaporanKoordinator", label: "Laporan & Rekapitulasi", icon: <FaFileAlt /> },
-    { key: "manajemenAkun", label: "Manajemen Akun & Sistem", icon: <FaCog /> },
+  const menuSections = [
+    {
+      title: "Analisis Sampel",
+      items: [
+        { key: "dashboard", label: "Dasbor", icon: <RxDashboard size={20} /> },
+        { key: "verifikasiSampelKoordinator", label: "Verifikasi Hasil Analisis", icon: <FiFileText size={20} /> },
+        { key: "TandaTanganKoordinator", label: "Tanda Tangan", icon: <FiEdit3 size={20} /> },
+        { key: "manajemenPembayaran", label: "Manajemen Pembayaran", icon: <FiClock size={20} /> },
+        { key: "LaporanKoordinator", label: "Laporan & Rekapitulasi", icon: <FiClock size={20} /> },
+        { key: "manajemenAkun", label: "Manajemen Akun & Sistem", icon: <FiUsers size={20} /> },
+      ],
+    },
+    {
+      title: "Peminjaman Alat",
+      items: [
+        { key: "manajemenPengajuan", label: "Manajemen Pengajuan", icon: <FiClipboard size={20} /> },
+        { key: "kalenderPeminjaman", label: "Kalender Peminjaman", icon: <FiCalendar size={20} /> },
+      ],
+    },
   ];
+
+  const allMenus = menuSections.flatMap((s) => s.items);
 
   // sinkronkan activeMenu berdasarkan URL
   useEffect(() => {
-    const path = location.pathname.replace("/koordinator/dashboard/", "");
-    const found = menus.find((m) => path.startsWith(m.key));
-    if (found) {
-      setActiveMenu(found.key);
+    const path = location.pathname;
+    if (path === "/koordinator/dashboard" || path === "/koordinator/dashboard/") {
+      setActiveMenu("dashboard");
+    } else {
+      const currentPath = path.replace("/koordinator/dashboard/", "");
+      const found = allMenus.find((m) => m.key !== "dashboard" && currentPath.startsWith(m.key));
+      if (found) {
+        setActiveMenu(found.key);
+      }
     }
   }, [location.pathname]);
 
-  // ============== ✔ Tambahan logika judul tanpa mengubah tampilan ==============
   const currentTitle = (() => {
-    return menus.find((m) => m.key === activeMenu)?.label;
+    return allMenus.find((m) => m.key === activeMenu)?.label || "Dasbor";
   })();
-  // ==============================================================================
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -93,7 +113,7 @@ function NavbarLoginKoordinator({ children }) {
 
   const [showLogout, setShowLogout] = useState(false);
 
-  const avatarSrc = user?.avatar ? (user.avatar.startsWith("http") || user.avatar.startsWith("blob") ? user.avatar : `https://api.silabntdk.com/storage/${user.avatar}`) : null;
+  const avatarSrc = user?.avatar ? (user.avatar.startsWith("http") || user.avatar.startsWith("blob") ? user.avatar : `${getStorageUrl()}/storage/${user.avatar}`) : null;
 
   return (
     <div className="dashboard-layout" style={{ fontFamily: "Poppins, sans-serif" }}>
@@ -209,30 +229,52 @@ function NavbarLoginKoordinator({ children }) {
 
       {/* Sidebar */}
       <aside className={`dashboard-sidebar bg-white p-3 shadow-sm ${sidebarOpen ? "open" : ""}`}>
-        <Nav className="flex-column mt-2">
-          {menus.map((menu) => (
-            <Nav.Link
-              key={menu.key}
-              onClick={() => {
-                setActiveMenu(menu.key);
-                history.push(`/koordinator/dashboard/${menu.key}`);
-                setSidebarOpen(false);
-              }}
-              className={`d-flex align-items-center mb-2 py-2 px-3 rounded ${activeMenu === menu.key ? "active" : ""}`}
+        {menuSections.map((section, idx) => (
+          <div key={idx} className="mb-2">
+            {/* Section Category Title */}
+            <div
               style={{
-                color: "#000",
-                fontSize: "0.95rem",
-                transition: "background 0.3s, color 0.3s",
-                cursor: "pointer",
+                fontSize: "0.78rem",
+                fontWeight: "700",
+                color: "#757575",
+                marginBottom: "8px",
+                marginTop: idx > 0 ? "18px" : "4px",
+                paddingLeft: "8px",
               }}
             >
-              <span className="me-3" style={{ fontSize: "1.1rem" }}>
-                {menu.icon}
-              </span>
-              {menu.label}
-            </Nav.Link>
-          ))}
-        </Nav>
+              {section.title}
+            </div>
+
+            <Nav className="flex-column">
+              {section.items.map((menu) => (
+                <Nav.Link
+                  key={menu.key}
+                  onClick={() => {
+                    setActiveMenu(menu.key);
+                    const targetPath = menu.key === "dashboard" ? "/koordinator/dashboard" : `/koordinator/dashboard/${menu.key}`;
+                    history.push(targetPath);
+                    setSidebarOpen(false);
+                  }}
+                  className={`d-flex align-items-center mb-1 py-2 px-3 ${activeMenu === menu.key ? "active" : ""}`}
+                  style={{
+                    color: "#212121",
+                    fontSize: "0.9rem",
+                    fontWeight: activeMenu === menu.key ? "600" : "500",
+                    backgroundColor: activeMenu === menu.key ? "#E5E5E5" : "transparent",
+                    borderRadius: "8px",
+                    transition: "background 0.2s, color 0.2s",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span className="me-3 d-flex align-items-center" style={{ color: "#212121" }}>
+                    {menu.icon}
+                  </span>
+                  <span>{menu.label}</span>
+                </Nav.Link>
+              ))}
+            </Nav>
+          </div>
+        ))}
       </aside>
 
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
@@ -240,7 +282,6 @@ function NavbarLoginKoordinator({ children }) {
       {/* Konten */}
       <main className="dashboard-content">
         <div className="page-title-bar">
-          {/* ✔ Judul diperbarui tanpa mengubah UI */}
           <h5 className="m-0 px-4 py-2">{currentTitle}</h5>
         </div>
 

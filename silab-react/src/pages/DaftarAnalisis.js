@@ -3,13 +3,13 @@ import { Container, Row, Col, Card } from "react-bootstrap";
 import Footer from "./Footer";
 import LoadingSpinner from "../components/Common/LoadingSpinner";
 import "bootstrap/dist/css/bootstrap.min.css";
-import "@fontsource/poppins";
+import { getApiBaseUrl } from "../config/apiConfig";
 
 function DaftarAnalisis() {
   const [groupedAnalisis, setGroupedAnalisis] = useState({});
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
-  const API_URL = process.env.REACT_APP_API_BASE_URL;
+  const API_URL = getApiBaseUrl();
 
   useEffect(() => {
     document.title = "SILAB-NTDK - Daftar Analisis";
@@ -97,8 +97,9 @@ function DaftarAnalisis() {
         id="daftarAnalisis"
         style={{
           fontFamily: "Poppins, sans-serif",
-          backgroundColor: "#FAF7F5",
+          backgroundColor: "#EAE7E4",
           padding: "50px 0 0 0",
+          marginTop: 0,
           minHeight: "500px",
         }}
       >

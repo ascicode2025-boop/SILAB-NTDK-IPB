@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Image, Nav, Dropdown, Badge } from "react-bootstrap";
 import { useHistory, useLocation } from "react-router-dom";
-import { FaTachometerAlt, FaFileAlt, FaCalendarAlt, FaClipboardList, FaClock, FaFlask, FaCreditCard, FaHistory, FaBars, FaUserCircle, FaBell, FaTimes } from "react-icons/fa";
+import { FaThLarge, FaFileAlt, FaCalendarAlt, FaClipboardList, FaClock, FaFlask, FaCreditCard, FaHistory, FaBars, FaUserCircle, FaBell, FaTimes, FaListUl, FaExpand } from "react-icons/fa";
 import { getUnreadNotifications, getAllNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "../../services/NotificationService";
 import "@fontsource/poppins";
 import ConfirmModal from "../../components/Common/ConfirmModal";
+import { getStorageUrl } from "../../config/apiConfig";
 
 function NavbarLogin({ children }) {
   const history = useHistory();
@@ -119,29 +120,44 @@ function NavbarLogin({ children }) {
   }, [location.pathname, history]);
   // ============================================================
 
-  const menus = [
-    { key: "dashboard", label: "Dashboard", icon: <FaTachometerAlt /> },
-    { key: "daftarAnalisisLogin", label: "Daftar Harga Analisis", icon: <FaClipboardList /> },
-    { key: "panduanSampelKlien", label: "SOP Analisis Lab", icon: <FaFileAlt /> },
-    { key: "bookingCalenderKlien", label: "Kalender Pemesanan", icon: <FaCalendarAlt /> },
-    { key: "pemesananSampelKlien", label: "Pemesanan Sampel", icon: <FaClipboardList /> },
-    { key: "menungguPersetujuan", label: "Menunggu Persetujuan", icon: <FaClock /> },
-    { key: "prosesAnalisis", label: "Proses Sampel", icon: <FaFlask /> },
-    { key: "pembayaranKlien", label: "Pembayaran & Invoice", icon: <FaCreditCard /> },
-    { key: "riwayatAnalisisKlien", label: "Riwayat", icon: <FaHistory /> },
+  const menuSections = [
+    {
+      title: "Analisis Sampel",
+      items: [
+        { key: "dashboard", label: "Dasbor", icon: <FaThLarge /> },
+        { key: "daftarAnalisisLogin", label: "Daftar Harga Analisis", icon: <FaClipboardList /> },
+        { key: "panduanSampelKlien", label: "SOP Analisis Lab", icon: <FaFileAlt /> },
+        { key: "bookingCalenderKlien", label: "Kalender Pemesanan", icon: <FaCalendarAlt /> },
+        { key: "pemesananSampelKlien", label: "Pemesanan Sampel", icon: <FaClipboardList /> },
+        { key: "menungguPersetujuan", label: "Menunggu Persetujuan", icon: <FaClock /> },
+        { key: "prosesAnalisis", label: "Proses Sampel", icon: <FaFlask /> },
+        { key: "pembayaranKlien", label: "Pembayaran & Invoice", icon: <FaCreditCard /> },
+        { key: "riwayatAnalisisKlien", label: "Riwayat Analisis", icon: <FaHistory /> },
+      ],
+    },
+    {
+      title: "Peminjaman Alat",
+      items: [
+        { key: "daftarAlatAnalisis", label: "Daftar Alat Analisis", icon: <FaListUl /> },
+        { key: "pengajuanPeminjaman", label: "Pengajuan Peminjaman", icon: <FaFileAlt /> },
+        { key: "detailPengajuan", label: "Detail Pengajuan", icon: <FaExpand /> },
+      ],
+    },
   ];
+
+  const allMenus = menuSections.flatMap((section) => section.items);
 
   // sinkronkan activeMenu berdasarkan URL
   useEffect(() => {
     const path = location.pathname.replace("/dashboard/", "");
-    const found = menus.find((m) => path.startsWith(m.key));
+    const found = allMenus.find((m) => path.startsWith(m.key));
     if (found) {
       setActiveMenu(found.key);
     }
   }, [location.pathname]);
 
   const currentTitle = (() => {
-    return menus.find((m) => m.key === activeMenu)?.label;
+    return allMenus.find((m) => m.key === activeMenu)?.label || "Dasbor";
   })();
 
   const handleLogout = () => {
@@ -150,7 +166,7 @@ function NavbarLogin({ children }) {
     history.push("/LandingPage");
   };
 
-  const avatarSrc = user?.avatar ? (user.avatar.startsWith("http") || user.avatar.startsWith("blob") ? user.avatar : `https://api.silabntdk.com/storage/${user.avatar}`) : null;
+  const avatarSrc = user?.avatar ? (user.avatar.startsWith("http") || user.avatar.startsWith("blob") ? user.avatar : `${getStorageUrl()}/storage/${user.avatar}`) : null;
 
   return (
     <div className="dashboard-layout" style={{ fontFamily: "Poppins, sans-serif" }}>
@@ -265,31 +281,36 @@ function NavbarLogin({ children }) {
       </header>
 
       {/* Sidebar */}
-      <aside className={`dashboard-sidebar bg-white p-3 shadow-sm ${sidebarOpen ? "open" : ""}`}>
-        <Nav className="flex-column mt-2">
-          {menus.map((menu) => (
-            <Nav.Link
-              key={menu.key}
-              onClick={() => {
-                // Walau user klik menu, useEffect proteksi di atas akan tetap mencegatnya
-                // jika profil belum lengkap
-                setActiveMenu(menu.key);
-                history.push(`/dashboard/${menu.key}`);
-                setSidebarOpen(false);
-              }}
-              className={`d-flex align-items-center mb-2 py-2 px-3 rounded ${activeMenu === menu.key ? "active" : ""}`}
-              style={{
-                color: "#000",
-                fontSize: "0.95rem",
-                transition: "background 0.3s, color 0.3s",
-                cursor: "pointer",
-              }}
-            >
-              <span className="me-3" style={{ fontSize: "1.1rem" }}>
-                {menu.icon}
-              </span>
-              {menu.label}
-            </Nav.Link>
+      <aside className={`dashboard-sidebar bg-white px-2 py-3 shadow-sm ${sidebarOpen ? "open" : ""}`}>
+        <Nav className="flex-column">
+          {menuSections.map((section, sIdx) => (
+            <div key={section.title} className={sIdx > 0 ? "mt-3" : ""}>
+              <div className="sidebar-section-title px-3 py-1 text-muted fw-semibold" style={{ fontSize: "0.78rem", color: "#6c757d" }}>
+                {section.title}
+              </div>
+              {section.items.map((menu) => (
+                <Nav.Link
+                  key={menu.key}
+                  onClick={() => {
+                    setActiveMenu(menu.key);
+                    history.push(`/dashboard/${menu.key}`);
+                    setSidebarOpen(false);
+                  }}
+                  className={`d-flex align-items-center mb-1 py-2 px-3 rounded ${activeMenu === menu.key ? "active" : ""}`}
+                  style={{
+                    color: activeMenu === menu.key ? "#111" : "#333",
+                    fontSize: "0.875rem",
+                    transition: "background 0.2s, color 0.2s",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span className="me-3 d-flex align-items-center" style={{ fontSize: "1.05rem" }}>
+                    {menu.icon}
+                  </span>
+                  <span>{menu.label}</span>
+                </Nav.Link>
+              ))}
+            </div>
           ))}
         </Nav>
       </aside>
@@ -309,18 +330,23 @@ function NavbarLogin({ children }) {
       <style>{`
         .dashboard-layout { display: flex; min-height: 100vh; flex-direction: column; }
         .dashboard-header { position: fixed; top: 0; left: 0; right: 0; height: 70px; z-index: 1060; background: #fff; display: flex; align-items: center; }
-        .dashboard-sidebar { width: 240px; position: fixed; top: 70px; left: 0; height: calc(100vh - 70px); overflow-y: auto; transform: translateX(-100%); transition: transform 0.3s ease; z-index: 1055; border-right: 1px solid #e5e5e5; background: #fff; }
+        .dashboard-sidebar { width: 250px; position: fixed; top: 70px; left: 0; height: calc(100vh - 70px); overflow-y: auto; transform: translateX(-100%); transition: transform 0.3s ease; z-index: 1055; border-right: 1px solid #e5e5e5; background: #fff; }
         .dashboard-sidebar.open { transform: translateX(0); }
-        .dashboard-sidebar .nav-link.active { background-color: #f0f0f0; font-weight: 600; }
+        .dashboard-sidebar .nav-link { color: #333; border-radius: 4px; }
+        .dashboard-sidebar .nav-link:hover { background-color: #f2f2f2; }
+        .dashboard-sidebar .nav-link.active { background-color: #e0e0e0; font-weight: 600; color: #111; }
+        .sidebar-section-title { font-family: Poppins, sans-serif; font-weight: 600; }
         .dashboard-content { flex: 1; background-color: #fafafa; min-height: calc(100vh - 70px); margin-top: 70px; margin-left: 0; padding: 0 !important; transition: margin-left 0.3s ease; }
         .dashboard-inner { padding: 0 !important; margin: 0 !important; }
         .page-title-bar { background-color: #a6867b; color: #fff; font-weight: 500; font-size: 1.25rem; letter-spacing: 0.5px; box-shadow: 0 -4px 8px rgba(0,0,0,0.25) inset; border-bottom-left-radius: 30px; border-bottom-right-radius:30px; }
         .sidebar-overlay { position: fixed; top: 70px; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 1050; }
         .subtitle-text { font-size: 0.8rem; white-space: normal; }
+        .modal { z-index: 1070 !important; }
+        .modal-backdrop { z-index: 1065 !important; }
 
         @media (min-width: 992px) {
           .dashboard-sidebar { transform: translateX(0); }
-          .dashboard-content { margin-left: 240px; margin-top: 70px; }
+          .dashboard-content { margin-left: 250px; margin-top: 70px; }
         }
 
         @media (max-width: 991.98px) {

@@ -4,6 +4,7 @@ import { Search, Hash, Beaker, Calendar as CalendarIcon, Eye, FileText, ChevronR
 import { motion } from "framer-motion";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
 import FooterSetelahLogin from "../FooterSetelahLogin";
+import { getApiBaseUrl, getStorageUrl } from "../../config/apiConfig";
 
 // Helper tetap sama (logika tidak berubah)
 function parseHasilToTable(namaItem, hasilString) {
@@ -61,7 +62,7 @@ const RiwayatAnalisisTeknisi = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
+        const apiBase = getApiBaseUrl();
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await fetch(`${apiBase}/bookings/all`, { headers });
@@ -209,7 +210,7 @@ const RiwayatAnalisisTeknisi = () => {
                                 {item.pdf_path && (
                                   <Button
                                     as="a"
-                                    href={`${process.env.REACT_APP_API_BASE_URL ? process.env.REACT_APP_API_BASE_URL.replace(/\/api$/, "") : "https://api.silabntdk.com"}/storage/${item.pdf_path}`}
+                                    href={`${getStorageUrl()}/storage/${item.pdf_path}`}
                                     target="_blank"
                                     className="btn-hasil-teknisi responsive-btn"
                                     size="sm"

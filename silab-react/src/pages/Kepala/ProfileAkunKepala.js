@@ -7,6 +7,10 @@ import { FaUserCircle, FaClipboardCheck, FaSignInAlt, FaMedal, FaAward, FaCertif
 import { useHistory } from "react-router-dom";
 import axios from "axios";
 import "@fontsource/poppins";
+import { getApiBaseUrl, getStorageUrl } from "../../config/apiConfig";
+
+const API_URL = getApiBaseUrl();
+const STORAGE_URL = getStorageUrl();
 
 function ProfileAkunKepala() {
   useEffect(() => {
@@ -26,7 +30,7 @@ function ProfileAkunKepala() {
       return;
     }
     axios
-      .get("https://api.silabntdk.com/api/me", {
+      .get(`${API_URL}/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
@@ -69,7 +73,7 @@ function ProfileAkunKepala() {
     );
   }
 
-  const avatarUrl = user?.avatar ? `https://api.silabntdk.com/storage/${user.avatar}` : null;
+  const avatarUrl = user?.avatar ? `${STORAGE_URL}/storage/${user.avatar}` : null;
 
   return (
     <>

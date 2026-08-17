@@ -9,19 +9,26 @@ import { useHistory } from "react-router-dom";
 import axios from "axios";
 import "@fontsource/poppins";
 
+const API_URL = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
+const STORAGE_URL = API_URL.replace(/\/api\/?$/, "");
+
 function ProfileAkunKlien() {
   useEffect(() => {
     document.title = "SILAB-NTDK - Profil Akun Klien";
   }, []);
 
-  const history = useHistory();
   const [user, setUser] = useState(null);
-
-  // [TAMBAHAN] State untuk menampung data statistik & list achievement
-  const [stats, setStats] = useState({ total_orders: 0, total_login: 0, total_achievements: 0 });
-  const [achievementsList, setAchievementsList] = useState([]);
-
   const [loading, setLoading] = useState(true);
+
+  // [TAMBAHAN] State untuk menyimpan statistik analisis & total transaksi
+  const [stats, setStats] = useState({
+    total_analisis: 0,
+    total_transaksi: 0,
+  });
+
+  const history = useHistory();
+
+  const [achievementsList, setAchievementsList] = useState([]);
 
   const token = localStorage.getItem("token");
 
@@ -32,7 +39,7 @@ function ProfileAkunKlien() {
     }
 
     axios
-      .get("https://api.silabntdk.com/api/me", {
+      .get(`${API_URL}/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
@@ -83,7 +90,7 @@ function ProfileAkunKlien() {
     return null;
   }
 
-  const avatarUrl = user.avatar ? `https://api.silabntdk.com/storage/${user.avatar}` : null;
+  const avatarUrl = user.avatar ? `${STORAGE_URL}/storage/${user.avatar}` : null;
 
   return (
     <>

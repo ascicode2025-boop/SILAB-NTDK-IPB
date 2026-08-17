@@ -8,6 +8,10 @@ import { FaUserCircle, FaShoppingBag, FaSignInAlt, FaMedal, FaTrophy, FaStar, Fa
 import { useHistory } from "react-router-dom";
 import axios from "axios";
 import "@fontsource/poppins";
+import { getApiBaseUrl, getStorageUrl } from "../../config/apiConfig";
+
+const API_URL = getApiBaseUrl();
+const STORAGE_URL = getStorageUrl();
 
 function ProfileAkunTeknisi() {
   useEffect(() => {
@@ -32,7 +36,7 @@ function ProfileAkunTeknisi() {
     }
 
     axios
-      .get("https://api.silabntdk.com/api/me", {
+      .get(`${API_URL}/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
@@ -85,7 +89,7 @@ function ProfileAkunTeknisi() {
     );
   }
 
-  const avatarUrl = user.avatar ? `https://api.silabntdk.com/storage/${user.avatar}` : null;
+  const avatarUrl = user.avatar ? `${STORAGE_URL}/storage/${user.avatar}` : null;
 
   return (
     <>

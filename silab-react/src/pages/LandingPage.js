@@ -6,9 +6,10 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "../css/LandingPage.css";
 import "@fontsource/poppins";
 import Footer from "./Footer";
+import { getApiBaseUrl } from "../config/apiConfig";
 
 // --- ENV ---
-const API_URL = process.env.REACT_APP_API_BASE_URL;
+const API_URL = getApiBaseUrl();
 
 function LandingPage() {
   const history = useHistory();
@@ -17,9 +18,7 @@ function LandingPage() {
   // Tes koneksi API
   useEffect(() => {
     document.title = "SILAB-NTDK - Beranda";
-    if (!API_URL) {
-      console.error("PERHATIAN: REACT_APP_API_BASE_URL belum diatur di file .env.local");
-    } else {
+    if (API_URL) {
       axios
         .get(`${API_URL}/hello`)
         .then((response) => {

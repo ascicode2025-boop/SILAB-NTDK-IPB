@@ -4,6 +4,7 @@ import FooterSetelahLogin from "../FooterSetelahLogin";
 import { motion } from "framer-motion";
 import { Copy, Clock, CheckCircle, Wallet, Upload, Building } from "lucide-react";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { getApiBaseUrl, getStorageUrl } from "../../config/apiConfig";
 
 const PembayaranKlien = () => {
   useEffect(() => {
@@ -30,7 +31,7 @@ const PembayaranKlien = () => {
     if (!isBackground) setLoading(true);
 
     try {
-      const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
+      const apiBase = getApiBaseUrl();
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {}; // 1. Coba ambil invoice
       const res = await fetch(`${apiBase}/invoices?booking_id=${useBookingId}`, { headers });
@@ -122,7 +123,7 @@ const PembayaranKlien = () => {
       try {
         // Jika sedang detail, jangan refresh list pending (hemat resource)
         if (params.get("bookingId")) return;
-        const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
+        const apiBase = getApiBaseUrl();
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const userRes = await fetch(`${apiBase}/bookings`, { headers });
@@ -164,8 +165,8 @@ const PembayaranKlien = () => {
     if (bookingId) fetchInvoiceForBooking(bookingId);
   }, [paymentSuccess, detailBooking, invoiceIdRaw]);
 
-  const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
-  const apiHost = apiBase.replace(/\/api$/, "");
+  const apiBase = getApiBaseUrl();
+  const apiHost = getStorageUrl();
 
   const theme = {
     primary: "#483D3F",
@@ -431,7 +432,7 @@ const PembayaranKlien = () => {
                       else {
                         setUploading(true);
                         try {
-                          const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
+                          const apiBase = getApiBaseUrl();
                           const token = localStorage.getItem("token");
                           const headers = token ? { Authorization: `Bearer ${token}`, Accept: "application/json" } : { Accept: "application/json" };
                           const fd = new FormData();

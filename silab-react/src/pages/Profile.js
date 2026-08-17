@@ -22,7 +22,7 @@ function Profile() {
     document.title = "SILAB-NTDK - Profil";
   }, []);
   return (
-    <section id="profil" style={{ fontFamily: "Poppins, sans-serif", padding: "50px 0 0 0" }}>
+    <section id="profil" style={{ fontFamily: "Poppins, sans-serif", padding: "50px 0 0 0", marginTop: 0, backgroundColor: "#EAE7E4" }}>
       <Container className="py-5">
         <Row className="justify-content-center">
           <Col md={10} className="text-center">

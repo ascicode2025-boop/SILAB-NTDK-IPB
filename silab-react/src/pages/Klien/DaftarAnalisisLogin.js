@@ -8,6 +8,9 @@ import NavbarLogin from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
 import BrownSpinner from "../../components/Common/LoadingSpinner"; // ⬅️ spinner custom
 import axios from "axios";
+import { getApiBaseUrl } from "../../config/apiConfig";
+
+const API_URL = getApiBaseUrl();
 
 function DaftarAnalisisLogin() {
   useEffect(() => {
@@ -20,7 +23,7 @@ function DaftarAnalisisLogin() {
 
   useEffect(() => {
     axios
-      .get("https://api.silabntdk.com/api/analysis-prices-grouped")
+      .get(`${API_URL}/analysis-prices-grouped`)
       .then((res) => {
         setDataAnalisis(res.data);
         setLoading(false);

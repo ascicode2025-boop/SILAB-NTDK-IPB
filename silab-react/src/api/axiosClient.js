@@ -1,9 +1,9 @@
 import axios from "axios";
 import { getToken } from "../services/AuthService";
+import { getApiBaseUrl } from "../config/apiConfig";
 
 const axiosClient = axios.create({
-  // Menggunakan process.env untuk Create React App
-  baseURL: process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api",
+  baseURL: getApiBaseUrl(),
   headers: {
     Accept: "application/json",
     "Content-Type": "application/json",

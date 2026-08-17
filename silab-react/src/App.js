@@ -12,6 +12,7 @@ import DaftarAnalisis from "./pages/DaftarAnalisis";
 import ForgetPassword from "./pages/ForgetPassword";
 import Galeri from "./pages/Galeri";
 import PanduanSampel from "./pages/PanduanSampel";
+import DaftarAlatSebelumLogin from "./pages/DaftarAlatSebelumLogin";
 import PrivateRoute from "./pages/PrivateRoute"; // Pastikan file ini sudah diupdate dengan logika Role!
 import PopupProvider from "./components/Common/PopupProvider";
 import UnauthorizedPage from "./pages/UnauthorizedPage"; // ⭐ NEW: Halaman Unauthorized
@@ -31,6 +32,10 @@ import EditProfileKlien from "./pages/Klien/EditProfileKlien";
 import DaftarAnalisisLogin from "./pages/Klien/DaftarAnalisisLogin";
 import PembayaranKlien from "./pages/Klien/PembayaranKlien";
 import RiwayatAnalisisKlien from "./pages/Klien/RiwayatAnalisisKlien";
+import DaftarAlat from "./pages/Klien/DaftarAlat";
+import PengajuanPeminjamanAlat from "./pages/Klien/PengajuanPeminjamanAlat";
+import DaftarPengajuanAlat from "./pages/Klien/DaftarPengajuanAlat";
+import DetailPengajuanAlat from "./pages/Klien/DetailPengajuanAlat";
 
 // --- IMPORT FITUR DASHBOARD TEKNISI ---
 import DashboardTeknisi from "./pages/Teknisi/DashboardTeknisi";
@@ -43,6 +48,8 @@ import FormInputNilaiAnalisis from "./pages/Teknisi/FormInputNilaiAnalisis";
 import GeneratePdfAnalysis from "./pages/Teknisi/GeneratePdfAnalysis";
 import ProfileAkunTeknisi from "./pages/Teknisi/ProfileAkunTeknisi";
 import EditProfileTeknisi from "./pages/Teknisi/EditProfileTeknisi";
+import InventarisAlat from "./pages/Teknisi/InventarisAlat";
+import PengelolaanPeminjamanAlat from "./pages/Teknisi/PengelolaanPeminjamanAlat";
 
 // --- IMPORT FITUR DASHBOARD Koordinator ---
 import DashboardKoordinator from "./pages/Koordinator/DashboardKoordinator";
@@ -51,6 +58,7 @@ import LihatHasilPdfKoordinator from "./pages/Koordinator/LihatHasilPdfKoordinat
 import TandaTanganKoordinator from "./pages/Koordinator/TandaTanganKoordinator";
 import ManajemenPembayaran from "./pages/Koordinator/ManajemenPembayaran";
 import LaporanKoordinator from "./pages/Koordinator/LaporanKoordinator";
+import KalenderPeminjamanAlat from "./pages/Koordinator/KalenderPeminjamanAlat";
 import ManajemenAkun from "./pages/Koordinator/ManajemenRole";
 import ProfileAkunKoordinator from "./pages/Koordinator/ProfileAkunKoordinator";
 import EditProfileKoordinator from "./pages/Koordinator/EditProfileKoordinator";
@@ -63,6 +71,8 @@ import VerifikasiKepala from "./pages/Kepala/VerifikasiKepala";
 import LihatHasilPdfKepala from "./pages/Kepala/LihatHasilPdfKepala";
 import ProfileAkunKepala from "./pages/Kepala/ProfileAkunKepala";
 import EditProfileKepala from "./pages/Kepala/EditProfileKepala";
+import PersetujuanPengajuanKepala from "./pages/Kepala/PersetujuanPengajuanKepala";
+import LaporanPeminjamanKepala from "./pages/Kepala/LaporanPeminjamanKepala";
 
 // ====================================================================
 // 1. Layout dengan Navbar (Untuk Landing Page - PUBLIK)
@@ -76,6 +86,8 @@ function AppLayoutWithNavbar() {
         <Route path="/landingPage" component={LandingPage} />
         <Route path="/profile" component={Profile} />
         <Route path="/daftarAnalisis" component={DaftarAnalisis} />
+        <Route path="/daftarAlat" component={DaftarAlatSebelumLogin} />
+        <Route path="/daftarAlatSebelumLogin" component={DaftarAlatSebelumLogin} />
         <Route path="/galeri" component={Galeri} />
         <Route path="/panduanSampel" component={PanduanSampel} />
         <Redirect exact from="/" to="/LandingPage" />
@@ -108,6 +120,7 @@ function AppLayoutWithoutNavbar() {
       <PrivateRoute path="/koordinator/dashboard/profile/edit" component={EditProfileKoordinator} allowedRoles={["koordinator"]} />
       <PrivateRoute path="/koordinator/dashboard/profile" component={ProfileAkunKoordinator} allowedRoles={["koordinator"]} />
       <PrivateRoute path="/koordinator/dashboard/manajemenAkun" component={ManajemenAkun} allowedRoles={["koordinator"]} />
+      <PrivateRoute path="/koordinator/dashboard/kalenderPeminjaman" component={KalenderPeminjamanAlat} allowedRoles={["koordinator"]} />
       <PrivateRoute path="/koordinator/dashboard/laporanKoordinator" component={LaporanKoordinator} allowedRoles={["koordinator"]} />
       <PrivateRoute path="/koordinator/dashboard/tandaTanganKoordinator" component={TandaTanganKoordinator} allowedRoles={["koordinator"]} />
       <PrivateRoute path="/koordinator/dashboard/manajemenPembayaran" component={ManajemenPembayaran} allowedRoles={["koordinator"]} />
@@ -115,6 +128,8 @@ function AppLayoutWithoutNavbar() {
       <PrivateRoute path="/koordinator/dashboard/verifikasiSampelKoordinator" component={VerifikasiSampelKoordinator} allowedRoles={["koordinator"]} />
       <PrivateRoute path="/koordinator/dashboard" component={DashboardKoordinator} allowedRoles={["koordinator"]} />
       {/* 2. Kepala (Hanya role 'kepala' yang boleh masuk) */}
+      <PrivateRoute path="/kepala/dashboard/laporanPeminjaman" component={LaporanPeminjamanKepala} allowedRoles={["kepala"]} />
+      <PrivateRoute path="/kepala/dashboard/persetujuanPengajuan" component={PersetujuanPengajuanKepala} allowedRoles={["kepala"]} />
       <PrivateRoute path="/kepala/dashboard/mentoringKepala" component={MentoringKepala} allowedRoles={["kepala"]} />
       <PrivateRoute path="/kepala/dashboard/verifikasiKepala/lihatHasilPdfKepala/:id" component={LihatHasilPdfKepala} allowedRoles={["kepala"]} />
       <PrivateRoute path="/kepala/dashboard/profile/edit" component={EditProfileKepala} allowedRoles={["kepala"]} />
@@ -134,6 +149,8 @@ function AppLayoutWithoutNavbar() {
       <PrivateRoute path="/teknisi/dashboard/profile" component={ProfileAkunTeknisi} allowedRoles={["teknisi"]} />
       {/* Route baru untuk Riwayat Analisis Teknisi */}
       <PrivateRoute path="/teknisi/dashboard/riwayat-analisis" component={require("./pages/Teknisi/RiwayatAnalisisTeknisi").default} allowedRoles={["teknisi"]} />
+      <PrivateRoute path="/teknisi/dashboard/inventarisAlat" component={InventarisAlat} allowedRoles={["teknisi"]} />
+      <PrivateRoute path="/teknisi/dashboard/pengelolaanPeminjaman" component={PengelolaanPeminjamanAlat} allowedRoles={["teknisi"]} />
       <PrivateRoute path="/teknisi/dashboard" component={DashboardTeknisi} allowedRoles={["teknisi"]} />
       {/* 4. Klien / Umum (Hanya role 'klien' yang boleh masuk) */}
       {/* Saya tambahkan pembatasan 'klien' agar teknisi tidak salah masuk ke sini */}
@@ -147,6 +164,13 @@ function AppLayoutWithoutNavbar() {
       <PrivateRoute path="/dashboard/pemesananSampelKlien" component={PemesananSampelKlien} allowedRoles={["klien"]} />
       <PrivateRoute path="/dashboard/panduanSampelKlien" component={PanduanSampelKlien} allowedRoles={["klien"]} />
       <PrivateRoute path="/dashboard/daftarAnalisisLogin" component={DaftarAnalisisLogin} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/daftarAlatAnalisis" component={DaftarAlat} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/daftarAlat" component={DaftarAlat} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/pengajuanPeminjaman" component={PengajuanPeminjamanAlat} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/detailPengajuan/step/:id" component={DetailPengajuanAlat} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/detailPengajuan/step" component={DetailPengajuanAlat} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/detailPengajuan" component={DaftarPengajuanAlat} allowedRoles={["klien"]} />
+      <PrivateRoute path="/dashboard/daftarPengajuanAlat" component={DaftarPengajuanAlat} allowedRoles={["klien"]} />
       <PrivateRoute path="/dashboard/bookingCalenderKlien" component={BookingCalenderKlien} allowedRoles={["klien"]} />
       <PrivateRoute path="/dashboard/ProfileAkunKlien/EditProfileKlien" component={EditProfileKlien} allowedRoles={["klien"]} />
       <PrivateRoute path="/dashboard/ProfileAkunKlien" component={ProfileAkunKlien} allowedRoles={["klien"]} />

@@ -18,16 +18,18 @@ function NavbarLandingPage() {
     { key: "galeri", label: "Galeri", path: "/galeri"},
     { key: "profil", label: "Profil", path: "/profile" },
     { key: "daftarAnalisis", label: "Daftar Harga Analisis", path: "/daftarAnalisis" },
+    { key: "daftarAlat", label: "Daftar Peminjaman Alat", path: "/DaftarAlatSebelumLogin"},
     { key: "kontak", label: "Contact", path: "/LandingPage", scroll: "kontak" },
-  ];
+    ];
 
   // --- Update active section berdasarkan path saat refresh ---
   useEffect(() => {
-    const path = location.pathname;
-    if (path === "/LandingPage") setActiveSection("beranda");
+    const path = location.pathname.toLowerCase();
+    if (path === "/landingpage" || path === "/") setActiveSection("beranda");
     else if (path === "/profile") setActiveSection("profil");
     else if (path === "/galeri") setActiveSection("galeri");
-    else if (path === "/daftarAnalisis") setActiveSection("daftarAnalisis");
+    else if (path === "/daftaranalisis") setActiveSection("daftarAnalisis");
+    else if (path === "/daftaralat" || path === "/daftaralatsebelumlogin") setActiveSection("daftarAlat");
     else setActiveSection("");
   }, [location.pathname]);
 

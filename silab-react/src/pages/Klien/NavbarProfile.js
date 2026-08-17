@@ -5,6 +5,7 @@ import { useHistory } from "react-router-dom";
 import { getUnreadNotifications, getAllNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "../../services/NotificationService";
 import "@fontsource/poppins";
 import ConfirmModal from "../../components/Common/ConfirmModal";
+import { getStorageUrl } from "../../config/apiConfig";
 
 function NavbarProfile({ user }) {
   const history = useHistory();
@@ -64,7 +65,7 @@ function NavbarProfile({ user }) {
 
   const [showLogout, setShowLogout] = useState(false);
 
-  const avatarSrc = user?.avatar ? (user.avatar.startsWith("http") || user.avatar.startsWith("blob") ? user.avatar : `https://api.silabntdk.com/storage/${user.avatar}`) : null;
+  const avatarSrc = user?.avatar ? (user.avatar.startsWith("http") || user.avatar.startsWith("blob") ? user.avatar : `${getStorageUrl()}/storage/${user.avatar}`) : null;
 
   return (
     <>

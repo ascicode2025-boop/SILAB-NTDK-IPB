@@ -8,8 +8,10 @@ import axios from "axios";
 import { setSession } from "../services/AuthService";
 import "../css/LoginPage.css";
 
+import { getApiBaseUrl } from "../config/apiConfig";
+
 // URL API
-const API_URL = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
+const API_URL = getApiBaseUrl();
 
 function LoginPage() {
   useEffect(() => {

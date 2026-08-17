@@ -1,7 +1,8 @@
 import axios from "axios";
 import { getAuthHeader } from "./AuthService";
+import { getApiBaseUrl } from "../config/apiConfig";
 
-const API_URL = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
+const API_URL = getApiBaseUrl();
 
 export const getUnreadNotifications = async () => {
   const response = await axios.get(`${API_URL}/notifications/unread`, {

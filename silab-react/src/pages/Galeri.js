@@ -16,10 +16,20 @@ function Galeri() {
   ];
 
   return (
-    <section className="gallery-section bg-light" id="galeri" style={{ fontFamily: "Poppins, sans-serif", paddingTop: "60px" }}>
-      <Container>
-        <div className="text-center mb-5 mt-4">
-          <h2 className="gallery-title" style={{ color: "#45352F" }}>
+    <section
+      className="gallery-section"
+      id="galeri"
+      style={{
+        backgroundColor: "#EAE7E4",
+        fontFamily: "Poppins, sans-serif",
+        paddingTop: "44px",
+        marginTop: 0,
+        minHeight: "80vh",
+      }}
+    >
+      <Container className="mt-0 pt-0">
+        <div className="text-center mb-5 mt-0 pt-0">
+          <h2 className="gallery-title mt-0" style={{ color: "#45352F" }}>
             Galeri Divisi Nutrisi Ternak Daging dan Kerja
           </h2>
           <p className="text-muted mt-2">Integritas dan Kualitas dalam Setiap Layanan</p>

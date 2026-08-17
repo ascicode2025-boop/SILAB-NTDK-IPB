@@ -4,6 +4,7 @@ import { useHistory } from "react-router-dom";
 import { getAllBookings, updateBookingStatus } from "../../services/BookingService";
 import NavbarLoginKoordinator from "./NavbarLoginKoordinator";
 import FooterSetelahLogin from "../FooterSetelahLogin";
+import { getApiBaseUrl } from "../../config/apiConfig";
 
 const VerifikasiSampelKoordinator = () => {
   useEffect(() => {
@@ -51,7 +52,7 @@ const VerifikasiSampelKoordinator = () => {
 
   const fetchPrices = async () => {
     try {
-      const apiBase = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
+      const apiBase = getApiBaseUrl();
       const res = await fetch(`${apiBase}/analysis-prices`);
       if (res.ok) {
         const prices = await res.json();

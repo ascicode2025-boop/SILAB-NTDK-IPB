@@ -1,7 +1,8 @@
 import axios from "axios";
 import { getAuthHeader } from "./AuthService";
+import { getApiBaseUrl } from "../config/apiConfig";
 
-const API_URL = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
+const API_URL = getApiBaseUrl();
 
 // Add axios interceptor to handle 401 errors globally
 axios.interceptors.response.use(

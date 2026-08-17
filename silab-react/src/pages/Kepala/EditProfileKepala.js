@@ -9,6 +9,9 @@ import { useHistory } from "react-router-dom";
 import axios from "axios";
 import "@fontsource/poppins";
 
+const API_URL = process.env.REACT_APP_API_BASE_URL || "https://api.silabntdk.com/api";
+const STORAGE_URL = API_URL.replace(/\/api\/?$/, "");
+
 function EditProfileKepala() {
   useEffect(() => {
     document.title = "SILAB-NTDK - Edit Profil Kepala";
@@ -41,7 +44,7 @@ function EditProfileKepala() {
     }
 
     axios
-      .get("https://api.silabntdk.com/api/me", {
+      .get(`${API_URL}/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
@@ -62,7 +65,7 @@ function EditProfileKepala() {
         });
 
         if (user.avatar) {
-          setPreviewAvatar(`https://api.silabntdk.com/storage/${user.avatar}`);
+          setPreviewAvatar(`${STORAGE_URL}/storage/${user.avatar}`);
         }
       })
       .catch((err) => {
@@ -120,7 +123,7 @@ function EditProfileKepala() {
     }
 
     try {
-      const response = await axios.post("https://api.silabntdk.com/api/profile/update", dataToSend, {
+      const response = await axios.post(`${API_URL}/profile/update`, dataToSend, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
