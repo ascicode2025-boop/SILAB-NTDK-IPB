@@ -4,8 +4,8 @@ return [
     'paths' => ['api/*', 'sanctum/csrf-cookie', 'storage/*'],
     'allowed_methods' => ['*'],
 
-    // Kode ini akan membaca domain silabntdk.com dari dashboard Coolify
-    'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'https://silabntdk.com')),
+    // Mengizinkan origin lokal (React port 3000 / 5173) dan domain produksi
+    'allowed_origins' => array_filter(array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,https://silabntdk.com')))),
 
     'allowed_origins_patterns' => [],
     'allowed_headers' => ['*'],

@@ -58,6 +58,7 @@ import LihatHasilPdfKoordinator from "./pages/Koordinator/LihatHasilPdfKoordinat
 import TandaTanganKoordinator from "./pages/Koordinator/TandaTanganKoordinator";
 import ManajemenPembayaran from "./pages/Koordinator/ManajemenPembayaran";
 import LaporanKoordinator from "./pages/Koordinator/LaporanKoordinator";
+import ManajemenPengajuanKoordinator from "./pages/Koordinator/ManajemenPengajuanKoordinator";
 import KalenderPeminjamanAlat from "./pages/Koordinator/KalenderPeminjamanAlat";
 import ManajemenAkun from "./pages/Koordinator/ManajemenRole";
 import ProfileAkunKoordinator from "./pages/Koordinator/ProfileAkunKoordinator";
@@ -120,6 +121,7 @@ function AppLayoutWithoutNavbar() {
       <PrivateRoute path="/koordinator/dashboard/profile/edit" component={EditProfileKoordinator} allowedRoles={["koordinator"]} />
       <PrivateRoute path="/koordinator/dashboard/profile" component={ProfileAkunKoordinator} allowedRoles={["koordinator"]} />
       <PrivateRoute path="/koordinator/dashboard/manajemenAkun" component={ManajemenAkun} allowedRoles={["koordinator"]} />
+      <PrivateRoute path="/koordinator/dashboard/manajemenPengajuan" component={ManajemenPengajuanKoordinator} allowedRoles={["koordinator"]} />
       <PrivateRoute path="/koordinator/dashboard/kalenderPeminjaman" component={KalenderPeminjamanAlat} allowedRoles={["koordinator"]} />
       <PrivateRoute path="/koordinator/dashboard/laporanKoordinator" component={LaporanKoordinator} allowedRoles={["koordinator"]} />
       <PrivateRoute path="/koordinator/dashboard/tandaTanganKoordinator" component={TandaTanganKoordinator} allowedRoles={["koordinator"]} />
