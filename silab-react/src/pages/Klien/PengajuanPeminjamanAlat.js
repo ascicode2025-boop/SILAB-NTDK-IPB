@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Container, Row, Col, Card, Form, Button, Modal } from "react-bootstrap";
-import { FaChevronLeft, FaSave, FaPlus, FaTrashAlt } from "react-icons/fa";
+import { Container, Row, Col, Card, Form, Button, Modal, Spinner } from "react-bootstrap";
+import { FaChevronLeft, FaSave, FaPlus, FaTrashAlt, FaDownload, FaUpload } from "react-icons/fa";
 import { useHistory, useLocation } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "@fontsource/poppins/400.css";
@@ -8,16 +8,17 @@ import "@fontsource/poppins/600.css";
 import "@fontsource/poppins/700.css";
 import NavbarLoginKlien from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
+import axios from "axios";
+import { getApiBaseUrl } from "../../config/apiConfig";
+import { DatePicker, ConfigProvider } from "antd";
+import idID from "antd/locale/id_ID";
+import dayjs from "dayjs";
+import isBetween from "dayjs/plugin/isBetween";
+import "antd/dist/reset.css";
+import "dayjs/locale/id";
 
-const AVAILABLE_TOOLS = [
-  "Mikropipet 20–200 µL",
-  "Centrifuge",
-  "Vortex Mixer",
-  "Mikroskop",
-  "Analytical Balance",
-  "Water Bath",
-  "Incubator",
-];
+dayjs.extend(isBetween);
+dayjs.locale("id");
 
 const PengajuanPeminjamanAlat = () => {
   const history = useHistory();
@@ -26,36 +27,158 @@ const PengajuanPeminjamanAlat = () => {
   // Read stored user profile from localStorage
   const storedUser = JSON.parse(localStorage.getItem("user")) || {};
   const userIdentitas = {
-    nama: storedUser.full_name || storedUser.name || "Nadine Maulia Fauzi",
-    noTelp: storedUser.phone || storedUser.no_hp || storedUser.no_telp || "08xxxxxxxxxx",
-    email: storedUser.email || "xxxx@gmail.com",
-    institusi: storedUser.instansi || storedUser.institution || "IPB University",
+    nama: storedUser.full_name || storedUser.name || "",
+    noTelp: storedUser.nomor_telpon || storedUser.no_hp || storedUser.phone || "",
+    email: storedUser.email || "",
+    institusi: storedUser.institusi || storedUser.instansi || "",
   };
 
-  // Get selected tool passed from DaftarAlat modal via state or search params
   const queryParams = new URLSearchParams(location.search);
-  const toolFromState = location.state?.selectedTool || queryParams.get("alat") || "Mikropipet 20–200 µL";
+  const toolIdFromUrl = queryParams.get("id");
 
-  // Form State
-  const [selectedTools, setSelectedTools] = useState([toolFromState]);
-  const [tanggalPeminjaman, setTanggalPeminjaman] = useState("2026-07-02");
-  const [tanggalPengembalian, setTanggalPengembalian] = useState("2026-07-08");
+  // State
+  const [availableTools, setAvailableTools] = useState([]);
+  const [selectedTools, setSelectedTools] = useState(toolIdFromUrl ? [toolIdFromUrl] : [""]);
+  const [tanggalPeminjaman, setTanggalPeminjaman] = useState("");
+  const [tanggalPengembalian, setTanggalPengembalian] = useState("");
   const [tujuanPeminjaman, setTujuanPeminjaman] = useState("");
   const [kegiatanPenelitian, setKegiatanPenelitian] = useState("");
-  const [dosenPenanggungJawab, setDosenPenanggungJawab] = useState("Prof. Yahdillah");
+  const [dosenPenanggungJawab, setDosenPenanggungJawab] = useState("");
+  const [suratPembimbing, setSuratPembimbing] = useState(null);
+  const [suratFileName, setSuratFileName] = useState("");
+  const [buktiPembayaran, setBuktiPembayaran] = useState(null);
+  const [buktiFileName, setBuktiFileName] = useState("");
+  const [bookedDates, setBookedDates] = useState([]);
+  
+  const isAnyToolPaid = selectedTools.some(id => {
+    const tool = availableTools.find(t => t.id.toString() === id);
+    return tool && (tool.is_paid === 1 || tool.is_paid === true);
+  });
+  
+  const totalHargaSewa = selectedTools.reduce((acc, id) => {
+    const tool = availableTools.find(t => t.id.toString() === id);
+    return acc + (tool && (tool.is_paid === 1 || tool.is_paid === true) ? parseInt(tool.harga_sewa) || 0 : 0);
+  }, 0);
+  
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [resultType, setResultType] = useState("success");
+  const [resultMessage, setResultMessage] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     document.title = "SILAB-NTDK - Pengajuan Peminjaman Alat";
+    fetchInstruments();
   }, []);
 
-  // Update selected tools if user navigated from detail modal with a specific tool
-  useEffect(() => {
-    if (toolFromState && !selectedTools.includes(toolFromState)) {
-      setSelectedTools([toolFromState]);
+  const fetchInstruments = async () => {
+    try {
+      const response = await axios.get("http://localhost:8000/api/instruments");
+      setAvailableTools(response.data.data || []);
+      if (!toolIdFromUrl && response.data.data.length > 0) {
+          setSelectedTools([response.data.data[0].id.toString()]);
+      }
+    } catch (error) {
+      console.error("Gagal memuat daftar alat", error);
     }
-  }, [toolFromState]);
+  };
+
+  const fetchBookedDates = async () => {
+    try {
+      const ids = selectedTools.filter(id => id).join(",");
+      if (!ids) {
+        setBookedDates([]);
+        return;
+      }
+      const response = await axios.get(`http://localhost:8000/api/rentals/booked-dates?instrument_ids=${ids}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Accept: "application/json",
+        },
+      });
+      setBookedDates(response.data.data || []);
+    } catch (error) {
+      console.error("Gagal memuat tanggal booking", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookedDates();
+  }, [selectedTools]);
+
+  const disabledDatePeminjaman = (current) => {
+    if (!current) return false;
+    
+    // Disable past dates
+    if (current < dayjs().startOf('day')) {
+      return true;
+    }
+
+    // Check against bookedDates
+    for (const range of bookedDates) {
+      const start = dayjs(range.start).startOf('day');
+      const end = dayjs(range.end).endOf('day');
+      if (current.isBetween(start, end, null, '[]')) {
+        return true;
+      }
+    }
+
+    // Disable if after tanggalPengembalian (if set)
+    if (tanggalPengembalian && current.isAfter(dayjs(tanggalPengembalian).endOf('day'))) {
+      return true;
+    }
+    
+    // Disable if there's a booked date between current and tanggalPengembalian
+    if (tanggalPengembalian) {
+      const returnDate = dayjs(tanggalPengembalian).endOf('day');
+      for (const range of bookedDates) {
+        const start = dayjs(range.start).startOf('day');
+        if (current.isBefore(start) && returnDate.isAfter(start)) {
+           return true; // range overlaps a booked date
+        }
+      }
+    }
+
+    return false;
+  };
+
+  const disabledDatePengembalian = (current) => {
+    if (!current) return false;
+    
+    // Disable past dates
+    if (current < dayjs().startOf('day')) {
+      return true;
+    }
+
+    // Disable if before tanggalPeminjaman (if set)
+    if (tanggalPeminjaman && current.isBefore(dayjs(tanggalPeminjaman).startOf('day'))) {
+      return true;
+    }
+
+    // Check against bookedDates
+    for (const range of bookedDates) {
+      const start = dayjs(range.start).startOf('day');
+      const end = dayjs(range.end).endOf('day');
+      if (current.isBetween(start, end, null, '[]')) {
+        return true;
+      }
+    }
+
+    // Disable if there's a booked date between tanggalPeminjaman and current
+    if (tanggalPeminjaman) {
+      const borrowDate = dayjs(tanggalPeminjaman).startOf('day');
+      for (const range of bookedDates) {
+        const start = dayjs(range.start).startOf('day');
+        if (borrowDate.isBefore(start) && current.isAfter(start)) {
+           return true; // range overlaps a booked date
+        }
+      }
+    }
+
+    return false;
+  };
 
   const handleToolChange = (index, value) => {
     const updated = [...selectedTools];
@@ -64,7 +187,9 @@ const PengajuanPeminjamanAlat = () => {
   };
 
   const handleAddTool = () => {
-    setSelectedTools([...selectedTools, AVAILABLE_TOOLS[0]]);
+    if (availableTools.length > 0) {
+      setSelectedTools([...selectedTools, availableTools[0].id.toString()]);
+    }
   };
 
   const handleRemoveTool = (index) => {
@@ -73,18 +198,110 @@ const PengajuanPeminjamanAlat = () => {
     }
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSuratPembimbing(file);
+      setSuratFileName(file.name);
+    }
+  };
+
+  const handleBuktiChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setBuktiPembayaran(file);
+      setBuktiFileName(file.name);
+    }
+  };
+
+  const handleDownloadTemplate = async (e) => {
+    if (e) e.preventDefault();
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/download-template?t=${new Date().getTime()}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (!response.ok) throw new Error("Gagal mengunduh template");
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = url;
+      a.download = "Formulir_Peminjaman_Lab.pdf";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (error) {
+      console.error("Error downloading template:", error);
+      alert("Gagal mengunduh template formulir.");
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!tujuanPeminjaman || !kegiatanPenelitian || !dosenPenanggungJawab || !tanggalPeminjaman || !tanggalPengembalian) {
+      setErrorMsg("Harap lengkapi semua isian formulir.");
+      return;
+    }
+    if (!suratPembimbing) {
+      setErrorMsg("Harap unggah Formulir Peminjaman (PDF) yang sudah diisi dan ditandatangani.");
+      return;
+    }
+    if (isAnyToolPaid && !buktiPembayaran) {
+      setErrorMsg("Harap unggah Bukti Pembayaran untuk alat berbayar.");
+      return;
+    }
+    setErrorMsg("");
     setShowConfirmModal(true);
   };
 
-  const handleConfirmSubmit = () => {
+  const handleConfirmSubmit = async () => {
     setShowConfirmModal(false);
-    setSubmitSuccess(true);
-    setTimeout(() => {
-      setSubmitSuccess(false);
-      history.push("/dashboard");
-    }, 1800);
+    setIsSubmitting(true);
+    
+    try {
+      const formData = new FormData();
+      selectedTools.forEach(id => {
+        if(id) formData.append("instrument_ids[]", id);
+      });
+      formData.append("tujuan_peminjaman", tujuanPeminjaman);
+      formData.append("kegiatan_penelitian", kegiatanPenelitian);
+      formData.append("dosen_penanggung_jawab", dosenPenanggungJawab);
+      formData.append("tanggal_peminjaman", tanggalPeminjaman);
+      formData.append("tanggal_pengembalian", tanggalPengembalian);
+      formData.append("surat_pembimbing", suratPembimbing);
+      if (isAnyToolPaid && buktiPembayaran) {
+        formData.append("payment_proof", buktiPembayaran);
+      }
+
+      await axios.post("http://localhost:8000/api/rentals", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Accept: "application/json",
+        }
+      });
+
+      setResultType("success");
+      setResultMessage("Pengajuan peminjaman alat berhasil disimpan!");
+      setShowResultModal(true);
+    } catch (error) {
+      console.error(error);
+      setResultType("error");
+      
+      let msg = error.response?.data?.message || "Terjadi kesalahan saat menyimpan pengajuan.";
+      if (error.response?.data?.errors?.tanggal_peminjaman) {
+        msg = error.response.data.errors.tanggal_peminjaman[0];
+      }
+      
+      setResultMessage(msg);
+      setShowResultModal(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -129,11 +346,6 @@ const PengajuanPeminjamanAlat = () => {
 
           {/* Form Content */}
           <Form onSubmit={handleSubmit} className="p-4 p-md-5">
-            {submitSuccess && (
-              <div className="alert alert-success rounded-4 text-center mb-4 fw-semibold">
-                Pengajuan peminjaman alat berhasil disimpan! Mengarahkan ke Dashboard...
-              </div>
-            )}
 
             <Row className="g-4 mb-4">
               {/* Left Column: Identitasmu Box */}
@@ -160,28 +372,28 @@ const PengajuanPeminjamanAlat = () => {
 
                   <Card.Body className="p-4" style={{ backgroundColor: "#ffffff" }}>
                     <Row className="g-3">
-                      <Col xs={6}>
+                      <Col xs={12} md={6}>
                         <div className="text-muted small fw-medium">Nama Lengkap</div>
                         <div className="fw-bold text-dark" style={{ fontSize: "0.92rem" }}>
                           {userIdentitas.nama}
                         </div>
                       </Col>
 
-                      <Col xs={6}>
+                      <Col xs={12} md={6}>
                         <div className="text-muted small fw-medium">No. Telp</div>
                         <div className="fw-bold text-dark" style={{ fontSize: "0.92rem" }}>
                           {userIdentitas.noTelp}
                         </div>
                       </Col>
 
-                      <Col xs={6}>
+                      <Col xs={12}>
                         <div className="text-muted small fw-medium">Email</div>
-                        <div className="fw-bold text-dark text-break" style={{ fontSize: "0.92rem" }}>
+                        <div className="fw-bold text-dark text-nowrap overflow-hidden text-truncate" style={{ fontSize: "0.92rem" }}>
                           {userIdentitas.email}
                         </div>
                       </Col>
 
-                      <Col xs={6}>
+                      <Col xs={12}>
                         <div className="text-muted small fw-medium">Institusi</div>
                         <div className="fw-bold text-dark" style={{ fontSize: "0.92rem" }}>
                           {userIdentitas.institusi}
@@ -199,10 +411,10 @@ const PengajuanPeminjamanAlat = () => {
                     Alat
                   </Form.Label>
                   <div className="d-flex flex-column gap-2">
-                    {selectedTools.map((tool, index) => (
+                    {selectedTools.map((toolId, index) => (
                       <div key={index} className="d-flex align-items-center gap-2">
                         <Form.Select
-                          value={tool}
+                          value={toolId}
                           onChange={(e) => handleToolChange(index, e.target.value)}
                           style={{
                             backgroundColor: "#ECECEC",
@@ -215,9 +427,10 @@ const PengajuanPeminjamanAlat = () => {
                             boxShadow: "none",
                           }}
                         >
-                          {AVAILABLE_TOOLS.map((t) => (
-                            <option key={t} value={t}>
-                              {t}
+                          <option value="">-- Pilih Alat --</option>
+                          {availableTools.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.nama_alat}
                             </option>
                           ))}
                         </Form.Select>
@@ -255,20 +468,24 @@ const PengajuanPeminjamanAlat = () => {
                   <Form.Label className="fw-bold text-dark mb-2" style={{ fontSize: "1.05rem" }}>
                     Tanggal Peminjaman
                   </Form.Label>
-                  <Form.Control
-                    type="date"
-                    value={tanggalPeminjaman}
-                    onChange={(e) => setTanggalPeminjaman(e.target.value)}
-                    style={{
-                      backgroundColor: "#ECECEC",
-                      border: "1px solid #D5D5D5",
-                      borderRadius: "14px",
-                      padding: "10px 16px",
-                      fontSize: "0.92rem",
-                      color: "#333333",
-                      boxShadow: "none",
-                    }}
-                  />
+                  <ConfigProvider locale={idID}>
+                    <DatePicker
+                      value={tanggalPeminjaman ? dayjs(tanggalPeminjaman) : null}
+                      onChange={(val) => setTanggalPeminjaman(val ? val.format("YYYY-MM-DD") : "")}
+                      disabledDate={disabledDatePeminjaman}
+                      format="DD MMMM YYYY"
+                      style={{
+                        width: "100%",
+                        backgroundColor: "#ECECEC",
+                        border: "1px solid #D5D5D5",
+                        borderRadius: "14px",
+                        padding: "10px 16px",
+                        fontSize: "0.92rem",
+                        color: "#333333",
+                        boxShadow: "none",
+                      }}
+                    />
+                  </ConfigProvider>
                 </Form.Group>
               </Col>
 
@@ -277,20 +494,24 @@ const PengajuanPeminjamanAlat = () => {
                   <Form.Label className="fw-bold text-dark mb-2" style={{ fontSize: "1.05rem" }}>
                     Tanggal Pengembalian
                   </Form.Label>
-                  <Form.Control
-                    type="date"
-                    value={tanggalPengembalian}
-                    onChange={(e) => setTanggalPengembalian(e.target.value)}
-                    style={{
-                      backgroundColor: "#ECECEC",
-                      border: "1px solid #D5D5D5",
-                      borderRadius: "14px",
-                      padding: "10px 16px",
-                      fontSize: "0.92rem",
-                      color: "#333333",
-                      boxShadow: "none",
-                    }}
-                  />
+                  <ConfigProvider locale={idID}>
+                    <DatePicker
+                      value={tanggalPengembalian ? dayjs(tanggalPengembalian) : null}
+                      onChange={(val) => setTanggalPengembalian(val ? val.format("YYYY-MM-DD") : "")}
+                      disabledDate={disabledDatePengembalian}
+                      format="DD MMMM YYYY"
+                      style={{
+                        width: "100%",
+                        backgroundColor: "#ECECEC",
+                        border: "1px solid #D5D5D5",
+                        borderRadius: "14px",
+                        padding: "10px 16px",
+                        fontSize: "0.92rem",
+                        color: "#333333",
+                        boxShadow: "none",
+                      }}
+                    />
+                  </ConfigProvider>
                 </Form.Group>
               </Col>
             </Row>
@@ -348,7 +569,7 @@ const PengajuanPeminjamanAlat = () => {
               </Col>
             </Row>
 
-            {/* Row 4: Dosen / Penanggung Jawab */}
+            {/* Row 4: Dosen / Penanggung Jawab & File Upload */}
             <Row className="g-4 mb-4">
               <Col xs={12} md={6}>
                 <Form.Group>
@@ -357,7 +578,7 @@ const PengajuanPeminjamanAlat = () => {
                   </Form.Label>
                   <Form.Control
                     type="text"
-                    placeholder="Prof. Yahdillah"
+                    placeholder="Contoh: Prof. Dr. Budi"
                     value={dosenPenanggungJawab}
                     onChange={(e) => setDosenPenanggungJawab(e.target.value)}
                     style={{
@@ -372,7 +593,139 @@ const PengajuanPeminjamanAlat = () => {
                   />
                 </Form.Group>
               </Col>
+
+              <Col xs={12} md={6}>
+                <Form.Group>
+                  <Form.Label className="fw-bold text-dark mb-2 d-flex justify-content-between align-items-center" style={{ fontSize: "1.05rem" }}>
+                    Formulir Peminjaman
+                    <Button 
+                      variant="link" 
+                      type="button"
+                      className="p-0 text-decoration-none"
+                      style={{ fontSize: "0.85rem", color: "#8D6E63" }}
+                      onClick={handleDownloadTemplate}
+                    >
+                      <FaDownload className="me-1" /> Unduh Template
+                    </Button>
+                  </Form.Label>
+                  
+                  <div 
+                    className="position-relative"
+                    style={{
+                      backgroundColor: "#ECECEC",
+                      border: "1px dashed #A6867B",
+                      borderRadius: "14px",
+                      padding: "12px 16px",
+                      textAlign: "center",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                    onClick={() => document.getElementById("file-upload").click()}
+                  >
+                    <input 
+                      type="file" 
+                      id="file-upload" 
+                      className="d-none" 
+                      accept=".pdf"
+                      onChange={handleFileChange}
+                    />
+                    {suratFileName ? (
+                      <div className="text-success fw-semibold" style={{ fontSize: "0.9rem" }}>
+                        <FaUpload className="me-2" /> {suratFileName}
+                      </div>
+                    ) : (
+                      <div className="text-muted" style={{ fontSize: "0.9rem" }}>
+                        <FaUpload className="me-2" /> Klik untuk unggah PDF Formulir
+                      </div>
+                    )}
+                  </div>
+                </Form.Group>
+              </Col>
             </Row>
+
+            {isAnyToolPaid && (
+              <Row className="g-4 mb-4">
+                <Col xs={12}>
+                  <Card
+                    className="border-0 shadow-sm"
+                    style={{
+                      borderRadius: "18px",
+                      overflow: "hidden",
+                      border: "1px solid #E0E0E0",
+                    }}
+                  >
+                    <div
+                      className="text-center py-2 fw-semibold text-white"
+                      style={{
+                        backgroundColor: "#8D6E63",
+                        fontSize: "1.1rem",
+                        letterSpacing: "0.5px",
+                      }}
+                    >
+                      Informasi Pembayaran
+                    </div>
+                    <div className="p-4 bg-white">
+                      <p className="mb-2" style={{ fontSize: "0.95rem", color: "#555" }}>
+                        Alat yang Anda pilih memiliki biaya sewa. Silakan lakukan pembayaran sesuai dengan total biaya di bawah ini.
+                      </p>
+                      <h4 className="fw-bold mb-4" style={{ color: "#543D31" }}>
+                        Total Biaya: Rp {totalHargaSewa.toLocaleString('id-ID')}
+                      </h4>
+                      <div className="mb-4 p-3 rounded" style={{ backgroundColor: "#F9F9F9", borderLeft: "4px solid #A6867B" }}>
+                        <div className="fw-semibold mb-1" style={{ fontSize: "0.95rem" }}>Transfer Pembayaran ke:</div>
+                        <div className="fw-bold text-dark" style={{ fontSize: "1.05rem", letterSpacing: "0.5px" }}>
+                          Rek. BNI 0504118998
+                        </div>
+                        <div className="text-muted" style={{ fontSize: "0.9rem" }}>
+                          a.n Kokom Komalasari
+                        </div>
+                      </div>
+                      <Form.Group>
+                        <Form.Label className="fw-bold text-dark mb-2" style={{ fontSize: "1.05rem" }}>
+                          Unggah Bukti Pembayaran
+                        </Form.Label>
+                        <div 
+                          className="position-relative"
+                          style={{
+                            backgroundColor: "#ECECEC",
+                            border: "1px dashed #A6867B",
+                            borderRadius: "14px",
+                            padding: "12px 16px",
+                            textAlign: "center",
+                            cursor: "pointer",
+                            transition: "all 0.2s ease"
+                          }}
+                          onClick={() => document.getElementById("bukti-upload").click()}
+                        >
+                          <input 
+                            type="file" 
+                            id="bukti-upload" 
+                            className="d-none" 
+                            accept="image/*"
+                            onChange={handleBuktiChange}
+                          />
+                          {buktiFileName ? (
+                            <div className="text-success fw-semibold" style={{ fontSize: "0.9rem" }}>
+                              <FaUpload className="me-2" /> {buktiFileName}
+                            </div>
+                          ) : (
+                            <div className="text-muted" style={{ fontSize: "0.9rem" }}>
+                              <FaUpload className="me-2" /> Klik untuk unggah Bukti Pembayaran (JPG/PNG/WEBP)
+                            </div>
+                          )}
+                        </div>
+                      </Form.Group>
+                    </div>
+                  </Card>
+                </Col>
+              </Row>
+            )}
+
+            {errorMsg && (
+              <div className="alert alert-danger rounded-4 text-center mb-4 fw-semibold">
+                {errorMsg}
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="d-flex justify-content-between align-items-center mt-5 pt-2">
@@ -485,8 +838,96 @@ const PengajuanPeminjamanAlat = () => {
                   boxShadow: "0 4px 12px rgba(78,56,44,0.35)",
                 }}
                 onClick={handleConfirmSubmit}
+                disabled={isSubmitting}
               >
-                Sudah, Ajukan
+                {isSubmitting ? (
+                  <>
+                    <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+                    Menyimpan...
+                  </>
+                ) : (
+                  "Sudah, Ajukan"
+                )}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Result Modal */}
+        <Modal show={showResultModal} onHide={() => {}} centered dialogClassName="modal-confirm-custom">
+          <div
+            className="p-4 p-md-5 text-center"
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "28px",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
+              position: "relative",
+            }}
+          >
+            {/* Result Icon */}
+            <div
+              className="mx-auto d-flex justify-content-center align-items-center mb-4"
+              style={{
+                width: "72px",
+                height: "72px",
+                backgroundColor: resultType === "success" ? "#E8F5E9" : "#FFEBEE",
+                borderRadius: "50%",
+              }}
+            >
+              {resultType === "success" ? (
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="#2E7D32">
+                  <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+                </svg>
+              ) : (
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="#C62828">
+                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" />
+                </svg>
+              )}
+            </div>
+
+            <h4
+              className="fw-bold mb-3"
+              style={{
+                color: "#2C2C2C",
+                fontSize: "1.25rem",
+                letterSpacing: "-0.3px",
+              }}
+            >
+              {resultType === "success" ? "Berhasil!" : "Gagal!"}
+            </h4>
+
+            <p
+              className="mb-4 mx-auto"
+              style={{
+                fontSize: "0.95rem",
+                lineHeight: "1.6",
+                maxWidth: "340px",
+                color: "#4A4A4A",
+              }}
+            >
+              {resultMessage}
+            </p>
+
+            <div className="d-flex justify-content-center gap-3 pt-2">
+              <Button
+                style={{
+                  backgroundColor: resultType === "success" ? "#4E382C" : "#C62828",
+                  borderColor: resultType === "success" ? "#4E382C" : "#C62828",
+                  color: "#FFFFFF",
+                  borderRadius: "30px",
+                  padding: "10px 28px",
+                  fontWeight: "600",
+                  fontSize: "0.92rem",
+                  boxShadow: resultType === "success" ? "0 4px 12px rgba(78,56,44,0.35)" : "0 4px 12px rgba(198,40,40,0.35)",
+                }}
+                onClick={() => {
+                  setShowResultModal(false);
+                  if (resultType === "success") {
+                    history.push("/dashboard/detailPengajuan");
+                  }
+                }}
+              >
+                {resultType === "success" ? "Ke Daftar Pengajuan" : "Tutup"}
               </Button>
             </div>
           </div>

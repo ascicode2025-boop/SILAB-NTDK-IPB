@@ -68,6 +68,8 @@ function EditProfileKlien() {
           email: user.email || "",
           institusi: user.institusi || "", // Akan kosong/default jika user baru
           nomor_telpon: user.nomor_telpon || "",
+          nim: user.nim || "",
+          prodi: user.prodi || "",
           role: user.role || "",
           bio: user.bio || "",
         });
@@ -118,6 +120,31 @@ function EditProfileKlien() {
       });
       return;
     }
+    
+    // Validasi Khusus Mahasiswa IPB
+    if (formData.institusi === "Mahasiswa IPB") {
+      if (!formData.nim.trim()) {
+        setPopup({
+          show: true,
+          title: "NIM wajib diisi!",
+          message: "Mahasiswa IPB wajib mengisi NIM.",
+          type: "error",
+          onClose: () => setPopup((p) => ({ ...p, show: false })),
+        });
+        return;
+      }
+      if (!formData.prodi.trim()) {
+        setPopup({
+          show: true,
+          title: "Program Studi wajib diisi!",
+          message: "Mahasiswa IPB wajib mengisi Program Studi.",
+          type: "error",
+          onClose: () => setPopup((p) => ({ ...p, show: false })),
+        });
+        return;
+      }
+    }
+
     if (!formData.nomor_telpon.trim()) {
       setPopup({
         show: true,
@@ -136,6 +163,8 @@ function EditProfileKlien() {
     dataToSend.append("email", formData.email);
     dataToSend.append("institusi", formData.institusi);
     dataToSend.append("nomor_telpon", formData.nomor_telpon);
+    dataToSend.append("nim", formData.nim);
+    dataToSend.append("prodi", formData.prodi);
     dataToSend.append("bio", formData.bio || "");
     if (avatarFile) {
       dataToSend.append("avatar", avatarFile);
@@ -308,6 +337,25 @@ function EditProfileKlien() {
                     </optgroup>
                   </select>
                 </div>
+                
+                {/* NIM & PRODI (Khusus Mahasiswa IPB) */}
+                {formData.institusi === "Mahasiswa IPB" && (
+                  <div className="row">
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label fw-semibold">
+                        NIM <span className="text-danger">*</span>
+                      </label>
+                      <input type="text" className="form-control" name="nim" value={formData.nim || ""} onChange={handleChange} placeholder="Contoh: G641..." required />
+                    </div>
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label fw-semibold">
+                        Program Studi <span className="text-danger">*</span>
+                      </label>
+                      <input type="text" className="form-control" name="prodi" value={formData.prodi || ""} onChange={handleChange} placeholder="Contoh: Ilmu Komputer" required />
+                    </div>
+                  </div>
+                )}
+
                 {/* NO TELPON (Wajib) */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold">

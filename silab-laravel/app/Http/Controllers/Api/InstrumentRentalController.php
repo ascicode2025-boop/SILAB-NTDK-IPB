@@ -1,0 +1,774 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Instrument;
+use App\Models\InstrumentRental;
+use App\Models\InstrumentRentalItem;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
+use setasign\Fpdi\Fpdi;
+use Illuminate\Support\Facades\Log;
+use App\Models\Notification;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+
+class InstrumentRentalController extends Controller
+{
+    // Mengambil semua pengajuan (Koordinator) atau milik Klien
+    public function index(Request $request)
+    {
+        $user = $request->user();
+        
+        $query = InstrumentRental::with(['instruments', 'user']);
+
+        if ($user->role === 'klien') {
+            $query->where('user_id', $user->id);
+        }
+
+        $rentals = $query->orderBy('created_at', 'desc')->get();
+
+        return response()->json([
+            'message' => 'Berhasil mengambil data pengajuan peminjaman',
+            'data' => $rentals
+        ], 200);
+    }
+
+    // Submit pengajuan dari Klien
+    public function store(Request $request)
+    {
+        $user = $request->user();
+
+        // Validasi
+        $validator = Validator::make($request->all(), [
+            'instrument_ids' => 'required|array',
+            'instrument_ids.*' => 'exists:instruments,id',
+            'tujuan_peminjaman' => 'required|string',
+            'kegiatan_penelitian' => 'required|string',
+            'dosen_penanggung_jawab' => 'required|string',
+            'tanggal_peminjaman' => 'required|date',
+            'tanggal_pengembalian' => 'required|date|after_or_equal:tanggal_peminjaman',
+            'surat_pembimbing' => 'required|file|mimes:pdf|max:10240',
+            'payment_proof' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        // Cek alat berbayar
+        $instruments = Instrument::whereIn('id', $request->instrument_ids)->get();
+        $isAnyPaid = $instruments->where('is_paid', true)->isNotEmpty();
+
+        // Cek bentrok tanggal
+        $isConflict = false;
+        $reqStart = \Carbon\Carbon::parse($request->tanggal_peminjaman);
+        $reqEnd = \Carbon\Carbon::parse($request->tanggal_pengembalian);
+
+        foreach ($instruments as $instrument) {
+            $rentals = InstrumentRental::whereHas('instruments', function ($q) use ($instrument) {
+                $q->where('instrument_id', $instrument->id);
+            })
+            ->whereIn('status', ['pending', 'disetujui', 'aktif', 'menunggu_pengembalian'])
+            ->where(function ($q) use ($request) {
+                $q->whereBetween('tanggal_peminjaman', [$request->tanggal_peminjaman, $request->tanggal_pengembalian])
+                  ->orWhereBetween('tanggal_pengembalian', [$request->tanggal_peminjaman, $request->tanggal_pengembalian])
+                  ->orWhere(function ($q2) use ($request) {
+                      $q2->where('tanggal_peminjaman', '<=', $request->tanggal_peminjaman)
+                         ->where('tanggal_pengembalian', '>=', $request->tanggal_pengembalian);
+                  });
+            })
+            ->get(['tanggal_peminjaman', 'tanggal_pengembalian']);
+
+            if ($rentals->isNotEmpty()) {
+                $current = $reqStart->copy();
+                while ($current->lte($reqEnd)) {
+                    $dateString = $current->toDateString();
+                    $count = 0;
+                    foreach ($rentals as $rental) {
+                        if ($dateString >= $rental->tanggal_peminjaman && $dateString <= $rental->tanggal_pengembalian) {
+                            $count++;
+                        }
+                    }
+                    if ($count >= $instrument->total_unit) {
+                        $isConflict = true;
+                        break 2;
+                    }
+                    $current->addDay();
+                }
+            }
+        }
+
+        if ($isConflict) {
+            return response()->json([
+                'errors' => ['tanggal_peminjaman' => ['Beberapa alat yang dipilih sudah habis dipesan pada rentang tanggal tersebut.']]
+            ], 422);
+        }
+
+        $statusPembayaran = $isAnyPaid ? 'belum_lunas' : 'tidak_perlu';
+        
+        $paymentProofPath = null;
+        if ($request->hasFile('payment_proof')) {
+            $paymentProofPath = $request->file('payment_proof')->store('rentals/payment', 'public');
+            $statusPembayaran = 'menunggu';
+        }
+
+        // Simpan File
+        $suratPath = $request->file('surat_pembimbing')->store('rentals/surat', 'public');
+
+        // Buat Rental
+        $rental = InstrumentRental::create([
+            'user_id' => $user->id,
+            'tujuan_peminjaman' => $request->tujuan_peminjaman,
+            'kegiatan_penelitian' => $request->kegiatan_penelitian,
+            'dosen_penanggung_jawab' => $request->dosen_penanggung_jawab,
+            'surat_pembimbing_path' => $suratPath,
+            'tanggal_peminjaman' => $request->tanggal_peminjaman,
+            'tanggal_pengembalian' => $request->tanggal_pengembalian,
+            'status' => 'pending',
+            'status_pembayaran' => $statusPembayaran,
+            'payment_proof_path' => $paymentProofPath,
+        ]);
+
+        // Attach Instruments
+        foreach ($request->instrument_ids as $instrument_id) {
+            InstrumentRentalItem::create([
+                'rental_id' => $rental->id,
+                'instrument_id' => $instrument_id
+            ]);
+        }
+
+        $koordinator = User::where('role', 'koordinator')->first();
+        if ($koordinator) {
+            $this->sendNotification($koordinator->id, 'Pengajuan Peminjaman Baru', "Peminjaman alat baru (ID: {$rental->id}) diajukan oleh " . Auth::user()->name);
+        }
+
+        return response()->json([
+            'message' => 'Pengajuan peminjaman berhasil dikirim',
+            'data' => $rental->load('instruments')
+        ], 201);
+    }
+
+    // Persetujuan / Penolakan (Koordinator)
+    public function verify(Request $request, $id)
+    {
+        $user = $request->user();
+        if ($user->role !== 'koordinator') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'status' => 'required|in:disetujui,ditolak',
+            'catatan_koordinator' => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $rental = InstrumentRental::findOrFail($id);
+
+        if ($request->status === 'ditolak') {
+            $rental->update([
+                'status' => 'ditolak',
+                'catatan_koordinator' => $request->catatan_koordinator
+            ]);
+        } elseif ($request->status === 'disetujui') {
+            $finalPath = $this->appendSignatureToPdf($rental->surat_pembimbing_path);
+
+            $rental->update([
+                'status' => 'disetujui',
+                'catatan_koordinator' => $request->catatan_koordinator,
+                'final_document_path' => $finalPath
+            ]);
+
+            $items = InstrumentRentalItem::where('rental_id', $rental->id)->get();
+            foreach ($items as $item) {
+                Instrument::where('id', $item->instrument_id)->update(['status' => 'dipinjam']);
+            }
+        }
+
+        $this->sendNotification($rental->user_id, 'Status Peminjaman Alat', "Status peminjaman alat Anda (ID: {$rental->id}) telah diubah menjadi {$rental->status}.");
+
+        return response()->json([
+            'message' => 'Pengajuan berhasil diverifikasi',
+            'data' => $rental
+        ], 200);
+    }
+
+    // Fungsi internal untuk menambahkan TTD Kepala Lab menggunakan FPDI
+    private function appendSignatureToPdf($originalPdfPath)
+    {
+        try {
+            $fullOriginalPath = Storage::disk('public')->path($originalPdfPath);
+            
+            if (!file_exists($fullOriginalPath)) {
+                Log::error("FPDI: Original PDF not found at " . $fullOriginalPath);
+                return null;
+            }
+
+            $pdf = new Fpdi();
+            $pageCount = $pdf->setSourceFile($fullOriginalPath);
+
+            // Hanya proses 2 halaman pertama (hapus halaman kosong 3-6)
+            $targetPages = min(2, $pageCount);
+
+            for ($pageNo = 1; $pageNo <= $targetPages; $pageNo++) {
+                $templateId = $pdf->importPage($pageNo);
+                $size = $pdf->getTemplateSize($templateId);
+                
+                $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
+                $pdf->useTemplate($templateId);
+                
+                if ($pageNo == 1) {
+                    $ttdPath = public_path('asset/ttd.png');
+                    if (file_exists($ttdPath)) {
+                        $pdf->Image($ttdPath, 95, 223, 20); 
+                        $pdf->SetFillColor(255, 255, 255);
+                        $pdf->Rect(65, 240, 80, 15, 'F');
+                        $pdf->SetFont('Arial', 'B', 10);
+                        $pdf->SetXY(65, 244);
+                        $pdf->Cell(80, 5, 'Prof. Dr. Ir. Dewi Apri Astuti, M.S.', 0, 0, 'C');
+                        $pdf->SetFont('Arial', '', 10);
+                        $pdf->SetXY(65, 248);
+                        $pdf->Cell(80, 5, 'NIP. 196110051985032001', 0, 0, 'C');
+                        $pdf->SetFont('Arial', 'I', 8);
+                        $pdf->SetXY(85, 253);
+                        $pdf->Cell(40, 5, 'Ditandatangani secara digital', 0, 0, 'C');
+                    } else {
+                        Log::warning("FPDI: TTD image not found at " . $ttdPath);
+                    }
+                } elseif ($pageNo == 2) {
+                    $ttdPath = public_path('asset/ttd.png');
+                    if (file_exists($ttdPath)) {
+                        $pdf->Image($ttdPath, 35, 213, 20); 
+                        $pdf->SetFillColor(255, 255, 255);
+                        $pdf->Rect(10, 233, 70, 15, 'F');
+                        $pdf->SetFont('Arial', 'B', 10);
+                        $pdf->SetXY(10, 234);
+                        $pdf->Cell(70, 5, 'Prof. Dr. Ir. Dewi Apri Astuti, M.S.', 0, 0, 'C');
+                        $pdf->SetFont('Arial', '', 10);
+                        $pdf->SetXY(10, 238);
+                        $pdf->Cell(70, 5, 'NIP. 196110051985032001', 0, 0, 'C');
+                        $pdf->SetFont('Arial', 'I', 8);
+                        $pdf->SetXY(25, 243);
+                        $pdf->Cell(40, 5, 'Ditandatangani secara digital', 0, 0, 'C');
+                    }
+                }
+            }
+
+            $newFileName = 'rentals/final/' . uniqid() . '_final.pdf';
+            $outputFilePath = Storage::disk('public')->path($newFileName);
+            
+            if (!file_exists(dirname($outputFilePath))) {
+                mkdir(dirname($outputFilePath), 0755, true);
+            }
+
+            $pdf->Output('F', $outputFilePath);
+            return $newFileName;
+
+        } catch (\Exception $e) {
+            Log::error('FPDI Error: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    public function downloadTemplateWithTtd()
+    {
+        try {
+            $templatePath = public_path('asset/Formulir_Peminjaman_Lab.pdf');
+            if (!file_exists($templatePath)) {
+                return response()->json(['error' => 'Template not found'], 404);
+            }
+
+            $pdf = new Fpdi();
+            $pageCount = $pdf->setSourceFile($templatePath);
+
+            // Hanya proses 2 halaman pertama (hapus halaman kosong 3-6)
+            $targetPages = min(2, $pageCount);
+
+            for ($pageNo = 1; $pageNo <= $targetPages; $pageNo++) {
+                $templateId = $pdf->importPage($pageNo);
+                $size = $pdf->getTemplateSize($templateId);
+                
+                $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
+                $pdf->useTemplate($templateId);
+                
+                if ($pageNo == 1) {
+                    $ttdPath = public_path('asset/ttd.png');
+                    if (file_exists($ttdPath)) {
+                        $pdf->Image($ttdPath, 95, 223, 20); 
+                        $pdf->SetFillColor(255, 255, 255);
+                        $pdf->Rect(65, 240, 80, 15, 'F');
+                        $pdf->SetFont('Arial', 'B', 10);
+                        $pdf->SetXY(65, 244);
+                        $pdf->Cell(80, 5, 'Prof. Dr. Ir. Dewi Apri Astuti, M.S.', 0, 0, 'C');
+                        $pdf->SetFont('Arial', '', 10);
+                        $pdf->SetXY(65, 248);
+                        $pdf->Cell(80, 5, 'NIP. 196110051985032001', 0, 0, 'C');
+                        $pdf->SetFont('Arial', 'I', 8);
+                        $pdf->SetXY(85, 253);
+                        $pdf->Cell(40, 5, 'Ditandatangani secara digital', 0, 0, 'C');
+                    }
+                } elseif ($pageNo == 2) {
+                    $ttdPath = public_path('asset/ttd.png');
+                    if (file_exists($ttdPath)) {
+                        $pdf->Image($ttdPath, 35, 213, 20); 
+                        $pdf->SetFillColor(255, 255, 255);
+                        $pdf->Rect(10, 233, 70, 15, 'F');
+                        $pdf->SetFont('Arial', 'B', 10);
+                        $pdf->SetXY(10, 234);
+                        $pdf->Cell(70, 5, 'Prof. Dr. Ir. Dewi Apri Astuti, M.S.', 0, 0, 'C');
+                        $pdf->SetFont('Arial', '', 10);
+                        $pdf->SetXY(10, 238);
+                        $pdf->Cell(70, 5, 'NIP. 196110051985032001', 0, 0, 'C');
+                        $pdf->SetFont('Arial', 'I', 8);
+                        $pdf->SetXY(25, 243);
+                        $pdf->Cell(40, 5, 'Ditandatangani secara digital', 0, 0, 'C');
+                    }
+                }
+            }
+
+            $content = $pdf->Output('S');
+            return response($content)
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', 'attachment; filename="Formulir_Peminjaman_Lab.pdf"');
+        } catch (\Exception $e) {
+            Log::error('FPDI Error in template: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to generate template'], 500);
+        }
+    }
+
+    // Upload Bukti Bayar (Klien)
+    public function uploadPayment(Request $request, $id)
+    {
+        $user = $request->user();
+        $rental = InstrumentRental::findOrFail($id);
+
+        if ($rental->user_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'payment_proof' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $path = $request->file('payment_proof')->store('rentals/payment', 'public');
+
+        $rental->update([
+            'status_pembayaran' => 'menunggu',
+            'payment_proof_path' => $path
+        ]);
+
+        $koordinator = User::where('role', 'koordinator')->first();
+        if ($koordinator) {
+            $this->sendNotification($koordinator->id, 'Bukti Pembayaran Diunggah', "Klien telah mengunggah bukti pembayaran untuk peminjaman alat (ID: {$rental->id})");
+        }
+
+        return response()->json([
+            'message' => 'Bukti pembayaran berhasil diunggah',
+            'data' => $rental
+        ], 200);
+    }
+
+    // Verifikasi Pembayaran (Koordinator)
+    public function verifyPayment(Request $request, $id)
+    {
+        $user = $request->user();
+        if ($user->role !== 'koordinator') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $rental = InstrumentRental::findOrFail($id);
+        
+        $rental->update([
+            'status_pembayaran' => 'lunas',
+            'alasan_penolakan_pembayaran' => null
+        ]);
+
+        $this->sendNotification($rental->user_id, 'Pembayaran Diverifikasi', "Pembayaran untuk peminjaman alat (ID: {$rental->id}) telah diverifikasi dan lunas.");
+
+        return response()->json([
+            'message' => 'Pembayaran berhasil diverifikasi',
+            'data' => $rental
+        ], 200);
+    }
+
+    // Tolak Pembayaran (Koordinator)
+    public function rejectPayment(Request $request, $id)
+    {
+        $user = $request->user();
+        if ($user->role !== 'koordinator') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'alasan' => 'required|string'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $rental = InstrumentRental::findOrFail($id);
+        
+        $rental->update([
+            'status_pembayaran' => 'belum_lunas',
+            'payment_proof_path' => null,
+            'alasan_penolakan_pembayaran' => $request->alasan
+        ]);
+
+        $this->sendNotification($rental->user_id, 'Pembayaran Ditolak', "Bukti pembayaran untuk peminjaman alat (ID: {$rental->id}) ditolak dengan alasan: " . $request->alasan);
+
+        return response()->json([
+            'message' => 'Pembayaran ditolak',
+            'data' => $rental
+        ], 200);
+    }
+
+    // Serah Terima Alat ke Klien (Teknisi)
+    public function handover(Request $request, $id)
+    {
+        $user = $request->user();
+        if ($user->role !== 'teknisi') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $rental = InstrumentRental::findOrFail($id);
+
+        if ($rental->status !== 'disetujui') {
+            return response()->json(['message' => 'Status peminjaman bukan disetujui'], 422);
+        }
+
+        $rental->update([
+            'status' => 'aktif',
+            'handover_checklist' => $request->input('handover_checklist'),
+            'handover_notes' => $request->input('handover_notes'),
+        ]);
+
+        $this->sendNotification($rental->user_id, 'Alat Diserahkan', "Alat untuk peminjaman (ID: {$rental->id}) telah diserahkan dan status menjadi aktif.");
+
+        return response()->json([
+            'message' => 'Alat berhasil diserahkan',
+            'data' => $rental
+        ], 200);
+    }
+
+    // Pengajuan Pengembalian (Klien)
+    public function clientReturnRequest(Request $request, $id)
+    {
+        $user = $request->user();
+        $rental = InstrumentRental::findOrFail($id);
+
+        if ($rental->user_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($rental->status !== 'aktif') {
+            return response()->json(['message' => 'Status peminjaman bukan aktif'], 422);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'tanggal_pengembalian_aktual' => 'required|date',
+            'kondisi_alat' => 'required|string',
+            'catatan' => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $rental->update([
+            'status' => 'menunggu_pengembalian',
+            'client_return_date' => $request->input('tanggal_pengembalian_aktual'),
+            'client_return_condition' => $request->input('kondisi_alat'),
+            'client_return_notes' => $request->input('catatan'),
+        ]);
+
+        $teknisiList = User::where('role', 'teknisi')->get();
+        foreach($teknisiList as $teknisi) {
+            $this->sendNotification($teknisi->id, 'Pengajuan Pengembalian Alat', "Klien mengajukan pengembalian untuk peminjaman (ID: {$rental->id})");
+        }
+
+        return response()->json([
+            'message' => 'Pengajuan pengembalian berhasil',
+            'data' => $rental
+        ], 200);
+    }
+
+    // Pengembalian Alat (Teknisi)
+    public function returnInstruments(Request $request, $id)
+    {
+        $user = $request->user();
+        if ($user->role !== 'teknisi') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'items' => 'required|array',
+            'items.*.instrument_id' => 'required|exists:instruments,id',
+            'items.*.kondisi_kembali' => 'required|string',
+            'denda' => 'nullable|numeric|min:0'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $denda = $request->input('denda', 0);
+        $hasRusak = collect($request->items)->contains(function ($item) {
+            return strtolower($item['kondisi_kembali']) === 'rusak';
+        });
+
+        if ($hasRusak && $denda <= 0) {
+            return response()->json([
+                'message' => 'Alat rusak, wajib memasukkan nominal denda.'
+            ], 422);
+        }
+
+        $rental = InstrumentRental::findOrFail($id);
+        
+        foreach ($request->items as $reqItem) {
+            InstrumentRentalItem::where('rental_id', $rental->id)
+                ->where('instrument_id', $reqItem['instrument_id'])
+                ->update(['kondisi_kembali' => $reqItem['kondisi_kembali']]);
+            
+            $statusAlat = strtolower($reqItem['kondisi_kembali']) === 'rusak' ? 'rusak' : 'tersedia';
+            Instrument::where('id', $reqItem['instrument_id'])->update(['status' => $statusAlat]);
+        }
+
+        $denda = $request->input('denda', 0);
+        if ($denda > 0) {
+            $rental->update([
+                'status' => 'menunggu_pembayaran_denda',
+                'denda' => $denda,
+                'status_denda' => 'belum_dibayar'
+            ]);
+        } else {
+            $rental->update([
+                'status' => 'selesai',
+                'denda' => 0,
+                'status_denda' => 'tidak_ada'
+            ]);
+        }
+
+        $this->sendNotification($rental->user_id, 'Pengembalian Alat Selesai', "Pengembalian alat untuk peminjaman (ID: {$rental->id}) telah selesai diverifikasi teknisi.");
+
+        return response()->json([
+            'message' => 'Pengembalian alat berhasil dicatat',
+            'data' => $rental
+        ], 200);
+    }
+
+    // Upload Bukti Denda (Klien)
+    public function uploadDenda(Request $request, $id)
+    {
+        $user = $request->user();
+        $rental = InstrumentRental::findOrFail($id);
+
+        if ($rental->user_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'denda_payment_proof' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $path = $request->file('denda_payment_proof')->store('rentals/denda', 'public');
+
+        $rental->update([
+            'denda_payment_proof_path' => $path,
+            'status_denda' => 'menunggu'
+        ]);
+
+        $koordinator = User::where('role', 'koordinator')->first();
+        if ($koordinator) {
+            $this->sendNotification($koordinator->id, 'Bukti Pembayaran Denda Diunggah', "Klien telah mengunggah bukti pembayaran denda untuk peminjaman alat (ID: {$rental->id})");
+        }
+
+        return response()->json([
+            'message' => 'Bukti denda berhasil diunggah',
+            'data' => $rental
+        ], 200);
+    }
+
+    // Verifikasi Denda (Koordinator)
+    public function verifyDenda(Request $request, $id)
+    {
+        $user = $request->user();
+        if ($user->role !== 'koordinator') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $rental = InstrumentRental::findOrFail($id);
+        
+        $rental->update([
+            'status' => 'selesai',
+            'status_denda' => 'lunas'
+        ]);
+
+        $this->sendNotification($rental->user_id, 'Pembayaran Denda Diverifikasi', "Pembayaran denda untuk peminjaman alat (ID: {$rental->id}) telah diverifikasi dan lunas.");
+
+        return response()->json([
+            'message' => 'Pembayaran denda berhasil diverifikasi',
+            'data' => $rental
+        ], 200);
+    }
+
+    // Mengubah tanggal peminjaman dan pengembalian (Koordinator)
+    public function updateDates(Request $request, $id)
+    {
+        $user = $request->user();
+        if ($user->role !== 'koordinator') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'tanggal_peminjaman' => 'required|date',
+            'tanggal_pengembalian' => 'required|date|after_or_equal:tanggal_peminjaman',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $rental = InstrumentRental::findOrFail($id);
+        $rental->update([
+            'tanggal_peminjaman' => $request->tanggal_peminjaman,
+            'tanggal_pengembalian' => $request->tanggal_pengembalian,
+        ]);
+
+        return response()->json([
+            'message' => 'Tanggal peminjaman berhasil diperbarui',
+            'data' => $rental
+        ], 200);
+    }
+
+    // Mendapatkan tanggal yang sudah dibooking untuk alat tertentu
+    public function getBookedDates(Request $request)
+    {
+        $instrumentIds = $request->query('instrument_ids', []);
+        
+        if (!is_array($instrumentIds)) {
+            $instrumentIds = explode(',', $instrumentIds);
+        }
+
+        if (empty($instrumentIds)) {
+            return response()->json(['data' => []], 200);
+        }
+
+        $instruments = Instrument::whereIn('id', $instrumentIds)->get();
+        $fullyBookedDatesSet = [];
+
+        foreach ($instruments as $instrument) {
+            $rentals = InstrumentRental::whereHas('instruments', function ($query) use ($instrument) {
+                $query->where('instrument_id', $instrument->id);
+            })
+            ->whereIn('status', ['pending', 'disetujui', 'aktif', 'menunggu_pengembalian'])
+            ->get(['tanggal_peminjaman', 'tanggal_pengembalian']);
+
+            if ($rentals->isEmpty()) continue;
+
+            $minDate = $rentals->min('tanggal_peminjaman');
+            $maxDate = $rentals->max('tanggal_pengembalian');
+
+            $current = \Carbon\Carbon::parse($minDate);
+            $end = \Carbon\Carbon::parse($maxDate);
+
+            while ($current->lte($end)) {
+                $dateString = $current->toDateString();
+                $count = 0;
+                foreach ($rentals as $rental) {
+                    if ($dateString >= $rental->tanggal_peminjaman && $dateString <= $rental->tanggal_pengembalian) {
+                        $count++;
+                    }
+                }
+                if ($count >= $instrument->total_unit) {
+                    $fullyBookedDatesSet[$dateString] = true;
+                }
+                $current->addDay();
+            }
+        }
+
+        $bookedDates = [];
+        $dates = array_keys($fullyBookedDatesSet);
+        sort($dates);
+
+        foreach ($dates as $date) {
+            $bookedDates[] = [
+                'start' => $date,
+                'end' => $date
+            ];
+        }
+
+        return response()->json(['data' => $bookedDates], 200);
+    }
+
+    public function cancelRental(Request $request, $id)
+    {
+        if (Auth::user()->role !== 'klien') {
+            return response()->json(['success' => false, 'message' => 'Hanya klien yang dapat membatalkan peminjaman alat.'], 403);
+        }
+
+        $rental = InstrumentRental::find($id);
+        if (!$rental) {
+            return response()->json(['success' => false, 'message' => 'Data tidak ditemukan.'], 404);
+        }
+
+        if ($rental->user_id !== Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses untuk membatalkan peminjaman ini.'], 403);
+        }
+
+        if ($rental->status !== 'pending') {
+            return response()->json(['success' => false, 'message' => 'Hanya peminjaman dengan status pending yang dapat dibatalkan.'], 400);
+        }
+
+        $rental->update(['status' => 'dibatalkan']);
+
+        $koordinator = User::where('role', 'koordinator')->first();
+        if ($koordinator) {
+            $this->sendNotification($koordinator->id, 'Peminjaman Dibatalkan', "Klien telah membatalkan peminjaman alat (ID: {$rental->id})");
+        }
+
+        return response()->json(['success' => true, 'message' => 'Peminjaman alat berhasil dibatalkan.']);
+    }
+
+    private function sendNotification($userId, $title, $message, $type = 'info')
+    {
+        Notification::create([
+            'user_id' => $userId,
+            'title' => $title,
+            'message' => $message,
+            'type' => $type,
+            'is_read' => false
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $rental = InstrumentRental::findOrFail($id);
+        
+        // Only allow deleting if status is selesai, ditolak, or dibatalkan
+        if (!in_array($rental->status, ['selesai', 'ditolak', 'dibatalkan'])) {
+            return response()->json(['success' => false, 'message' => 'Hanya peminjaman yang sudah selesai, ditolak, atau dibatalkan yang dapat dihapus.'], 400);
+        }
+
+        // Delete related instruments
+        $rental->instruments()->detach();
+        
+        // Delete rental record
+        $rental->delete();
+
+        return response()->json(['success' => true, 'message' => 'Data peminjaman berhasil dihapus.']);
+    }
+}

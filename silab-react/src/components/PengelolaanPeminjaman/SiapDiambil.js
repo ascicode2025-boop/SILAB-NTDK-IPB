@@ -1,43 +1,14 @@
 import React, { useState } from "react";
 import { Table, Modal } from "react-bootstrap";
 
-const INITIAL_SIAP_DIAMBIL = [
-  {
-    id: 1,
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia Fauzi",
-    alat: "Micropipette 20–200 µL",
-    jumlah: "2 Unit",
-    tanggalAmbil: "02 Jul 2026",
-    status: "Disetujui",
-  },
-  {
-    id: 2,
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia Fauzi",
-    alat: "Micropipette 20–200 µL",
-    jumlah: "2 Unit",
-    tanggalAmbil: "02 Jul 2026",
-    status: "Disetujui",
-  },
-  {
-    id: 3,
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia Fauzi",
-    alat: "Micropipette 20–200 µL",
-    jumlah: "2 Unit",
-    tanggalAmbil: "02 Jul 2026",
-    status: "Disetujui",
-  },
-];
-
-export default function SiapDiambil() {
-  const [dataList, setDataList] = useState(INITIAL_SIAP_DIAMBIL);
+export default function SiapDiambil({ rentals, onRefresh, onHandover }) {
   const [selectedItem, setSelectedItem] = useState(null);
   
   // Modal States
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Form State inside Modal 1
   const [checklist, setChecklist] = useState({
@@ -62,15 +33,25 @@ export default function SiapDiambil() {
     setShowDetailModal(true);
   };
 
-  const handleSerahkanAlat = () => {
-    setShowDetailModal(false);
-    setShowSuccessModal(true);
+  const handleSerahkanAlat = async () => {
+    try {
+      if (selectedItem) {
+        const payload = {
+          handover_checklist: JSON.stringify(checklist),
+          handover_notes: catatan
+        };
+        await onHandover(selectedItem.id, payload);
+        setShowDetailModal(false);
+        setShowSuccessModal(true);
+        onRefresh();
+      }
+    } catch (error) {
+      setErrorMessage(error.message || "Gagal menyerahkan alat");
+      setShowErrorModal(true);
+    }
   };
 
   const handleCloseSuccess = () => {
-    if (selectedItem) {
-      setDataList((prev) => prev.filter((item) => item.id !== selectedItem.id));
-    }
     setShowSuccessModal(false);
   };
 
@@ -158,8 +139,8 @@ export default function SiapDiambil() {
               </tr>
             </thead>
             <tbody>
-              {dataList.length > 0 ? (
-                dataList.map((item, index) => (
+              {rentals && rentals.length > 0 ? (
+                rentals.map((item, index) => (
                   <tr
                     key={item.id}
                     style={{
@@ -171,16 +152,16 @@ export default function SiapDiambil() {
                       {index + 1}
                     </td>
                     <td style={{ py: "16px", fontWeight: "600", color: "#212121" }}>
-                      {item.noPengajuan}
+                      {item.rental_number}
                     </td>
                     <td style={{ py: "16px", color: "#424242" }}>
-                      {item.namaPeminjam}
+                      {item.user?.name}
                     </td>
                     <td style={{ py: "16px", color: "#424242" }}>
-                      {item.alat}
+                      {item.items?.map((i) => `${i.instrument?.name} (${i.quantity})`).join(", ")}
                     </td>
                     <td style={{ py: "16px", textAlign: "center", color: "#424242" }}>
-                      {item.tanggalAmbil}
+                      {item.start_date}
                     </td>
                     <td style={{ py: "16px", textAlign: "center", color: "#424242", fontWeight: 500 }}>
                       {item.status}
@@ -270,7 +251,7 @@ export default function SiapDiambil() {
                   Nama
                 </div>
                 <div style={{ color: "#212121", fontSize: "0.95rem", fontWeight: "600" }}>
-                  {selectedItem.namaPeminjam}
+                  {selectedItem.user?.name}
                 </div>
               </div>
               <div>
@@ -278,7 +259,7 @@ export default function SiapDiambil() {
                   No. Pengajuan
                 </div>
                 <div style={{ color: "#212121", fontSize: "0.95rem", fontWeight: "600" }}>
-                  {selectedItem.noPengajuan}
+                  {selectedItem.rental_number}
                 </div>
               </div>
             </div>
@@ -298,7 +279,7 @@ export default function SiapDiambil() {
                   Alat
                 </div>
                 <div style={{ color: "#212121", fontSize: "0.92rem", fontWeight: "600", lineHeight: "1.3" }}>
-                  {selectedItem.alat}
+                  {selectedItem.items?.map((i) => i.instrument?.name).join(", ")}
                 </div>
               </div>
               <div>
@@ -306,7 +287,7 @@ export default function SiapDiambil() {
                   Jumlah
                 </div>
                 <div style={{ color: "#212121", fontSize: "0.92rem", fontWeight: "600" }}>
-                  {selectedItem.jumlah || "2 Unit"}
+                  {selectedItem.items?.reduce((total, i) => total + i.quantity, 0)} Unit
                 </div>
               </div>
               <div>
@@ -314,7 +295,7 @@ export default function SiapDiambil() {
                   Tanggal Pengambilan
                 </div>
                 <div style={{ color: "#212121", fontSize: "0.92rem", fontWeight: "600" }}>
-                  {selectedItem.tanggalAmbil}
+                  {selectedItem.start_date}
                 </div>
               </div>
             </div>
@@ -501,6 +482,56 @@ export default function SiapDiambil() {
             }}
           >
             Ok
+          </button>
+        </div>
+      </Modal>
+
+      {/* ─── 3. MODAL ERROR ─── */}
+      <Modal
+        show={showErrorModal}
+        onHide={() => setShowErrorModal(false)}
+        centered
+        dialogClassName="custom-modal-narrow custom-modal-clean"
+      >
+        <div
+          style={{
+            backgroundColor: "#dc3545",
+            color: "#ffffff",
+            padding: "14px 20px",
+            textAlign: "center",
+            fontWeight: "700",
+            fontSize: "1.15rem",
+          }}
+        >
+          Gagal
+        </div>
+        <div style={{ padding: "36px 28px 32px", textAlign: "center" }}>
+          <p
+            style={{
+              fontSize: "1rem",
+              fontWeight: 600,
+              color: "#333333",
+              lineHeight: "1.5",
+              marginBottom: "28px",
+            }}
+          >
+            {errorMessage}
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowErrorModal(false)}
+            style={{
+              backgroundColor: "#dc3545",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: "12px",
+              padding: "8px 48px",
+              fontWeight: "600",
+              fontSize: "0.9rem",
+              cursor: "pointer",
+            }}
+          >
+            Tutup
           </button>
         </div>
       </Modal>

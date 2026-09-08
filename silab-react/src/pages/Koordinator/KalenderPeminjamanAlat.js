@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Container, Row, Col, Modal } from "react-bootstrap";
+import { Container, Row, Col, Modal, Form } from "react-bootstrap";
 import { Calendar, ConfigProvider, DatePicker, Button } from "antd";
 import { FaChevronLeft, FaChevronRight, FaCalendarAlt } from "react-icons/fa";
 import idID from "antd/locale/id_ID";
@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 import "dayjs/locale/id";
 import updateLocale from "dayjs/plugin/updateLocale";
 import "antd/dist/reset.css";
+import axios from "axios";
 import NavbarLoginKoordinator from "./NavbarLoginKoordinator";
 import "../../css/BookingCalenderKlien.css";
 
@@ -21,115 +22,46 @@ dayjs.updateLocale("id", {
 });
 dayjs.locale("id");
 
-// Data Sampel Peminjaman Alat
-// Dynamic Mock Loans Relative to Realtime Date (dayjs())
-const generateRealtimeLoans = () => {
-  const now = dayjs();
-  const todayStr = now.format("YYYY-MM-DD");
-  const todayFormatted = now.format("DD MMMM YYYY");
-  const endFormatted = now.add(3, "day").format("DD MMMM YYYY");
-
-  const dayPlus2 = now.add(2, "day");
-  const dayPlus2Str = dayPlus2.format("YYYY-MM-DD");
-  const dayPlus2Formatted = dayPlus2.format("DD MMMM YYYY");
-  const dayPlus2EndFormatted = dayPlus2.add(3, "day").format("DD MMMM YYYY");
-
-  const dayPlus5 = now.add(5, "day");
-  const dayPlus5Str = dayPlus5.format("YYYY-MM-DD");
-  const dayPlus5Formatted = dayPlus5.format("DD MMMM YYYY");
-  const dayPlus5EndFormatted = dayPlus5.add(3, "day").format("DD MMMM YYYY");
-
-  return [
-    {
-      id: "PJ001-1",
-      noPengajuan: "PJ001",
-      namaPeminjam: "Nadine Maulia Fauzi",
-      alat: "Micropipette 20–200 µL",
-      jumlah: "2 Unit",
-      tanggalPinjam: todayFormatted,
-      tanggalKembali: endFormatted,
-      status: "Disetujui",
-      catatan: "Diperlukan untuk penelitian analisis sampel darah.",
-      dateStr: todayStr,
-    },
-    {
-      id: "PJ001-2",
-      noPengajuan: "PJ001",
-      namaPeminjam: "Nadine Maulia Fauzi",
-      alat: "Micropipette 20–200 µL",
-      jumlah: "2 Unit",
-      tanggalPinjam: todayFormatted,
-      tanggalKembali: endFormatted,
-      status: "Disetujui",
-      catatan: "Gunakan dengan teliti.",
-      dateStr: todayStr,
-    },
-    {
-      id: "PJ001-3",
-      noPengajuan: "PJ001",
-      namaPeminjam: "Nadine Maulia Fauzi",
-      alat: "Micropipette 20–200 µL",
-      jumlah: "2 Unit",
-      tanggalPinjam: todayFormatted,
-      tanggalKembali: endFormatted,
-      status: "Disetujui",
-      catatan: "Alat siap digunakan.",
-      dateStr: todayStr,
-    },
-    {
-      id: "PJ002-1",
-      noPengajuan: "PJ002",
-      namaPeminjam: "Budi Santoso",
-      alat: "Spectrophotometer UV-Vis",
-      jumlah: "1 Unit",
-      tanggalPinjam: dayPlus2Formatted,
-      tanggalKembali: dayPlus2EndFormatted,
-      status: "Disetujui",
-      catatan: "Diperlukan untuk analisis protein.",
-      dateStr: dayPlus2Str,
-    },
-    {
-      id: "PJ002-2",
-      noPengajuan: "PJ002",
-      namaPeminjam: "Siti Rahmawati",
-      alat: "Centrifuge 15000 RPM",
-      jumlah: "1 Unit",
-      tanggalPinjam: dayPlus2Formatted,
-      tanggalKembali: dayPlus2EndFormatted,
-      status: "Disetujui",
-      catatan: "Peminjaman rutin lab.",
-      dateStr: dayPlus2Str,
-    },
-    {
-      id: "PJ002-3",
-      noPengajuan: "PJ002",
-      namaPeminjam: "Ahmad Fauzi",
-      alat: "Micropipette 20–200 µL",
-      jumlah: "2 Unit",
-      tanggalPinjam: dayPlus2Formatted,
-      tanggalKembali: dayPlus2EndFormatted,
-      status: "Disetujui",
-      catatan: "Persiapan sampel pakan.",
-      dateStr: dayPlus2Str,
-    },
-    {
-      id: "PJ003-1",
-      noPengajuan: "PJ003",
-      namaPeminjam: "Dewi Kurnia",
-      alat: "Timbangan Analitik 0.1mg",
-      jumlah: "1 Unit",
-      tanggalPinjam: dayPlus5Formatted,
-      tanggalKembali: dayPlus5EndFormatted,
-      status: "Disetujui",
-      catatan: "Pengukuran sampel nutrisi.",
-      dateStr: dayPlus5Str,
-    },
-  ];
-};
-
 export default function KalenderPeminjamanAlat() {
+  const [mockLoans, setMockLoans] = useState([]);
+
+  const fetchRentals = async () => {
+    try {
+      const response = await axios.get("http://localhost:8000/api/rentals", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      const rentals = response.data.data;
+      const mappedLoans = [];
+      rentals.forEach(rental => {
+        if (rental.instruments) {
+          rental.instruments.forEach(instrument => {
+             mappedLoans.push({
+               id: `${rental.id}-${instrument.id}`,
+               rentalId: rental.id,
+               noPengajuan: `PJ${rental.id.toString().padStart(3, '0')}`,
+               namaPeminjam: rental.user?.name || 'Peminjam',
+               alat: instrument.nama_alat,
+               jumlah: `1 Unit`,
+             tanggalPinjam: dayjs(rental.tanggal_peminjaman).format("DD MMMM YYYY"),
+             tanggalKembali: dayjs(rental.tanggal_pengembalian).format("DD MMMM YYYY"),
+             status: rental.status,
+             catatan: rental.tujuan_peminjaman,
+             dateStr: dayjs(rental.tanggal_peminjaman).format("YYYY-MM-DD"),
+             rawTanggalPinjam: rental.tanggal_peminjaman,
+             rawTanggalKembali: rental.tanggal_pengembalian,
+           });
+          });
+        }
+      });
+      setMockLoans(mappedLoans);
+    } catch(err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     document.title = "SILAB-NTDK - Kalender Peminjaman Alat";
+    fetchRentals();
   }, []);
 
   const [selectedDate, setSelectedDate] = useState(null);
@@ -138,14 +70,19 @@ export default function KalenderPeminjamanAlat() {
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
-  const mockLoans = useMemo(() => generateRealtimeLoans(), []);
-
-  // Group loan items by YYYY-MM-DD
+  // Group loan items by YYYY-MM-DD for all dates in their range
   const loansMap = useMemo(() => {
     const map = {};
     mockLoans.forEach((item) => {
-      if (!map[item.dateStr]) map[item.dateStr] = [];
-      map[item.dateStr].push(item);
+      let current = dayjs(item.rawTanggalPinjam).startOf('day');
+      const end = dayjs(item.rawTanggalKembali).startOf('day');
+      
+      while (current.isBefore(end) || current.isSame(end, 'day')) {
+        const dStr = current.format("YYYY-MM-DD");
+        if (!map[dStr]) map[dStr] = [];
+        map[dStr].push(item);
+        current = current.add(1, 'day');
+      }
     });
     return map;
   }, [mockLoans]);
@@ -153,47 +90,13 @@ export default function KalenderPeminjamanAlat() {
   // Filter loans for selected date
   const activeDate = selectedDate || dayjs();
   const selectedDateStr = activeDate.format("YYYY-MM-DD");
-  const loansForSelectedDate = loansMap[selectedDateStr] || [
-    {
-      id: `PJ-DEF-1`,
-      noPengajuan: "PJ001",
-      namaPeminjam: "Nadine Maulia Fauzi",
-      alat: "Micropipette 20–200 µL",
-      jumlah: "2 Unit",
-      tanggalPinjam: activeDate.format("DD MMMM YYYY"),
-      tanggalKembali: activeDate.add(3, "day").format("DD MMMM YYYY"),
-      status: "Disetujui",
-      catatan: "Peminjaman alat analisis laboratorium.",
-      dateStr: selectedDateStr,
-    },
-    {
-      id: `PJ-DEF-2`,
-      noPengajuan: "PJ001",
-      namaPeminjam: "Nadine Maulia Fauzi",
-      alat: "Micropipette 20–200 µL",
-      jumlah: "2 Unit",
-      tanggalPinjam: activeDate.format("DD MMMM YYYY"),
-      tanggalKembali: activeDate.add(3, "day").format("DD MMMM YYYY"),
-      status: "Disetujui",
-      catatan: "Peminjaman alat analisis laboratorium.",
-      dateStr: selectedDateStr,
-    },
-    {
-      id: `PJ-DEF-3`,
-      noPengajuan: "PJ001",
-      namaPeminjam: "Nadine Maulia Fauzi",
-      alat: "Micropipette 20–200 µL",
-      jumlah: "2 Unit",
-      tanggalPinjam: activeDate.format("DD MMMM YYYY"),
-      tanggalKembali: activeDate.add(3, "day").format("DD MMMM YYYY"),
-      status: "Disetujui",
-      catatan: "Peminjaman alat analisis laboratorium.",
-      dateStr: selectedDateStr,
-    },
-  ];
+  const loansForSelectedDate = loansMap[selectedDateStr] || [];
 
   const [detailViewLoan, setDetailViewLoan] = useState(null);
   const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
+  const [editStartDate, setEditStartDate] = useState(null);
+  const [editEndDate, setEditEndDate] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const handleDateSelect = (val) => {
     setSelectedDate(val);
@@ -211,6 +114,29 @@ export default function KalenderPeminjamanAlat() {
 
   const handleOpenDetail = (item) => {
     setDetailViewLoan(item);
+    setEditStartDate(dayjs(item.rawTanggalPinjam));
+    setEditEndDate(dayjs(item.rawTanggalKembali));
+  };
+
+  const handleUpdateDates = async () => {
+    if (!detailViewLoan || !editStartDate || !editEndDate) return;
+    
+    setIsUpdating(true);
+    try {
+      await axios.put(`http://localhost:8000/api/rentals/${detailViewLoan.rentalId}/update-dates`, {
+        tanggal_peminjaman: editStartDate.format("YYYY-MM-DD"),
+        tanggal_pengembalian: editEndDate.format("YYYY-MM-DD"),
+      }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      setShowSaveConfirmModal(false);
+      setDetailViewLoan(null);
+      fetchRentals(); // Refresh data
+    } catch (error) {
+      console.error("Gagal update tanggal", error);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   // Custom cell rendering for Calendar days
@@ -288,7 +214,7 @@ export default function KalenderPeminjamanAlat() {
               lineHeight: "1.3",
             }}
           >
-            {items.length > 0 ? `${items.length} Peminjaman` : "3 Peminjaman"}
+            {items.length > 0 ? `${items.length} Peminjaman` : "0 Peminjaman"}
           </span>
         </div>
       );
@@ -710,13 +636,41 @@ export default function KalenderPeminjamanAlat() {
                         </div>
 
                         <div>
-                          <div style={{ color: "#757575", fontSize: "0.85rem", marginBottom: "2px" }}>Tanggal Pinjam</div>
-                          <div style={{ color: "#3E2723", fontSize: "1.02rem", fontWeight: 800 }}>{detailViewLoan.tanggalPinjam}</div>
+                          <div style={{ color: "#757575", fontSize: "0.85rem", marginBottom: "4px" }}>Tanggal Pinjam</div>
+                          <DatePicker
+                            value={editStartDate}
+                            onChange={(val) => setEditStartDate(val)}
+                            format="DD MMMM YYYY"
+                            allowClear={false}
+                            disabled={activeDate.isBefore(dayjs().startOf('day'))}
+                            style={{
+                              width: "100%",
+                              borderRadius: "10px",
+                              padding: "6px 12px",
+                              border: "1px solid #E0E0E0",
+                              fontWeight: 700,
+                              color: "#3E2723",
+                            }}
+                          />
                         </div>
 
                         <div>
-                          <div style={{ color: "#757575", fontSize: "0.85rem", marginBottom: "2px" }}>Tanggal Kembali</div>
-                          <div style={{ color: "#3E2723", fontSize: "1.02rem", fontWeight: 800 }}>{detailViewLoan.tanggalKembali}</div>
+                          <div style={{ color: "#757575", fontSize: "0.85rem", marginBottom: "4px" }}>Tanggal Kembali</div>
+                          <DatePicker
+                            value={editEndDate}
+                            onChange={(val) => setEditEndDate(val)}
+                            format="DD MMMM YYYY"
+                            allowClear={false}
+                            disabled={activeDate.isBefore(dayjs().startOf('day'))}
+                            style={{
+                              width: "100%",
+                              borderRadius: "10px",
+                              padding: "6px 12px",
+                              border: "1px solid #E0E0E0",
+                              fontWeight: 700,
+                              color: "#3E2723",
+                            }}
+                          />
                         </div>
 
                         <div>
@@ -786,7 +740,6 @@ export default function KalenderPeminjamanAlat() {
                         {detailViewLoan.tanggalPinjam}
                       </div>
 
-                      {/* Action Buttons */}
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "14px" }}>
                         <button
                           type="button"
@@ -805,23 +758,25 @@ export default function KalenderPeminjamanAlat() {
                         >
                           Batal
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowSaveConfirmModal(true)}
-                          style={{
-                            backgroundColor: "#44352F",
-                            color: "#ffffff",
-                            border: "none",
-                            borderRadius: "20px",
-                            padding: "8px 24px",
-                            fontWeight: "700",
-                            fontSize: "0.88rem",
-                            cursor: "pointer",
-                            boxShadow: "0 3px 8px rgba(68,53,47,0.3)",
-                          }}
-                        >
-                          Simpan Perubahan
-                        </button>
+                        {!activeDate.isBefore(dayjs().startOf('day')) && (
+                          <button
+                            type="button"
+                            onClick={() => setShowSaveConfirmModal(true)}
+                            style={{
+                              backgroundColor: "#44352F",
+                              color: "#ffffff",
+                              border: "none",
+                              borderRadius: "20px",
+                              padding: "8px 24px",
+                              fontWeight: "700",
+                              fontSize: "0.88rem",
+                              cursor: "pointer",
+                              boxShadow: "0 3px 8px rgba(68,53,47,0.3)",
+                            }}
+                          >
+                            Simpan Perubahan
+                          </button>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -1089,10 +1044,8 @@ export default function KalenderPeminjamanAlat() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setShowSaveConfirmModal(false);
-                  setDetailViewLoan(null);
-                }}
+                onClick={handleUpdateDates}
+                disabled={isUpdating}
                 style={{
                   backgroundColor: "#44352F",
                   color: "#ffffff",
@@ -1101,11 +1054,12 @@ export default function KalenderPeminjamanAlat() {
                   padding: "8px 32px",
                   fontWeight: "700",
                   fontSize: "0.9rem",
-                  cursor: "pointer",
+                  cursor: isUpdating ? "not-allowed" : "pointer",
                   boxShadow: "0 3px 10px rgba(68,53,47,0.35)",
+                  opacity: isUpdating ? 0.7 : 1,
                 }}
               >
-                Simpan
+                {isUpdating ? "Menyimpan..." : "Simpan"}
               </button>
             </div>
           </div>

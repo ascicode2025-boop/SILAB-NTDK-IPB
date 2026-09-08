@@ -8,12 +8,17 @@ use App\Models\User;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
     // GET /api/users
     public function index(Request $request)
     {
+        if (!Auth::check() || Auth::user()->role !== 'koordinator') {
+            return response()->json(['message' => 'Hanya koordinator yang dapat mengakses ini'], 403);
+        }
+
         // Return all users (simple list). Paginate later if needed.
         $select = ['id', 'name', 'email', 'role', 'institusi as institution', 'nomor_telpon as phone', 'login_count'];
         if (Schema::hasColumn('users', 'status')) {
@@ -54,6 +59,10 @@ class UserController extends Controller
     // POST /api/users
     public function store(Request $request)
     {
+        if (!Auth::check() || Auth::user()->role !== 'koordinator') {
+            return response()->json(['message' => 'Hanya koordinator yang dapat membuat user'], 403);
+        }
+
         $v = Validator::make($request->all(), [
             'name' => 'required|string|max:255|unique:users,name',
             'email' => 'required|email|max:255|unique:users,email',
@@ -97,6 +106,10 @@ class UserController extends Controller
     // PATCH /api/users/{id}
     public function update(Request $request, $id)
     {
+        if (!Auth::check() || Auth::user()->role !== 'koordinator') {
+            return response()->json(['message' => 'Hanya koordinator yang dapat mengubah user'], 403);
+        }
+
         $user = User::find($id);
         if (!$user) {
             return response()->json(['message' => 'User not found'], 404);

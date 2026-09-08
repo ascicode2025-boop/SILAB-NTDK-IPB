@@ -9,326 +9,12 @@ import "@fontsource/poppins/400.css";
 import "@fontsource/poppins/500.css";
 import "@fontsource/poppins/600.css";
 import "@fontsource/poppins/700.css";
+import axios from "axios";
 
 dayjs.locale("id");
 
-// Initial Mock Data
-const INITIAL_LOANS_DATA = [
-  {
-    id: "PJ001-1",
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia Fauzi",
-    nim: "2022xxxxx",
-    programStudi: "Biologi",
-    alat: "Micropipette 20–200 µL",
-    jumlah: "2 Unit",
-    tanggalPinjam: "2 Juli 2026",
-    tanggalPinjamRange: "02 - 06 Juli 2026",
-    keperluan: "Praktikum Analisis Hematologi",
-    suratFile: "Surat_Nadine.pdf",
-    biaya: 40000,
-    statusTab: "menunggu",
-    statusPeminjaman: "Menunggu",
-    hasConflict: true,
-    conflictNote: "Jadwal sudah digunakan oleh Aryanto pada 01-02 Juli 2026",
-    catatan: "",
-    approvalDate: null,
-    rejectionDate: null,
-    rejectionReason: "",
-    statusTeknisi: "Belum Mengambil Alat",
-    statusPembayaran: "menunggu",
-    buktiPembayaran: "bukti_transfer_PJ001.pdf",
-    tglKonfirmasiBayar: null,
-  },
-  {
-    id: "PJ001-2",
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia",
-    nim: "2022xxxxx",
-    programStudi: "Ilmu Nutrisi dan Pakan",
-    alat: "Micropipette",
-    jumlah: "1 Unit",
-    tanggalPinjam: "2 Juli 2026",
-    tanggalPinjamRange: "02 - 06 Juli 2026",
-    keperluan: "Praktikum Analisis Metabolit",
-    suratFile: "Surat_Nadine_2.pdf",
-    biaya: 40000,
-    statusTab: "menunggu",
-    statusPeminjaman: "Menunggu",
-    hasConflict: false,
-    conflictNote: "",
-    catatan: "",
-    approvalDate: null,
-    rejectionDate: null,
-    rejectionReason: "",
-    statusTeknisi: "Belum Mengambil Alat",
-    statusPembayaran: "belum_bayar",
-    buktiPembayaran: null,
-    tglKonfirmasiBayar: null,
-  },
-  {
-    id: "PJ001-3",
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia",
-    nim: "2022xxxxx",
-    programStudi: "Biologi",
-    alat: "Micropipette",
-    jumlah: "2 Unit",
-    tanggalPinjam: "2 Juli 2026",
-    tanggalPinjamRange: "02 - 06 Juli 2026",
-    keperluan: "Penelitian Tugas Akhir",
-    suratFile: "Surat_Nadine_3.pdf",
-    biaya: 40000,
-    statusTab: "menunggu",
-    statusPeminjaman: "Menunggu",
-    hasConflict: false,
-    conflictNote: "",
-    catatan: "",
-    approvalDate: null,
-    rejectionDate: null,
-    rejectionReason: "",
-    statusTeknisi: "Belum Mengambil Alat",
-    statusPembayaran: "menunggu",
-    buktiPembayaran: "bukti_transfer_PJ001.pdf",
-    tglKonfirmasiBayar: null,
-  },
-  {
-    id: "PJ001-4",
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia",
-    nim: "2022xxxxx",
-    programStudi: "Biologi",
-    alat: "Micropipette",
-    jumlah: "2 Unit",
-    tanggalPinjam: "2 Juli 2026",
-    tanggalPinjamRange: "02 - 06 Juli 2026",
-    keperluan: "Praktikum Analisis Hematologi",
-    suratFile: "Surat_Nadine_4.pdf",
-    biaya: 40000,
-    statusTab: "menunggu",
-    statusPeminjaman: "Menunggu",
-    hasConflict: true,
-    conflictNote: "Jadwal sudah digunakan oleh Budi pada 02-03 Juli 2026",
-    catatan: "",
-    approvalDate: null,
-    rejectionDate: null,
-    rejectionReason: "",
-    statusTeknisi: "Belum Mengambil Alat",
-    statusPembayaran: "belum_bayar",
-    buktiPembayaran: null,
-    tglKonfirmasiBayar: null,
-  },
-  {
-    id: "PJ001-5",
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia",
-    nim: "2022xxxxx",
-    programStudi: "Biologi",
-    alat: "Micropipette",
-    jumlah: "1 Unit",
-    tanggalPinjam: "2 Juli 2026",
-    tanggalPinjamRange: "02 - 06 Juli 2026",
-    keperluan: "Analisis Sampel Pakan",
-    suratFile: "Surat_Nadine_5.pdf",
-    biaya: 40000,
-    statusTab: "menunggu",
-    statusPeminjaman: "Menunggu",
-    hasConflict: false,
-    conflictNote: "",
-    catatan: "",
-    approvalDate: null,
-    rejectionDate: null,
-    rejectionReason: "",
-    statusTeknisi: "Belum Mengambil Alat",
-    statusPembayaran: "belum_bayar",
-    buktiPembayaran: null,
-    tglKonfirmasiBayar: null,
-  },
-  // Data Disetujui
-  {
-    id: "PJ002-1",
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia",
-    nim: "2022xxxxx",
-    programStudi: "Biologi",
-    alat: "Micropipette",
-    jumlah: "2 Unit",
-    tanggalPinjam: "2 Juli 2026",
-    tanggalPinjamRange: "2 Juli 2026 - 6 Juli 2026",
-    keperluan: "Praktikum Analisis Hematologi",
-    suratFile: "Surat_Nadine.pdf",
-    biaya: 40000,
-    statusTab: "disetujui",
-    statusPeminjaman: "Disetujui",
-    hasConflict: false,
-    conflictNote: "",
-    catatan: "",
-    approvalDate: "02 Juli 2026",
-    rejectionDate: null,
-    rejectionReason: "",
-    statusTeknisi: "Belum Mengambil Alat",
-    statusPembayaran: "lunas",
-    buktiPembayaran: "bukti_transfer_PJ001.pdf",
-    tglKonfirmasiBayar: "11/08/2026",
-  },
-  {
-    id: "PJ002-2",
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia",
-    nim: "2022xxxxx",
-    programStudi: "Biologi",
-    alat: "Micropipette",
-    jumlah: "2 Unit",
-    tanggalPinjam: "2 Juli 2026",
-    tanggalPinjamRange: "2 Juli 2026 - 6 Juli 2026",
-    keperluan: "Praktikum Analisis Hematologi",
-    suratFile: "Surat_Nadine.pdf",
-    biaya: 40000,
-    statusTab: "disetujui",
-    statusPeminjaman: "Disetujui",
-    hasConflict: false,
-    conflictNote: "",
-    catatan: "",
-    approvalDate: "02 Juli 2026",
-    rejectionDate: null,
-    rejectionReason: "",
-    statusTeknisi: "Belum Mengambil Alat",
-    statusPembayaran: "menunggu",
-    buktiPembayaran: "bukti_transfer_PJ001.pdf",
-    tglKonfirmasiBayar: null,
-  },
-  {
-    id: "PJ002-3",
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia",
-    nim: "2022xxxxx",
-    programStudi: "Biologi",
-    alat: "Micropipette",
-    jumlah: "2 Unit",
-    tanggalPinjam: "2 Juli 2026",
-    tanggalPinjamRange: "2 Juli 2026 - 6 Juli 2026",
-    keperluan: "Praktikum Analisis Hematologi",
-    suratFile: "Surat_Nadine.pdf",
-    biaya: 40000,
-    statusTab: "disetujui",
-    statusPeminjaman: "Disetujui",
-    hasConflict: false,
-    conflictNote: "",
-    catatan: "",
-    approvalDate: "02 Juli 2026",
-    rejectionDate: null,
-    rejectionReason: "",
-    statusTeknisi: "Belum Mengambil Alat",
-    statusPembayaran: "belum_bayar",
-    buktiPembayaran: null,
-    tglKonfirmasiBayar: null,
-  },
-  {
-    id: "PJ002-4",
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia",
-    nim: "2022xxxxx",
-    programStudi: "Biologi",
-    alat: "Micropipette",
-    jumlah: "2 Unit",
-    tanggalPinjam: "2 Juli 2026",
-    tanggalPinjamRange: "2 Juli 2026 - 6 Juli 2026",
-    keperluan: "Praktikum Analisis Hematologi",
-    suratFile: "Surat_Nadine.pdf",
-    biaya: 40000,
-    statusTab: "disetujui",
-    statusPeminjaman: "Disetujui",
-    hasConflict: false,
-    conflictNote: "",
-    catatan: "",
-    approvalDate: "02 Juli 2026",
-    rejectionDate: null,
-    rejectionReason: "",
-    statusTeknisi: "Belum Mengambil Alat",
-    statusPembayaran: "lunas",
-    buktiPembayaran: "bukti_transfer_PJ001.pdf",
-    tglKonfirmasiBayar: "11/08/2026",
-  },
-  // Data Ditolak
-  {
-    id: "PJ003-1",
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia",
-    nim: "2022xxxxx",
-    programStudi: "Biologi",
-    alat: "Micropipette",
-    jumlah: "2 Unit",
-    tanggalPinjam: "2 Juli 2026",
-    tanggalPinjamRange: "2 Juli 2026 - 6 Juli 2026",
-    keperluan: "Praktikum Analisis Hematologi",
-    suratFile: "Surat_Nadine.pdf",
-    biaya: 40000,
-    statusTab: "ditolak",
-    statusPeminjaman: "Ditolak",
-    hasConflict: false,
-    conflictNote: "",
-    catatan: "",
-    approvalDate: null,
-    rejectionDate: "02 Juli 2026",
-    rejectionReason: "Tanggal yang diajukan tidak tersedia",
-    statusTeknisi: "-",
-    statusPembayaran: "belum_bayar",
-    buktiPembayaran: null,
-    tglKonfirmasiBayar: null,
-  },
-  {
-    id: "PJ003-2",
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia",
-    nim: "2022xxxxx",
-    programStudi: "Biologi",
-    alat: "Micropipette",
-    jumlah: "2 Unit",
-    tanggalPinjam: "2 Juli 2026",
-    tanggalPinjamRange: "2 Juli 2026 - 6 Juli 2026",
-    keperluan: "Praktikum Analisis Hematologi",
-    suratFile: "Surat_Nadine.pdf",
-    biaya: 40000,
-    statusTab: "ditolak",
-    statusPeminjaman: "Ditolak",
-    hasConflict: false,
-    conflictNote: "",
-    catatan: "",
-    approvalDate: null,
-    rejectionDate: "02 Juli 2026",
-    rejectionReason: "Alat sedang dalam perbaikan dan kalibrasi tahunan",
-    statusTeknisi: "-",
-    statusPembayaran: "belum_bayar",
-    buktiPembayaran: null,
-    tglKonfirmasiBayar: null,
-  },
-  {
-    id: "PJ003-3",
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia",
-    nim: "2022xxxxx",
-    programStudi: "Biologi",
-    alat: "Micropipette",
-    jumlah: "2 Unit",
-    tanggalPinjam: "2 Juli 2026",
-    tanggalPinjamRange: "2 Juli 2026 - 6 Juli 2026",
-    keperluan: "Praktikum Analisis Hematologi",
-    suratFile: "Surat_Nadine.pdf",
-    biaya: 40000,
-    statusTab: "ditolak",
-    statusPeminjaman: "Ditolak",
-    hasConflict: false,
-    conflictNote: "",
-    catatan: "",
-    approvalDate: null,
-    rejectionDate: "02 Juli 2026",
-    rejectionReason: "Jadwal pemakaian bentrok dengan praktikum wajib",
-    statusTeknisi: "-",
-    statusPembayaran: "belum_bayar",
-    buktiPembayaran: null,
-    tglKonfirmasiBayar: null,
-  },
-];
+// Initial Mock Data (Bisa dihapus nanti, untuk jaga-jaga saja)
+const INITIAL_LOANS_DATA = [];
 
 // Mini Custom Calendar Component for "Atur Jadwal"
 function MiniCalendarPicker({ initialDate, onSelectRange, onClose }) {
@@ -483,21 +169,69 @@ export default function ManajemenPengajuanKoordinator() {
     document.title = "SILAB-NTDK - Manajemen Pengajuan Peminjaman";
   }, []);
 
-  const [loans, setLoans] = useState(() => {
-    const saved = localStorage.getItem("silab_koordinator_loans");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return INITIAL_LOANS_DATA;
-      }
-    }
-    return INITIAL_LOANS_DATA;
-  });
+  const [loans, setLoans] = useState([]);
 
   useEffect(() => {
-    localStorage.setItem("silab_koordinator_loans", JSON.stringify(loans));
-  }, [loans]);
+    fetchRentals();
+  }, []);
+
+  const fetchRentals = async () => {
+    try {
+      const response = await axios.get("http://localhost:8000/api/rentals", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      const data = response.data.data.map(rental => {
+        let statusTab = "menunggu";
+        if (["disetujui", "aktif", "menunggu_pengembalian", "selesai"].includes(rental.status)) statusTab = "disetujui";
+        if (rental.status === "ditolak") statusTab = "ditolak";
+        
+        // Asumsi data alat digabung jadi 1 string, dummy logic untuk frontend
+        const namaAlat = rental.instruments && rental.instruments.length > 0 
+          ? rental.instruments.map(item => item.nama_alat).join(', ') 
+          : "Alat";
+
+        const totalBiaya = rental.instruments && rental.instruments.length > 0
+          ? rental.instruments.reduce((acc, inst) => acc + (inst.is_paid ? parseInt(inst.harga_sewa) || 0 : 0), 0)
+          : 0;
+
+        return {
+          id: rental.id,
+          noPengajuan: `PJ${rental.id.toString().padStart(3, '0')}`,
+          namaPeminjam: rental.user?.name || "Peminjam",
+          nim: rental.user?.nim || "-",
+          programStudi: rental.user?.prodi || "-",
+          alat: namaAlat,
+          jumlah: `${rental.instruments ? rental.instruments.length : 0} Unit`,
+          tanggalPinjam: dayjs(rental.tanggal_peminjaman).format("DD MMMM YYYY"),
+          tanggalPinjamRange: `${dayjs(rental.tanggal_peminjaman).format("DD MMMM YYYY")} - ${dayjs(rental.tanggal_pengembalian).format("DD MMMM YYYY")}`,
+          keperluan: rental.kegiatan_penelitian || rental.tujuan_peminjaman,
+          suratFile: rental.final_document_path ? rental.final_document_path.split('/').pop() : (rental.surat_pembimbing_path ? rental.surat_pembimbing_path.split('/').pop() : "-"),
+          suratUrl: rental.final_document_path ? `http://localhost:8000/storage/${rental.final_document_path}` : (rental.surat_pembimbing_path ? `http://localhost:8000/storage/${rental.surat_pembimbing_path}` : "#"),
+          biaya: totalBiaya,
+          statusTab: statusTab,
+          statusPeminjaman: rental.status === "menunggu_pengembalian" ? "Menunggu Pengembalian" : rental.status.charAt(0).toUpperCase() + rental.status.slice(1),
+          hasConflict: false, // Boleh tambahkan logic check conflict dari BE kalau perlu
+          conflictNote: "",
+          catatan: rental.catatan_koordinator || "",
+          approvalDate: null,
+          rejectionDate: null,
+          rejectionReason: "",
+          statusTeknisi: "-",
+          statusPembayaran: rental.status_pembayaran === "belum_lunas" ? "belum_bayar" : rental.status_pembayaran,
+          buktiPembayaran: rental.payment_proof_path ? rental.payment_proof_path.split('/').pop() : null,
+          buktiUrl: rental.payment_proof_path ? `http://localhost:8000/storage/${rental.payment_proof_path}` : "#",
+          tglKonfirmasiBayar: null,
+          denda: rental.denda || 0,
+          statusDenda: rental.status_denda || "tidak_ada",
+          buktiDendaUrl: rental.denda_payment_proof_path ? `http://localhost:8000/storage/${rental.denda_payment_proof_path}` : null,
+          buktiDenda: rental.denda_payment_proof_path ? rental.denda_payment_proof_path.split('/').pop() : null,
+        };
+      });
+      setLoans(data);
+    } catch (error) {
+      console.error("Gagal mengambil data pengajuan", error);
+    }
+  };
 
   const [activeTab, setActiveTab] = useState("menunggu");
   const [searchQuery, setSearchQuery] = useState("");
@@ -516,6 +250,9 @@ export default function ManajemenPengajuanKoordinator() {
 
   const [showPaymentConfirmModal, setShowPaymentConfirmModal] = useState(false);
   const [showPaymentSuccessModal, setShowPaymentSuccessModal] = useState(false);
+
+  const [showPaymentRejectModal, setShowPaymentRejectModal] = useState(false);
+  const [paymentRejectReason, setPaymentRejectReason] = useState("");
 
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
@@ -552,7 +289,7 @@ export default function ManajemenPengajuanKoordinator() {
   const countDisetujui = useMemo(() => loans.filter((l) => l.statusTab === "disetujui").length, [loans]);
   const countDitolak = useMemo(() => loans.filter((l) => l.statusTab === "ditolak").length, [loans]);
   const countPembayaran = useMemo(
-    () => loans.filter((l) => l.statusTab === "pembayaran" || l.statusPembayaran === "menunggu" || l.statusTab === "disetujui").length,
+    () => loans.filter((l) => l.statusPembayaran && l.statusPembayaran !== "tidak_perlu").length,
     [loans]
   );
 
@@ -566,7 +303,7 @@ export default function ManajemenPengajuanKoordinator() {
     } else if (activeTab === "ditolak") {
       dataset = loans.filter((l) => l.statusTab === "ditolak");
     } else if (activeTab === "pembayaran") {
-      dataset = loans.filter((l) => l.statusTab === "pembayaran" || l.statusTab === "disetujui" || l.statusPembayaran);
+      dataset = loans.filter((l) => l.statusPembayaran && l.statusPembayaran !== "tidak_perlu");
 
       if (selectedPaymentFilter === "Belum Bayar") {
         dataset = dataset.filter((l) => l.statusPembayaran === "belum_bayar");
@@ -603,26 +340,21 @@ export default function ManajemenPengajuanKoordinator() {
     setShowDetailModal(true);
   };
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!selectedItem) return;
-    const todayFormatted = dayjs().format("DD MMMM YYYY");
-
-    setLoans((prev) =>
-      prev.map((item) => {
-        if (item.id === selectedItem.id) {
-          return {
-            ...item,
-            statusTab: "disetujui",
-            statusPeminjaman: "Disetujui",
-            catatan: catatanInput,
-            approvalDate: todayFormatted,
-            hasConflict: false,
-            tanggalPinjamRange: tempAdjustedDates ? `${tempAdjustedDates[0]} - ${tempAdjustedDates[1]}` : item.tanggalPinjamRange,
-          };
-        }
-        return item;
-      })
-    );
+    
+    try {
+      await axios.put(`http://localhost:8000/api/rentals/${selectedItem.id}/verify`, {
+        status: "disetujui",
+        catatan_koordinator: catatanInput
+      }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      fetchRentals();
+    } catch (error) {
+      console.error("Gagal menyetujui pengajuan", error);
+      alert("Gagal menyetujui pengajuan");
+    }
 
     setShowDetailModal(false);
   };
@@ -632,25 +364,22 @@ export default function ManajemenPengajuanKoordinator() {
     setShowConfirmRejectModal(true);
   };
 
-  const handleExecuteReject = () => {
+  const handleExecuteReject = async () => {
     if (!selectedItem) return;
-    const todayFormatted = dayjs().format("DD MMMM YYYY");
     const reason = rejectReasonInput.trim() || catatanInput.trim() || "Tanggal yang diajukan tidak tersedia";
 
-    setLoans((prev) =>
-      prev.map((item) => {
-        if (item.id === selectedItem.id) {
-          return {
-            ...item,
-            statusTab: "ditolak",
-            statusPeminjaman: "Ditolak",
-            rejectionDate: todayFormatted,
-            rejectionReason: reason,
-          };
-        }
-        return item;
-      })
-    );
+    try {
+      await axios.put(`http://localhost:8000/api/rentals/${selectedItem.id}/verify`, {
+        status: "ditolak",
+        catatan_koordinator: reason
+      }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      fetchRentals();
+    } catch (error) {
+      console.error("Gagal menolak pengajuan", error);
+      alert("Gagal menolak pengajuan");
+    }
 
     setShowConfirmRejectModal(false);
     setShowDetailModal(false);
@@ -660,26 +389,61 @@ export default function ManajemenPengajuanKoordinator() {
     setShowPaymentConfirmModal(true);
   };
 
-  const handleExecutePaymentConfirm = () => {
+  const handleExecutePaymentConfirm = async () => {
     if (!selectedItem) return;
-    const todayFormatted = dayjs().format("DD/MM/YYYY");
+    
+    try {
+      await axios.put(`http://localhost:8000/api/rentals/${selectedItem.id}/verify-payment`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      fetchRentals();
+      setShowPaymentConfirmModal(false);
+      setShowDetailModal(false);
+      setShowPaymentSuccessModal(true);
+    } catch (error) {
+      console.error("Gagal verifikasi pembayaran", error);
+      alert("Gagal memverifikasi pembayaran");
+    }
+  };
 
-    setLoans((prev) =>
-      prev.map((item) => {
-        if (item.id === selectedItem.id) {
-          return {
-            ...item,
-            statusPembayaran: "lunas",
-            tglKonfirmasiBayar: todayFormatted,
-          };
-        }
-        return item;
-      })
-    );
+  const handleOpenPaymentReject = () => {
+    setPaymentRejectReason("");
+    setShowPaymentRejectModal(true);
+  };
 
-    setShowPaymentConfirmModal(false);
-    setShowDetailModal(false);
-    setShowPaymentSuccessModal(true);
+  const handleExecutePaymentReject = async () => {
+    if (!selectedItem) return;
+    const reason = paymentRejectReason.trim() || "Pembayaran ditolak/tidak valid";
+    
+    try {
+      await axios.put(`http://localhost:8000/api/rentals/${selectedItem.id}/reject-payment`, {
+        alasan: reason
+      }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      fetchRentals();
+      setShowPaymentRejectModal(false);
+      setShowDetailModal(false);
+    } catch (error) {
+      console.error("Gagal menolak pembayaran", error);
+      alert("Gagal menolak pembayaran");
+    }
+  };
+
+  const handleExecuteDendaConfirm = async () => {
+    if (!selectedItem) return;
+    
+    try {
+      await axios.put(`http://localhost:8000/api/rentals/${selectedItem.id}/verify-denda`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      fetchRentals();
+      setShowDetailModal(false);
+      alert("Pembayaran denda berhasil diverifikasi");
+    } catch (error) {
+      console.error("Gagal verifikasi pembayaran denda", error);
+      alert("Gagal memverifikasi pembayaran denda");
+    }
   };
 
   const colors = {
@@ -1137,16 +901,14 @@ export default function ManajemenPengajuanKoordinator() {
               </Row>
 
               <Row className="mb-3">
-                <Col xs={6}>
+                <Col xs={4}>
                   <small className="text-muted d-block" style={{ fontSize: "0.75rem" }}>
                     Surat Pengajuan
                   </small>
                   <a
-                    href="#download-surat"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      alert(`Mengunduh file: ${selectedItem.suratFile}`);
-                    }}
+                    href={selectedItem.suratUrl}
+                    target="_blank"
+                    rel="noreferrer"
                     style={{
                       color: "#3B82F6",
                       fontSize: "0.82rem",
@@ -1157,16 +919,63 @@ export default function ManajemenPengajuanKoordinator() {
                     }}
                   >
                     <FaFilePdf size={12} color="#EF4444" />
-                    {selectedItem.suratFile}
+                    <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "90px" }}>
+                      {selectedItem.suratFile}
+                    </span>
                   </a>
                 </Col>
-                <Col xs={6} className="text-end">
+                <Col xs={4} className="text-center">
+                  <small className="text-muted d-block" style={{ fontSize: "0.75rem" }}>
+                    Bukti Bayar
+                  </small>
+                  {selectedItem.buktiPembayaran && selectedItem.buktiPembayaran !== null ? (
+                    <a
+                      href={selectedItem.buktiUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        color: "#3B82F6",
+                        fontSize: "0.82rem",
+                        textDecoration: "underline",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <FaFilePdf size={12} color="#EF4444" />
+                      <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "90px" }}>
+                        {selectedItem.buktiPembayaran}
+                      </span>
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: "0.82rem", color: "#9CA3AF" }}>-</span>
+                  )}
+                </Col>
+                <Col xs={4} className="text-end">
                   <small className="text-muted d-block" style={{ fontSize: "0.75rem" }}>
                     Biaya
                   </small>
                   <span className="fw-bold" style={{ fontSize: "0.92rem", color: "#1F2937" }}>
                     Rp {selectedItem.biaya ? selectedItem.biaya.toLocaleString("id-ID") : "0"}
                   </span>
+                </Col>
+              </Row>
+
+              <Row className="mb-3">
+                <Col xs={12} className="text-end">
+                  <small className="text-muted d-block" style={{ fontSize: "0.75rem" }}>
+                    Status Pembayaran
+                  </small>
+                  {selectedItem.statusPembayaran === "lunas" ? (
+                    <span style={{ fontSize: "0.82rem", fontWeight: "600", color: "#16A34A" }}>Lunas</span>
+                  ) : selectedItem.statusPembayaran === "menunggu" ? (
+                    <span style={{ fontSize: "0.82rem", fontWeight: "600", color: "#D97706" }}>Menunggu Konfirmasi</span>
+                  ) : selectedItem.statusPembayaran === "belum_bayar" ? (
+                    <span style={{ fontSize: "0.82rem", fontWeight: "600", color: "#DC2626" }}>Belum Bayar</span>
+                  ) : (
+                    <span style={{ fontSize: "0.82rem", color: "#9CA3AF" }}>Tidak Perlu Pembayaran</span>
+                  )}
                 </Col>
               </Row>
 
@@ -1618,11 +1427,9 @@ export default function ManajemenPengajuanKoordinator() {
                     Bukti Pembayaran
                   </small>
                   <a
-                    href="#download-bukti"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      alert(`Membuka bukti pembayaran: ${selectedItem.buktiPembayaran || "bukti_transfer.pdf"}`);
-                    }}
+                    href={selectedItem.buktiUrl}
+                    target="_blank"
+                    rel="noreferrer"
                     style={{
                       color: "#3B82F6",
                       fontSize: "0.82rem",
@@ -1633,9 +1440,109 @@ export default function ManajemenPengajuanKoordinator() {
                     }}
                   >
                     <FaFilePdf size={13} color="#EF4444" />
-                    {selectedItem.buktiPembayaran || "bukti_transfer_PJ001.pdf"}
+                    {selectedItem.buktiPembayaran || "Bukti_Transfer.pdf"}
                   </a>
                 </div>
+              )}
+
+              {/* Denda Keterlambatan/Kerusakan */}
+              {selectedItem.denda > 0 && (
+                <>
+                  <hr style={{ borderColor: "#EAEAEA", margin: "16px 0" }} />
+                  <div className="text-center my-3">
+                    <small className="text-muted d-block mb-1" style={{ fontSize: "0.78rem" }}>
+                      Total Denda Keterlambatan / Kerusakan
+                    </small>
+                    <h4 className="fw-bold mb-2" style={{ color: "#DC2626", fontSize: "1.2rem" }}>
+                      Rp {selectedItem.denda.toLocaleString("id-ID")}
+                    </h4>
+                    
+                    {selectedItem.statusDenda === "lunas" && (
+                      <span
+                        style={{
+                          backgroundColor: colors.badgeBlueBg,
+                          color: colors.badgeBlueText,
+                          padding: "4px 16px",
+                          borderRadius: "20px",
+                          fontSize: "0.75rem",
+                          fontWeight: "600",
+                          display: "inline-block",
+                        }}
+                      >
+                        Denda Lunas
+                      </span>
+                    )}
+
+                    {(selectedItem.statusDenda === "menunggu" || (selectedItem.statusDenda === "belum_dibayar" && selectedItem.buktiDendaUrl)) && (
+                      <span
+                        style={{
+                          backgroundColor: "#FEF08A",
+                          color: "#854D0E",
+                          padding: "4px 16px",
+                          borderRadius: "20px",
+                          fontSize: "0.75rem",
+                          fontWeight: "600",
+                          display: "inline-block",
+                        }}
+                      >
+                        Menunggu Verifikasi Denda
+                      </span>
+                    )}
+
+                    {selectedItem.statusDenda === "belum_dibayar" && !selectedItem.buktiDendaUrl && (
+                      <span
+                        style={{
+                          backgroundColor: "#E5E7EB",
+                          color: "#4B5563",
+                          padding: "4px 16px",
+                          borderRadius: "20px",
+                          fontSize: "0.75rem",
+                          fontWeight: "600",
+                          display: "inline-block",
+                        }}
+                      >
+                        Belum Melakukan Pembayaran Denda
+                      </span>
+                    )}
+                  </div>
+
+                  {selectedItem.statusDenda !== "tidak_ada" && selectedItem.buktiDendaUrl && (
+                    <div className="mb-3 text-start">
+                      <small className="text-muted d-block mb-1" style={{ fontSize: "0.75rem" }}>
+                        Bukti Pembayaran Denda
+                      </small>
+                      <a
+                        href={selectedItem.buktiDendaUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          color: "#3B82F6",
+                          fontSize: "0.82rem",
+                          textDecoration: "underline",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        <FaFilePdf size={13} color="#EF4444" />
+                        {selectedItem.buktiDenda || "Bukti_Denda.pdf"}
+                      </a>
+                    </div>
+                  )}
+
+                  {(selectedItem.statusDenda === "menunggu" || (selectedItem.statusDenda === "belum_dibayar" && selectedItem.buktiDendaUrl)) && (
+                    <div className="d-flex justify-content-center gap-2 mb-4">
+                      <button
+                        type="button"
+                        onClick={handleExecuteDendaConfirm}
+                        className="clean-btn-primary"
+                        style={{ backgroundColor: "#059669" }}
+                      >
+                        Verifikasi Denda
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Catatan Field */}
@@ -1670,7 +1577,7 @@ export default function ManajemenPengajuanKoordinator() {
 
                   <button
                     type="button"
-                    onClick={handleOpenRejectPrompt}
+                    onClick={handleOpenPaymentReject}
                     className="clean-btn-danger"
                   >
                     Tolak
@@ -1832,6 +1739,77 @@ export default function ManajemenPengajuanKoordinator() {
             >
               Oke
             </button>
+          </div>
+        </Modal>
+        {/* ========================================================================= */}
+        {/* MODAL KONFIRMASI TOLAK PEMBAYARAN                                         */}
+        {/* ========================================================================= */}
+        <Modal
+          show={showPaymentRejectModal}
+          onHide={() => setShowPaymentRejectModal(false)}
+          centered
+          dialogClassName="clean-rounded-modal-dialog"
+          contentClassName="clean-rounded-modal-content"
+        >
+          <div className="clean-modal-header" style={{ borderBottom: "none", paddingBottom: 0 }}>
+            <button type="button" onClick={() => setShowPaymentRejectModal(false)} className="clean-modal-close-btn">
+              <FaTimes size={16} />
+            </button>
+          </div>
+          <div className="clean-modal-body px-4 pb-4 pt-1">
+            <div className="text-center mb-3">
+              <div
+                style={{
+                  width: "50px",
+                  height: "50px",
+                  backgroundColor: "#FEE2E2",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 16px",
+                }}
+              >
+                <FaTimes size={22} color="#DC2626" />
+              </div>
+              <h5 className="fw-bold mb-2" style={{ color: "#1F2937", fontSize: "1.1rem" }}>
+                Tolak Pembayaran
+              </h5>
+              <p className="text-muted" style={{ fontSize: "0.85rem", lineHeight: "1.5" }}>
+                Tuliskan alasan penolakan pembayaran.
+              </p>
+            </div>
+
+            <Form.Control
+              as="textarea"
+              rows={3}
+              placeholder="Misal: Bukti transfer buram/nominal tidak sesuai..."
+              value={paymentRejectReason}
+              onChange={(e) => setPaymentRejectReason(e.target.value)}
+              style={{
+                borderRadius: "12px",
+                border: "1px solid #D1D5DB",
+                fontSize: "0.85rem",
+                resize: "none",
+              }}
+            />
+
+            <div className="text-center mt-4">
+              <button
+                type="button"
+                onClick={() => setShowPaymentRejectModal(false)}
+                className="clean-btn-secondary me-2"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleExecutePaymentReject}
+                className="clean-btn-danger"
+              >
+                Tolak Pembayaran
+              </button>
+            </div>
           </div>
         </Modal>
       </div>

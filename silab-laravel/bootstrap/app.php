@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Tambahkan middleware CORS
         $middleware->api(prepend: [
             \Illuminate\Http\Middleware\HandleCors::class,
+            \App\Http\Middleware\SecurityHeaders::class,
         ]);
 
     })

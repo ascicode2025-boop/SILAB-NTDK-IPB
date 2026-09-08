@@ -25,15 +25,17 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'full_name',
         'email',
         'password',
         'institusi',
         'nomor_telpon',
+        'nim',
+        'prodi',
         // Allow API mass-assignment for role/status/login_count
         'role',
         'status',
         'login_count',
-
     ];
 
     /**
@@ -62,5 +64,15 @@ class User extends Authenticatable
     public function achievements()
     {
         return $this->belongsToMany(\App\Models\Achievement::class, 'user_achievements');
+    }
+
+    public function labClearance()
+    {
+        return $this->hasOne(LabClearance::class);
+    }
+
+    public function instrumentRentals()
+    {
+        return $this->hasMany(InstrumentRental::class);
     }
 }

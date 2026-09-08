@@ -34,7 +34,7 @@ class PasswordResetController extends Controller
         DB::table('password_resets')->updateOrInsert(
             ['email' => $request->email],
             [
-                'otp' => $otp,
+                'otp' => Hash::make($otp),
                 'expires_at' => $expires_at,
                 'created_at' => Carbon::now()
             ]
@@ -60,10 +60,9 @@ class PasswordResetController extends Controller
 
         $resetRecord = DB::table('password_resets')
             ->where('email', $request->email)
-            ->where('otp', $request->otp)
             ->first();
 
-        if (!$resetRecord) {
+        if (!$resetRecord || !Hash::check($request->otp, $resetRecord->otp)) {
             return response()->json(['message' => 'OTP tidak valid.'], 400);
         }
 

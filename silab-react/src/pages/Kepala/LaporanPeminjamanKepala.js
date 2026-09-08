@@ -3,93 +3,126 @@ import { Container, Row, Col, Card, Table, Form, Button, Modal, Spinner, Badge }
 import { FaFilePdf, FaFileExcel, FaSearch, FaMedal, FaCheckCircle, FaDownload, FaTimes, FaFileAlt } from "react-icons/fa";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
 import NavbarLoginKepala from "./NavbarLoginKepala";
 import FooterSetelahLogin from "../FooterSetelahLogin";
+import { getRentals } from "../../services/InstrumentRentalService";
+import { getInstruments } from "../../services/InstrumentService";
 import "@fontsource/poppins";
-
-// Mock Data for Tab 1: Peminjaman
-const DATA_PEMINJAMAN = [
-  { id: 1, no: 1, noPengajuan: "PJ001", namaPeminjam: "Nadine Maulia", alat: "Micropipette", jumlah: 2, tglPinjam: "2 Juli 2026", tglKembali: "6 Juli 2026", status: "Menunggu" },
-  { id: 2, no: 2, noPengajuan: "PJ001", namaPeminjam: "Nadine Maulia", alat: "Buret", jumlah: 2, tglPinjam: "2 Juli 2026", tglKembali: "6 Juli 2026", status: "Diverifikasi" },
-  { id: 3, no: 3, noPengajuan: "PJ001", namaPeminjam: "Nadine Maulia", alat: "Erlenmeyer", jumlah: 2, tglPinjam: "2 Juli 2026", tglKembali: "6 Juli 2026", status: "Disetujui" },
-  { id: 4, no: 4, noPengajuan: "PJ001", namaPeminjam: "Nadine Maulia", alat: "Tabung Reaksi", jumlah: 2, tglPinjam: "2 Juli 2026", tglKembali: "6 Juli 2026", status: "Menunggu" },
-];
-
-// Mock Data for Tab 2: Pengembalian
-const DATA_PENGEMBALIAN = [
-  { id: 1, no: 1, noPengajuan: "PJ001", namaPeminjam: "Nadine Maulia", alat: "Micropipette", jumlah: 2, tglKembali: "2 Juli 2026", kondisi: "Baik", status: "Selesai" },
-  { id: 2, no: 2, noPengajuan: "PJ001", namaPeminjam: "Nadine Maulia", alat: "Gelas Ukur", jumlah: 2, tglKembali: "2 Juli 2026", kondisi: "Dalam Perawatan", status: "Selesai" },
-  { id: 3, no: 3, noPengajuan: "PJ001", namaPeminjam: "Nadine Maulia", alat: "Pipet Tetes", jumlah: 2, tglKembali: "2 Juli 2026", kondisi: "Rusak", status: "Diproses" },
-  { id: 4, no: 4, noPengajuan: "PJ001", namaPeminjam: "Nadine Maulia", alat: "Cawan Petri", jumlah: 2, tglKembali: "2 Juli 2026", kondisi: "Baik", status: "Selesai" },
-];
-
-// Mock Data for Tab 3: Kondisi Alat
-const DATA_KONDISI_ALAT = [
-  { id: 1, no: 1, kodeAlat: "ALT-001", namaAlat: "Micropipette 20–200 µL", totalUnit: 28, baik: 25, rusak: 1, perawatan: 2, statusKesiapan: "Siap Digunakan" },
-  { id: 2, no: 2, kodeAlat: "ALT-002", namaAlat: "Spektrofotometer UV-Vis", totalUnit: 50, baik: 48, rusak: 0, perawatan: 2, statusKesiapan: "Siap Digunakan" },
-  { id: 3, no: 3, kodeAlat: "ALT-003", namaAlat: "Sentrifuge High Speed", totalUnit: 42, baik: 38, rusak: 2, perawatan: 2, statusKesiapan: "Siap Digunakan" },
-  { id: 4, no: 4, kodeAlat: "ALT-004", namaAlat: "Inkubator Bakteri", totalUnit: 19, baik: 15, rusak: 1, perawatan: 3, statusKesiapan: "Siap Digunakan" },
-  { id: 5, no: 5, kodeAlat: "ALT-005", namaAlat: "Gelas Ukur 100ml", totalUnit: 35, baik: 30, rusak: 5, perawatan: 0, statusKesiapan: "Sebagian Rusak" },
-];
-
-// Mock Data for Tab 4: Alat Terfavorit
-const DATA_ALAT_FAVORIT = [
-  { id: 1, no: 1, namaAlat: "Micropipette", totalUnit: 28, totalPeminjaman: 27 },
-  { id: 2, no: 2, namaAlat: "Spektrofotometer", totalUnit: 50, totalPeminjaman: 18 },
-  { id: 3, no: 3, namaAlat: "Sentrifuge", totalUnit: 42, totalPeminjaman: 17 },
-  { id: 4, no: 4, namaAlat: "Inkubator", totalUnit: 19, totalPeminjaman: 4 },
-];
-
-const TOP_3_ALAT = [
-  { rank: 1, name: "Micropipette 20–200 µL", count: 27, color: "#D4AF37", ribbon: "#E74C3C" },
-  { rank: 2, name: "Spektrofotometer UV-Vis", count: 18, color: "#A6B2BA", ribbon: "#4A90E2" },
-  { rank: 3, name: "Sentrifuge High Speed", count: 17, color: "#CD7F32", ribbon: "#E67E22" },
-];
 
 export default function LaporanPeminjamanKepala() {
   const [activeTab, setActiveTab] = useState("peminjaman"); // 'peminjaman' | 'pengembalian' | 'kondisi' | 'favorit'
   const [searchTerm, setSearchTerm] = useState("");
-  const [periode, setPeriode] = useState("Hari ini");
-  const [statusFilter, setStatusFilter] = useState("Disetujui");
+  const [periode, setPeriode] = useState("Semua");
+  const [statusFilter, setStatusFilter] = useState("Semua");
 
   const [exportModal, setExportModal] = useState({ show: false, format: "PDF" });
   const [successPopup, setSuccessPopup] = useState({ show: false, title: "", message: "", filename: "" });
   const [isExporting, setIsExporting] = useState(false);
+  
+  const [rentals, setRentals] = useState([]);
+  const [instruments, setInstruments] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     document.title = "SILAB-NTDK - Laporan Peminjaman";
+    
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [rentalsData, instrumentsData] = await Promise.all([
+          getRentals(),
+          getInstruments()
+        ]);
+        setRentals(rentalsData.data || []);
+        setInstruments(instrumentsData.data || []);
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
   }, []);
 
-  // Filtered data based on search and status
-  const filteredPeminjaman = DATA_PEMINJAMAN.filter((item) => {
+  // Map rentals to table format
+  const mappedRentals = rentals.map((item) => {
+    // Calculate status text
+    const statusText = item.status === "menunggu_pengembalian" 
+      ? "Menunggu Pengembalian" 
+      : item.status.charAt(0).toUpperCase() + item.status.slice(1);
+
+    return {
+      noPengajuan: `PJ${String(item.id).padStart(3, "0")}`,
+      namaPeminjam: item.user?.name || "Unknown",
+      alat: item.instruments?.map(i => i.nama_alat).join(", ") || "-",
+      jumlah: item.instruments?.length || 0,
+      tglPinjam: item.tanggal_peminjaman,
+      tglKembali: item.tanggal_pengembalian,
+      status: statusText,
+      rawStatus: item.status,
+    };
+  });
+
+  const filteredPeminjaman = mappedRentals.filter((item) => {
     const matchSearch =
       item.namaPeminjam.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.alat.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.noPengajuan.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchStatus = statusFilter === "Semua" || item.status.toLowerCase() === statusFilter.toLowerCase();
+    const matchStatus = statusFilter === "Semua" || item.rawStatus.toLowerCase().includes(statusFilter.toLowerCase());
     return matchSearch && matchStatus;
   });
 
-  const filteredPengembalian = DATA_PENGEMBALIAN.filter((item) => {
+  const filteredPengembalian = mappedRentals.filter((item) => {
+    // Only show returned or pending return rentals in pengembalian
+    if (!["selesai", "dikembalikan", "diproses", "menunggu_pengembalian"].includes(item.rawStatus.toLowerCase())) return false;
+    
     const matchSearch =
       item.namaPeminjam.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.alat.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.noPengajuan.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchStatus = statusFilter === "Semua" || item.status.toLowerCase() === statusFilter.toLowerCase();
+    const matchStatus = statusFilter === "Semua" || item.rawStatus.toLowerCase().includes(statusFilter.toLowerCase());
     return matchSearch && matchStatus;
   });
 
-  const filteredKondisi = DATA_KONDISI_ALAT.filter((item) => {
+  const mappedKondisi = instruments.map((item) => ({
+    kodeAlat: `ALT-${String(item.id).padStart(3, "0")}`,
+    namaAlat: item.nama_alat,
+    statusKesiapan: item.status === "tersedia" ? "Tersedia" : "Dipinjam",
+  }));
+
+  const filteredKondisi = mappedKondisi.filter((item) => {
     return (
       item.namaAlat.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.kodeAlat.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
 
-  const filteredFavorit = DATA_ALAT_FAVORIT.filter((item) => {
+  // Calculate favorite instruments
+  const alatCount = {};
+  rentals.forEach(r => {
+    r.instruments?.forEach(i => {
+      alatCount[i.nama_alat] = (alatCount[i.nama_alat] || 0) + 1;
+    });
+  });
+
+  const mappedFavorit = Object.keys(alatCount).map((namaAlat, idx) => ({
+    id: idx + 1,
+    namaAlat,
+    totalPeminjaman: alatCount[namaAlat]
+  })).sort((a, b) => b.totalPeminjaman - a.totalPeminjaman);
+
+  const filteredFavorit = mappedFavorit.filter((item) => {
     return item.namaAlat.toLowerCase().includes(searchTerm.toLowerCase());
   });
+  
+  const TOP_3_ALAT = mappedFavorit.slice(0, 3).map((item, idx) => ({
+    rank: idx + 1,
+    name: item.namaAlat,
+    count: item.totalPeminjaman,
+    color: idx === 0 ? "#D4AF37" : idx === 1 ? "#A6B2BA" : "#CD7F32",
+    ribbon: idx === 0 ? "#E74C3C" : idx === 1 ? "#4A90E2" : "#E67E22",
+  }));
 
   // Get current active data count and title
   const getActiveDataInfo = () => {
@@ -149,11 +182,10 @@ export default function LaporanPeminjamanKepala() {
         row.alat,
         row.jumlah,
         row.tglKembali,
-        row.kondisi,
         row.status,
       ]);
       autoTable(doc, {
-        head: [["No", "No Pengajuan", "Nama Peminjam", "Alat", "Jumlah", "Tgl Kembali", "Kondisi Alat", "Status"]],
+        head: [["No", "No Pengajuan", "Nama Peminjam", "Alat", "Jumlah", "Tgl Kembali", "Status"]],
         body: tableRows,
         startY: 32,
         theme: "grid",
@@ -162,25 +194,20 @@ export default function LaporanPeminjamanKepala() {
     } else if (activeTab === "kondisi") {
       const tableRows = filteredKondisi.map((row, idx) => [
         idx + 1,
-        row.kodeAlat,
         row.namaAlat,
-        row.totalUnit,
-        row.baik,
-        row.rusak,
-        row.perawatan,
         row.statusKesiapan,
       ]);
       autoTable(doc, {
-        head: [["No", "Kode Alat", "Nama Alat", "Total Unit", "Baik", "Rusak", "Perawatan", "Status"]],
+        head: [["No", "Nama Alat", "Status Ketersediaan"]],
         body: tableRows,
         startY: 32,
         theme: "grid",
         headStyles: { fillColor: [158, 136, 128] },
       });
     } else {
-      const tableRows = filteredFavorit.map((row, idx) => [idx + 1, row.namaAlat, row.totalUnit, row.totalPeminjaman]);
+      const tableRows = filteredFavorit.map((row, idx) => [idx + 1, row.namaAlat, row.totalPeminjaman]);
       autoTable(doc, {
-        head: [["No", "Nama Alat", "Total Unit", "Total Peminjaman"]],
+        head: [["No", "Nama Alat", "Total Peminjaman"]],
         body: tableRows,
         startY: 32,
         theme: "grid",
@@ -193,38 +220,18 @@ export default function LaporanPeminjamanKepala() {
     return filename;
   };
 
-  // Execute Excel Export
-  const executeExportExcel = () => {
-    let dataToExport = [];
-    if (activeTab === "peminjaman") dataToExport = filteredPeminjaman;
-    else if (activeTab === "pengembalian") dataToExport = filteredPengembalian;
-    else if (activeTab === "kondisi") dataToExport = filteredKondisi;
-    else dataToExport = filteredFavorit;
-
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Laporan Peminjaman");
-    const filename = `Laporan_Peminjaman_${activeTab}_${Date.now()}.xlsx`;
-    XLSX.writeFile(wb, filename);
-    return filename;
-  };
-
   // Confirm and Execute Export
   const handleConfirmExport = () => {
     setIsExporting(true);
     setTimeout(() => {
-      let generatedFile = "";
-      if (exportModal.format === "PDF") {
-        generatedFile = executeExportPDF();
-      } else {
-        generatedFile = executeExportExcel();
-      }
+      let generatedFile = executeExportPDF();
+      
       setIsExporting(false);
       setExportModal({ show: false, format: "PDF" });
       setSuccessPopup({
         show: true,
         title: "Ekspor Berhasil!",
-        message: `File laporan peminjaman alat dengan format ${exportModal.format} telah berhasil dibuat dan diunduh ke perangkat Anda.`,
+        message: `File laporan peminjaman alat dengan format PDF telah berhasil dibuat dan diunduh ke perangkat Anda.`,
         filename: generatedFile,
       });
     }, 400);
@@ -243,7 +250,6 @@ export default function LaporanPeminjamanKepala() {
         <Container fluid className="px-0">
           {/* ===== 1. TOP BAR: EXPORT BUTTONS & DROPDOWN FILTERS ===== */}
           <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-            {/* Export Buttons on Left */}
             <div className="d-flex align-items-center gap-2">
               <Button
                 onClick={() => handleOpenExportModal("PDF")}
@@ -263,26 +269,6 @@ export default function LaporanPeminjamanKepala() {
               >
                 <FaFilePdf size={16} />
                 Ekspor PDF
-              </Button>
-
-              <Button
-                onClick={() => handleOpenExportModal("Excel")}
-                style={{
-                  backgroundColor: "#9E8880",
-                  borderColor: "#9E8880",
-                  color: "#FFFFFF",
-                  borderRadius: "8px",
-                  padding: "8px 18px",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  boxShadow: "0 2px 6px rgba(158, 136, 128, 0.3)",
-                }}
-              >
-                <FaFileExcel size={16} />
-                Ekspor Excel
               </Button>
             </div>
 
@@ -539,29 +525,25 @@ export default function LaporanPeminjamanKepala() {
                       <th className="py-3" style={{ fontWeight: 700, color: "#2E2421", fontSize: "0.92rem" }}>Alat</th>
                       <th className="py-3" style={{ fontWeight: 700, color: "#2E2421", fontSize: "0.92rem" }}>jumlah</th>
                       <th className="py-3" style={{ fontWeight: 700, color: "#2E2421", fontSize: "0.92rem" }}>Tanggal Kembali</th>
-                      <th className="py-3" style={{ fontWeight: 700, color: "#2E2421", fontSize: "0.92rem" }}>Kondisi Alat</th>
                       <th className="py-3" style={{ fontWeight: 700, color: "#2E2421", fontSize: "0.92rem" }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredPengembalian.map((item, idx) => {
-                      const isSelesai = item.status === "Selesai";
+                      const isSelesai = item.status.toLowerCase() === "selesai" || item.status.toLowerCase() === "dikembalikan";
                       return (
-                        <tr key={item.id} style={{ borderBottom: "1px solid #F8F5F4" }}>
+                        <tr key={idx} style={{ borderBottom: "1px solid #F8F5F4" }}>
                           <td className="py-3" style={{ color: "#4A3F3B", fontSize: "0.9rem" }}>{idx + 1}</td>
                           <td className="py-3 fw-medium" style={{ color: "#4A3F3B", fontSize: "0.9rem" }}>{item.noPengajuan}</td>
                           <td className="py-3" style={{ color: "#4A3F3B", fontSize: "0.9rem" }}>{item.namaPeminjam}</td>
                           <td className="py-3" style={{ color: "#4A3F3B", fontSize: "0.9rem" }}>{item.alat}</td>
                           <td className="py-3" style={{ color: "#4A3F3B", fontSize: "0.9rem" }}>{item.jumlah}</td>
                           <td className="py-3" style={{ color: "#4A3F3B", fontSize: "0.9rem" }}>{item.tglKembali}</td>
-                          <td className="py-3" style={{ color: item.kondisi === "Rusak" ? "#D9534F" : "#4A3F3B", fontSize: "0.9rem", fontWeight: item.kondisi === "Rusak" ? 600 : 400 }}>
-                            {item.kondisi}
-                          </td>
                           <td className="py-3">
                             <span
                               style={{
-                                backgroundColor: isSelesai ? "#85D88B" : "#98E398",
-                                color: "#1B5E20",
+                                backgroundColor: isSelesai ? "#E8F8F5" : "#FFF3E0",
+                                color: isSelesai ? "#27AE60" : "#E67E22",
                                 borderRadius: "20px",
                                 padding: "4px 18px",
                                 fontSize: "0.8rem",
@@ -569,7 +551,7 @@ export default function LaporanPeminjamanKepala() {
                                 display: "inline-block",
                               }}
                             >
-                              {item.status}
+                              {item.status === "menunggu_pengembalian" ? "Menunggu Pengembalian" : item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                             </span>
                           </td>
                         </tr>
@@ -627,28 +609,20 @@ export default function LaporanPeminjamanKepala() {
                       <th className="py-3" style={{ fontWeight: 700, color: "#2E2421", fontSize: "0.92rem", width: "50px" }}>No</th>
                       <th className="py-3" style={{ fontWeight: 700, color: "#2E2421", fontSize: "0.92rem" }}>Kode Alat</th>
                       <th className="py-3" style={{ fontWeight: 700, color: "#2E2421", fontSize: "0.92rem" }}>Nama Alat</th>
-                      <th className="py-3" style={{ fontWeight: 700, color: "#2E2421", fontSize: "0.92rem" }}>Total Unit</th>
-                      <th className="py-3" style={{ fontWeight: 700, color: "#2E2421", fontSize: "0.92rem" }}>Kondisi Baik</th>
-                      <th className="py-3" style={{ fontWeight: 700, color: "#2E2421", fontSize: "0.92rem" }}>Rusak</th>
-                      <th className="py-3" style={{ fontWeight: 700, color: "#2E2421", fontSize: "0.92rem" }}>Dalam Perawatan</th>
                       <th className="py-3" style={{ fontWeight: 700, color: "#2E2421", fontSize: "0.92rem" }}>Status Kesiapan</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredKondisi.map((item, idx) => (
-                      <tr key={item.id} style={{ borderBottom: "1px solid #F8F5F4" }}>
+                      <tr key={idx} style={{ borderBottom: "1px solid #F8F5F4" }}>
                         <td className="py-3" style={{ color: "#4A3F3B", fontSize: "0.9rem" }}>{idx + 1}</td>
                         <td className="py-3 fw-medium" style={{ color: "#4A3F3B", fontSize: "0.9rem" }}>{item.kodeAlat}</td>
                         <td className="py-3" style={{ color: "#4A3F3B", fontSize: "0.9rem" }}>{item.namaAlat}</td>
-                        <td className="py-3 fw-bold" style={{ color: "#4A3F3B", fontSize: "0.9rem" }}>{item.totalUnit}</td>
-                        <td className="py-3 text-success fw-semibold" style={{ fontSize: "0.9rem" }}>{item.baik}</td>
-                        <td className="py-3 text-danger fw-semibold" style={{ fontSize: "0.9rem" }}>{item.rusak}</td>
-                        <td className="py-3 text-warning fw-semibold" style={{ fontSize: "0.9rem" }}>{item.perawatan}</td>
                         <td className="py-3">
                           <span
                             style={{
-                              backgroundColor: item.rusak > 2 ? "#FDEAEA" : "#E8F8F5",
-                              color: item.rusak > 2 ? "#C0392B" : "#27AE60",
+                              backgroundColor: item.statusKesiapan === "Tersedia" ? "#E8F8F5" : "#FDEAEA",
+                              color: item.statusKesiapan === "Tersedia" ? "#27AE60" : "#C0392B",
                               borderRadius: "20px",
                               padding: "4px 16px",
                               fontSize: "0.8rem",

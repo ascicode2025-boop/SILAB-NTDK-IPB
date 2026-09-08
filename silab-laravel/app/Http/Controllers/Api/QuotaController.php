@@ -8,6 +8,7 @@ use App\Models\QuotaSetting;
 use App\Models\Booking;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class QuotaController extends Controller
 {
@@ -148,6 +149,10 @@ class QuotaController extends Controller
     // =================================================================
     public function updateQuota(Request $request)
     {
+        if (!in_array(Auth::user()->role ?? '', ['koordinator', 'teknisi'])) {
+            return response()->json(['success' => false, 'message' => 'Hanya koordinator dan teknisi yang dapat mengubah kuota.'], 403);
+        }
+
         $request->validate([
             'tanggal' => 'required|date',
             'jenis_analisis' => 'required|in:hematologi,metabolit',

@@ -1,45 +1,245 @@
 import React, { useState, useEffect } from "react";
 import { useHistory, useParams } from "react-router-dom";
-import { Modal } from "react-bootstrap";
+import { Modal, Spinner } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "@fontsource/poppins/400.css";
 import "@fontsource/poppins/600.css";
 import "@fontsource/poppins/700.css";
 import NavbarLoginKlien from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
+import { getRentalById, submitReturnRequest, cancelRental } from "../../services/RentalService";
+import { getApiBaseUrl, getStorageUrl } from "../../config/apiConfig";
 
 const DetailPengajuanAlat = () => {
   const history = useHistory();
   const { id } = useParams();
 
+  const [loading, setLoading] = useState(true);
+  const [rental, setRental] = useState(null);
   const [showModalReturn, setShowModalReturn] = useState(false);
-  const [tanggalPengembalian, setTanggalPengembalian] = useState("06 Juli 2026");
+  const [tanggalPengembalian, setTanggalPengembalian] = useState(
+    new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })
+  );
   const [kondisiAlat, setKondisiAlat] = useState("Baik");
   const [catatan, setCatatan] = useState("");
   const [statusPengembalian, setStatusPengembalian] = useState("BELUM DIKEMBALIKAN");
 
+  const [selectedPaymentFile, setSelectedPaymentFile] = useState(null);
+  const [uploadingPayment, setUploadingPayment] = useState(false);
+
+  // State untuk Surat Bebas Lab
+  const [showModalBebasLab, setShowModalBebasLab] = useState(false);
+  const [isMahasiswa, setIsMahasiswa] = useState(true);
+  const [semesterBebasLab, setSemesterBebasLab] = useState("");
+  const [departemenBebasLab, setDepartemenBebasLab] = useState("");
+  const [loadingBebasLab, setLoadingBebasLab] = useState(false);
+
   useEffect(() => {
     document.title = "SILAB-NTDK - Detail Progress Pengajuan Alat";
-  }, []);
+    fetchRentalDetail();
+  }, [id]);
 
-  const handleSubmitPengembalian = () => {
-    setStatusPengembalian("MENUNGGU VERIFIKASI");
-    setShowModalReturn(false);
+  const fetchRentalDetail = async () => {
+    try {
+      setLoading(true);
+      const data = await getRentalById(id);
+      setRental(data);
+    } catch (err) {
+      console.error("Gagal mengambil detail peminjaman:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const dataDetail = {
-    noPengajuan: id || "PJ-2026-001",
-    tanggalPengajuan: "02 Juli 2026",
-    statusPeminjaman: "Sedang Dipinjam",
-    alat: "Micropipette 20–200 µL",
-    jumlah: "2 Unit",
-    keperluan: "Praktikum Analisis Hematologi",
-    tanggalPinjam: "02 Juli 2026",
-    tanggalKembali: "06 Juli 2026",
-    statusPengembalian: statusPengembalian,
-    statusBebasLab: "Belum tersedia.",
-    activeStep: statusPengembalian === "MENUNGGU VERIFIKASI" ? 5 : 4, // Step 1–4 active (Alat Dipinjam)
+  const handleSubmitPengembalian = async () => {
+    try {
+      setLoading(true);
+      // Ensure date format is YYYY-MM-DD
+      const dateParts = tanggalPengembalian.split(" ");
+      let formattedDate = "";
+      
+      if (dateParts.length === 3) {
+          const months = {
+              "Januari": "01", "Februari": "02", "Maret": "03", "April": "04", "Mei": "05", "Juni": "06",
+              "Juli": "07", "Agustus": "08", "September": "09", "Oktober": "10", "November": "11", "Desember": "12"
+          };
+          const day = dateParts[0].padStart(2, '0');
+          const month = months[dateParts[1]];
+          const year = dateParts[2];
+          formattedDate = `${year}-${month}-${day}`;
+      } else {
+          // Fallback if formatting is weird
+          formattedDate = new Date().toISOString().split('T')[0];
+      }
+
+      await submitReturnRequest(id, {
+        tanggal_pengembalian_aktual: formattedDate,
+        kondisi_alat: kondisiAlat,
+        catatan: catatan
+      });
+      alert("Pengajuan pengembalian berhasil dikirim!");
+      setShowModalReturn(false);
+      fetchRentalDetail();
+    } catch (err) {
+      alert("Gagal mengajukan pengembalian: " + (err.message || "Kesalahan sistem"));
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleCancelRental = async () => {
+    if (!window.confirm("Apakah Anda yakin ingin membatalkan peminjaman alat ini?")) {
+      return;
+    }
+    try {
+      setLoading(true);
+      await cancelRental(id);
+      alert("Peminjaman alat berhasil dibatalkan.");
+      fetchRentalDetail();
+    } catch (error) {
+      alert("Gagal membatalkan peminjaman: " + (error.message || ""));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePaymentUpload = async () => {
+    if (!selectedPaymentFile) return;
+    setUploadingPayment(true);
+    try {
+      const formData = new FormData();
+      formData.append("payment_proof", selectedPaymentFile);
+
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${getApiBaseUrl()}/rentals/${id}/payment`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData,
+      });
+
+      const json = await res.json();
+      if (res.ok) {
+        alert("Bukti pembayaran berhasil diunggah!");
+        fetchRentalDetail();
+        setSelectedPaymentFile(null);
+      } else {
+        alert("Gagal mengunggah bukti pembayaran: " + (json.message || JSON.stringify(json)));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan sistem saat upload pembayaran.");
+    } finally {
+      setUploadingPayment(false);
+    }
+  };
+
+  const handleGenerateBebasLab = async () => {
+    try {
+      setLoadingBebasLab(true);
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(`${getApiBaseUrl()}/lab-clearance/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          is_mahasiswa: isMahasiswa,
+          semester: semesterBebasLab,
+          departemen: departemenBebasLab
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        if (data.pdf_url) {
+          window.open(data.pdf_url, '_blank');
+        } else {
+          alert("Surat Bebas Lab berhasil digenerate.");
+        }
+        setShowModalBebasLab(false);
+      } else {
+        alert("Gagal: " + (data.message || JSON.stringify(data)));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan saat generate Surat Bebas Lab.");
+    } finally {
+      setLoadingBebasLab(false);
+    }
+  };
+
+
+  const calculateStep = (status) => {
+    switch (status) {
+      case "pending":
+        return 1;
+      case "disetujui_koordinator":
+        return 2;
+      case "disetujui":
+        return 3;
+      case "aktif":
+        return 4;
+      case "selesai":
+        return 5;
+      default:
+        return 1;
+    }
+  };
+
+  const dataDetail = rental
+    ? {
+        noPengajuan: `PJ-${String(rental.id).padStart(3, "0")}`,
+        tanggalPengajuan: rental.created_at
+          ? new Date(rental.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })
+          : "-",
+        statusPeminjaman:
+          rental.status === "pending"
+            ? "Menunggu Verifikasi"
+            : rental.status === "disetujui"
+            ? "Disetujui Kepala Lab"
+            : rental.status === "aktif"
+            ? "Alat Sedang Dipinjam"
+            : rental.status === "menunggu_pengembalian"
+            ? "Menunggu Konfirmasi Pengembalian"
+            : rental.status === "ditolak"
+            ? "Ditolak"
+            : rental.status === "selesai"
+            ? "Selesai"
+            : rental.status,
+        alat: rental.instruments?.map((i) => i.nama_alat).join(", ") || "Alat Analisis",
+        jumlah: `${rental.instruments?.length || 1} Unit`,
+        keperluan: rental.tujuan_peminjaman || rental.kegiatan_penelitian || "-",
+        tanggalPinjam: rental.tanggal_peminjaman || "-",
+        tanggalKembali: rental.tanggal_pengembalian || "-",
+        statusPengembalian: 
+          rental.status === "selesai" 
+            ? "SUDAH DIKEMBALIKAN" 
+            : rental.status === "menunggu_pengembalian"
+            ? "MENUNGGU VERIFIKASI"
+            : statusPengembalian,
+        statusBebasLab:
+          (rental.status_pembayaran === "lunas" || rental.status_pembayaran === "tidak_perlu") && rental.status === "selesai"
+            ? "Tersedia untuk diunduh."
+            : "Belum tersedia.",
+        activeStep: calculateStep(rental.status),
+      }
+    : {
+        noPengajuan: id ? `PJ-${String(id).padStart(3, "0")}` : "PJ-2026-001",
+        tanggalPengajuan: "-",
+        statusPeminjaman: "Menunggu Verifikasi",
+        alat: "Micropipette 20–200 µL",
+        jumlah: "1 Unit",
+        keperluan: "-",
+        tanggalPinjam: "-",
+        tanggalKembali: "-",
+        statusPengembalian: statusPengembalian,
+        statusBebasLab: "Belum tersedia.",
+        activeStep: 1,
+      };
 
   const steps = [
     {
@@ -89,6 +289,24 @@ const DetailPengajuanAlat = () => {
   const INACTIVE_COLOR = "#B0B0B0";
   const LINE_COLOR_ACTIVE = "#2C2C2C";
   const LINE_COLOR_INACTIVE = "#CFCFCF";
+
+  const getStatusBadge = (status) => {
+    switch (status?.toLowerCase()) {
+      case "pending":
+      case "menunggu_verifikasi":
+      case "menunggu verifikasi":
+        return { bg: "#F5E6CC", color: "#E65100" };
+      case "disetujui":
+      case "aktif":
+        return { bg: "#B9EEC0", color: "#1B5E20" };
+      case "ditolak":
+        return { bg: "#FFCDD2", color: "#B71C1C" };
+      case "selesai":
+        return { bg: "#E0E0E0", color: "#424242" };
+      default:
+        return { bg: "#B9EEC0", color: "#1B5E20" };
+    }
+  };
 
   const styles = {
     page: {
@@ -148,23 +366,29 @@ const DetailPengajuanAlat = () => {
       fontWeight: 700,
       fontSize: "0.9rem",
     },
-    greenBadge: {
-      display: "inline-flex",
-      alignItems: "center",
-      gap: "6px",
-      padding: "6px 16px",
-      borderRadius: "20px",
-      backgroundColor: "#B9EEC0",
-      color: "#1B5E20",
-      fontWeight: 700,
-      fontSize: "0.88rem",
+    dynamicBadge: (status) => {
+      const badgeStyle = getStatusBadge(status);
+      return {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "6px",
+        padding: "6px 16px",
+        borderRadius: "20px",
+        backgroundColor: badgeStyle.bg,
+        color: badgeStyle.color,
+        fontWeight: 700,
+        fontSize: "0.88rem",
+      };
     },
-    greenDot: {
-      width: "10px",
-      height: "10px",
-      borderRadius: "50%",
-      backgroundColor: "#2E7D32",
-      display: "inline-block",
+    dynamicDot: (status) => {
+      const badgeStyle = getStatusBadge(status);
+      return {
+        width: "10px",
+        height: "10px",
+        borderRadius: "50%",
+        backgroundColor: badgeStyle.color,
+        display: "inline-block",
+      };
     },
     sectionTitle: {
       fontSize: "1rem",
@@ -253,12 +477,34 @@ const DetailPengajuanAlat = () => {
                 {/* Status Peminjaman */}
                 <div>
                   <div style={styles.labelSmall}>Status Peminjaman</div>
-                  <span style={styles.greenBadge}>
-                    <span style={styles.greenDot} />
+                  <span style={styles.dynamicBadge(dataDetail.statusPeminjaman)}>
+                    <span style={styles.dynamicDot(dataDetail.statusPeminjaman)} />
                     {dataDetail.statusPeminjaman}
                   </span>
                 </div>
               </div>
+
+              {/* Action Buttons in Header */}
+              {rental?.status === "pending" && (
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "16px" }}>
+                  <button
+                    onClick={handleCancelRental}
+                    style={{
+                      backgroundColor: "#ef4444",
+                      color: "#fff",
+                      border: "none",
+                      padding: "8px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "600",
+                      fontSize: "0.85rem",
+                      cursor: "pointer",
+                      boxShadow: "0 2px 4px rgba(239, 68, 68, 0.2)",
+                    }}
+                  >
+                    Batalkan Peminjaman
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -411,6 +657,171 @@ const DetailPengajuanAlat = () => {
             </div>
           </div>
 
+          {/* ─── Card Pembayaran ─── */}
+          {rental?.status_pembayaran && rental.status_pembayaran !== "tidak_perlu" && (
+            <div style={styles.card}>
+              <div style={{ ...styles.cardBody, padding: "20px 24px" }}>
+                <div style={styles.sectionTitle}>Pembayaran Alat (Berbayar)</div>
+                <div style={{ display: "flex", gap: "16px", alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: "200px" }}>
+                    <div style={styles.labelSmall}>Status Pembayaran</div>
+                    <span
+                      style={
+                        rental.status_pembayaran === "lunas" || ["disetujui", "aktif", "menunggu_pengembalian", "selesai", "menunggu_pembayaran_denda"].includes(rental.status)
+                          ? styles.greenBadge
+                          : rental.status_pembayaran === "menunggu"
+                          ? { ...styles.greenBadge, backgroundColor: "#FFF3E0", color: "#E65100" }
+                          : styles.redBadge
+                      }
+                    >
+                      {rental.status_pembayaran === "lunas" || ["disetujui", "aktif", "menunggu_pengembalian", "selesai", "menunggu_pembayaran_denda"].includes(rental.status)
+                        ? "Disetujui"
+                        : rental.status_pembayaran === "menunggu"
+                        ? "Menunggu Konfirmasi"
+                        : "Belum Dibayar"}
+                    </span>
+                    {rental.alasan_penolakan_pembayaran && rental.status_pembayaran === "belum_lunas" && (
+                      <div style={{ marginTop: "8px", fontSize: "0.8rem", color: "#D32F2F" }}>
+                        <strong>Alasan Ditolak:</strong> {rental.alasan_penolakan_pembayaran}
+                      </div>
+                    )}
+                  </div>
+
+                  {rental.payment_proof_path && (
+                    <div style={{ flex: 1, minWidth: "150px" }}>
+                      <a
+                        href={`${getStorageUrl()}/storage/${rental.payment_proof_path}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontSize: "0.88rem", fontWeight: 600, color: "#2E7D32", textDecoration: "underline" }}
+                      >
+                        Lihat Bukti Terunggah
+                      </a>
+                    </div>
+                  )}
+
+                  {rental.status_pembayaran === "belum_lunas" && (
+                    <div style={{ flex: 2, display: "flex", flexDirection: "column", gap: "8px", minWidth: "250px" }}>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/jpg,image/webp"
+                        onChange={(e) => setSelectedPaymentFile(e.target.files[0])}
+                        style={{ fontSize: "0.85rem" }}
+                      />
+                      <button
+                        onClick={handlePaymentUpload}
+                        disabled={!selectedPaymentFile || uploadingPayment}
+                        style={{
+                          ...styles.darkBtn,
+                          marginTop: 0,
+                          padding: "8px 12px",
+                          width: "auto",
+                          alignSelf: "flex-start",
+                          opacity: !selectedPaymentFile || uploadingPayment ? 0.6 : 1,
+                        }}
+                      >
+                        {uploadingPayment ? "Mengunggah..." : "Unggah Bukti (Gambar)"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ─── Card Denda ─── */}
+          {rental?.denda > 0 && (
+            <div style={styles.card}>
+              <div style={{ ...styles.cardBody, padding: "20px 24px" }}>
+                <div style={styles.sectionTitle}>Pembayaran Denda Keterlambatan / Kerusakan</div>
+                <div style={{ display: "flex", gap: "16px", alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: "200px" }}>
+                    <div style={styles.labelSmall}>Status Denda</div>
+                    <span
+                      style={
+                        rental.status_denda === "lunas" || rental.status === "selesai"
+                          ? styles.greenBadge
+                          : rental.status_denda === "menunggu" || (rental.status_denda === "belum_dibayar" && rental.denda_payment_proof_path)
+                          ? { ...styles.greenBadge, backgroundColor: "#FFF3E0", color: "#E65100" }
+                          : styles.redBadge
+                      }
+                    >
+                      {rental.status_denda === "lunas" || rental.status === "selesai"
+                        ? "Lunas"
+                        : rental.status_denda === "menunggu" || (rental.status_denda === "belum_dibayar" && rental.denda_payment_proof_path)
+                        ? "Menunggu Verifikasi"
+                        : "Belum Dibayar"}
+                    </span>
+                    <div style={{ marginTop: "8px", fontSize: "0.85rem", fontWeight: "bold" }}>
+                      Nominal: Rp {rental.denda.toLocaleString("id-ID")}
+                    </div>
+                  </div>
+
+                  {rental.denda_payment_proof_path && (
+                    <div style={{ flex: 1, minWidth: "150px" }}>
+                      <a
+                        href={`${getStorageUrl()}/storage/${rental.denda_payment_proof_path}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontSize: "0.88rem", fontWeight: 600, color: "#2E7D32", textDecoration: "underline" }}
+                      >
+                        Lihat Bukti Terunggah
+                      </a>
+                    </div>
+                  )}
+
+                  {(rental.status_denda === "belum_dibayar" && !rental.denda_payment_proof_path) && (
+                    <div style={{ flex: 2, display: "flex", flexDirection: "column", gap: "8px", minWidth: "250px" }}>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/jpg,image/webp"
+                        onChange={(e) => setSelectedPaymentFile(e.target.files[0])}
+                        style={{ fontSize: "0.85rem" }}
+                      />
+                      <button
+                        onClick={async () => {
+                          if (!selectedPaymentFile) return;
+                          setUploadingPayment(true);
+                          try {
+                            const formData = new FormData();
+                            formData.append("denda_payment_proof", selectedPaymentFile);
+                            const res = await fetch(`${getApiBaseUrl()}/rentals/${id}/denda`, {
+                              method: "POST",
+                              headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+                              body: formData,
+                            });
+                            if (res.ok) {
+                              alert("Bukti denda berhasil diunggah!");
+                              fetchRentalDetail();
+                              setSelectedPaymentFile(null);
+                            } else {
+                              alert("Gagal mengunggah bukti denda");
+                            }
+                          } catch (err) {
+                            alert("Terjadi kesalahan");
+                          } finally {
+                            setUploadingPayment(false);
+                          }
+                        }}
+                        disabled={!selectedPaymentFile || uploadingPayment}
+                        style={{
+                          ...styles.darkBtn,
+                          marginTop: 0,
+                          padding: "8px 12px",
+                          width: "auto",
+                          alignSelf: "flex-start",
+                          opacity: !selectedPaymentFile || uploadingPayment ? 0.6 : 1,
+                        }}
+                      >
+                        {uploadingPayment ? "Mengunggah..." : "Unggah Bukti Denda"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ─── Card 4 & 5: Bottom Row ─── */}
           <div
             style={{
@@ -444,31 +855,39 @@ const DetailPengajuanAlat = () => {
                 </div>
                 <span
                   style={
-                    statusPengembalian === "BELUM DIKEMBALIKAN"
+                    rental?.status === "aktif" && statusPengembalian === "BELUM DIKEMBALIKAN"
                       ? styles.redBadge
-                      : styles.greenBadge
+                      : (rental?.status === "selesai" || statusPengembalian !== "BELUM DIKEMBALIKAN")
+                      ? styles.greenBadge
+                      : { ...styles.redBadge, backgroundColor: "#E0E0E0", color: "#757575" }
                   }
                 >
-                  {statusPengembalian}
+                  {rental?.status === "selesai"
+                    ? "SUDAH DIKEMBALIKAN"
+                    : (rental?.status === "aktif" || rental?.status === "menunggu_pengembalian")
+                    ? dataDetail.statusPengembalian
+                    : "BELUM DIAMBIL"}
                 </span>
                 <button
                   style={{
                     ...styles.darkBtn,
                     backgroundColor:
-                      statusPengembalian !== "BELUM DIKEMBALIKAN"
+                      rental?.status !== "aktif" || dataDetail.statusPengembalian !== "BELUM DIKEMBALIKAN"
                         ? "#9E9E9E"
                         : "#2C2C2C",
                     cursor:
-                      statusPengembalian !== "BELUM DIKEMBALIKAN"
+                      rental?.status !== "aktif" || dataDetail.statusPengembalian !== "BELUM DIKEMBALIKAN"
                         ? "not-allowed"
                         : "pointer",
                   }}
-                  disabled={statusPengembalian !== "BELUM DIKEMBALIKAN"}
+                  disabled={rental?.status !== "aktif" || dataDetail.statusPengembalian !== "BELUM DIKEMBALIKAN"}
                   onClick={() => setShowModalReturn(true)}
                 >
-                  {statusPengembalian !== "BELUM DIKEMBALIKAN"
+                  {rental?.status === "selesai" || dataDetail.statusPengembalian !== "BELUM DIKEMBALIKAN"
                     ? "Pengembalian Diajukan"
-                    : "Ajukan Pengembalian"}
+                    : rental?.status === "aktif"
+                    ? "Ajukan Pengembalian"
+                    : "Menunggu Pengambilan"}
                 </button>
               </div>
             </div>
@@ -504,15 +923,107 @@ const DetailPengajuanAlat = () => {
                     fontWeight: 500,
                     fontSize: "0.88rem",
                     textAlign: "center",
+                    flexDirection: "column"
                   }}
                 >
-                  {dataDetail.statusBebasLab}
+                  {dataDetail.statusBebasLab === "Tersedia untuk diunduh." ? (
+                    <>
+                      <div className="text-success mb-2 fw-bold">Tersedia</div>
+                      <button 
+                        className="btn btn-sm btn-outline-success rounded-pill px-3"
+                        onClick={() => setShowModalBebasLab(true)}
+                      >
+                        <i className="bi bi-download me-1"></i> Unduh Surat
+                      </button>
+                    </>
+                  ) : (
+                    dataDetail.statusBebasLab
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* ─── Modal Generate Bebas Lab ─── */}
+      <Modal
+        show={showModalBebasLab}
+        onHide={() => setShowModalBebasLab(false)}
+        centered
+      >
+        <Modal.Header closeButton style={{ borderBottom: "1px solid #eee", backgroundColor: "#f8f9fa" }}>
+          <Modal.Title style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#3E2723" }}>
+            Unduh Surat Bebas Lab
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ padding: "24px" }}>
+          <div className="mb-4">
+            <div className="form-check form-switch mb-3">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                id="mahasiswaSwitch"
+                checked={!isMahasiswa}
+                onChange={(e) => setIsMahasiswa(!e.target.checked)}
+              />
+              <label className="form-check-label fw-bold text-dark" htmlFor="mahasiswaSwitch">
+                Saya bukan mahasiswa
+              </label>
+            </div>
+            {!isMahasiswa && (
+              <small className="text-muted">Data NIM, Semester, dan Departemen akan diisi tanda strip (-).</small>
+            )}
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label fw-semibold text-secondary">Semester</label>
+            <input
+              type="text"
+              className="form-control"
+              value={isMahasiswa ? semesterBebasLab : "-"}
+              onChange={(e) => setSemesterBebasLab(e.target.value)}
+              disabled={!isMahasiswa}
+              placeholder="Contoh: 8"
+              style={{ borderRadius: "8px" }}
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label fw-semibold text-secondary">Departemen</label>
+            <input
+              type="text"
+              className="form-control"
+              value={isMahasiswa ? departemenBebasLab : "-"}
+              onChange={(e) => setDepartemenBebasLab(e.target.value)}
+              disabled={!isMahasiswa}
+              placeholder="Contoh: Ilmu Nutrisi dan Teknologi Pakan"
+              style={{ borderRadius: "8px" }}
+            />
+          </div>
+        </Modal.Body>
+        <Modal.Footer style={{ borderTop: "none", backgroundColor: "#f8f9fa", padding: "16px 24px" }}>
+          <button
+            className="btn btn-light rounded-pill px-4"
+            onClick={() => setShowModalBebasLab(false)}
+            disabled={loadingBebasLab}
+          >
+            Batal
+          </button>
+          <button
+            className="btn rounded-pill px-4 text-white"
+            style={{ backgroundColor: "#8D6E63", border: "none" }}
+            onClick={handleGenerateBebasLab}
+            disabled={loadingBebasLab}
+          >
+            {loadingBebasLab ? (
+              <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+            ) : (
+              "Generate & Unduh PDF"
+            )}
+          </button>
+        </Modal.Footer>
+      </Modal>
 
       {/* ─── Modal Pengajuan Pengembalian ─── */}
       <Modal

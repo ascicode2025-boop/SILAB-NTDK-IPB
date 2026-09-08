@@ -2,37 +2,15 @@ import React, { useState } from "react";
 import { Table, Modal, Form, InputGroup, Dropdown } from "react-bootstrap";
 import { FaSearch, FaFilter } from "react-icons/fa";
 
-const INITIAL_PENGEMBALIAN = [
-  {
-    id: 1,
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia Fauzi",
-    alat: "Micropipette 20–200 µL",
-    jumlah: "2 Unit",
-    tanggalAmbil: "02 Juli 2026",
-    tanggalKembali: "Menunggu Pemeriksaan",
-    status: "Dipinjam",
-  },
-  {
-    id: 2,
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia Fauzi",
-    alat: "Micropipette 20–200 µL",
-    jumlah: "2 Unit",
-    tanggalAmbil: "02 Juli 2026",
-    tanggalKembali: "Menunggu Pemeriksaan",
-    status: "Dipinjam",
-  },
-];
-
-export default function Pengembalian() {
-  const [dataList, setDataList] = useState(INITIAL_PENGEMBALIAN);
+export default function Pengembalian({ rentals = [], onRefresh, onReturn }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedItem, setSelectedItem] = useState(null);
 
   // Modal States
   const [showCheckModal, setShowCheckModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Form States inside Modal
   const [checklist, setChecklist] = useState({
@@ -45,12 +23,13 @@ export default function Pengembalian() {
   const [kondisiAlat, setKondisiAlat] = useState("Baik");
   const [catatan, setCatatan] = useState("");
   const [updateStatus, setUpdateStatus] = useState("Tersedia");
+  const [denda, setDenda] = useState("");
 
-  const filteredData = dataList.filter(
+  const filteredData = rentals.filter(
     (item) =>
-      item.namaPeminjam.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.noPengajuan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.alat.toLowerCase().includes(searchTerm.toLowerCase())
+      item.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.rental_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.items?.some(i => i.instrument?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleOpenPeriksa = (item) => {
@@ -65,18 +44,40 @@ export default function Pengembalian() {
     setKondisiAlat("Baik");
     setCatatan("");
     setUpdateStatus("Tersedia");
+    setDenda("");
     setShowCheckModal(true);
   };
 
-  const handleSimpanPerubahan = () => {
-    setShowCheckModal(false);
-    setShowSuccessModal(true);
+  const handleSimpanPerubahan = async () => {
+    try {
+      if (selectedItem) {
+        // Karena UI hanya 1 status untuk semua item peminjaman ini, 
+        // kita mapping ke semua item
+        const payloadItems = selectedItem.items.map(i => ({
+          instrument_id: i.instrument_id,
+          kondisi_kembali: updateStatus,
+          notes: catatan
+        }));
+
+        const nominalDenda = parseInt(denda) || 0;
+        if (updateStatus === "Rusak" && nominalDenda <= 0) {
+          setErrorMessage("Jika alat rusak, nominal denda wajib diisi.");
+          setShowErrorModal(true);
+          return;
+        }
+
+        await onReturn(selectedItem.id, payloadItems, nominalDenda);
+        setShowCheckModal(false);
+        setShowSuccessModal(true);
+        if (onRefresh) onRefresh();
+      }
+    } catch (error) {
+      setErrorMessage(error.message || "Gagal menyimpan pengembalian");
+      setShowErrorModal(true);
+    }
   };
 
   const handleCloseSuccess = () => {
-    if (selectedItem) {
-      setDataList((prev) => prev.filter((item) => item.id !== selectedItem.id));
-    }
     setShowSuccessModal(false);
   };
 
@@ -253,19 +254,19 @@ export default function Pengembalian() {
                       {index + 1}
                     </td>
                     <td style={{ py: "16px", fontWeight: "600", color: "#212121" }}>
-                      {item.noPengajuan}
+                      {item.rental_number}
                     </td>
                     <td style={{ py: "16px", color: "#424242" }}>
-                      {item.namaPeminjam}
+                      {item.user?.name}
                     </td>
                     <td style={{ py: "16px", color: "#424242" }}>
-                      {item.alat}
+                      {item.items?.map(i => `${i.instrument?.name} (${i.quantity})`).join(', ')}
                     </td>
                     <td style={{ py: "16px", textAlign: "center", color: "#424242" }}>
-                      {item.tanggalKembali}
+                      {item.end_date}
                     </td>
                     <td style={{ py: "16px", textAlign: "center", color: "#424242", fontWeight: 500 }}>
-                      {item.status}
+                      Dipinjam
                     </td>
                     <td style={{ py: "16px", textAlign: "center" }}>
                       <button
@@ -352,7 +353,7 @@ export default function Pengembalian() {
                   Nama
                 </div>
                 <div style={{ color: "#212121", fontSize: "0.95rem", fontWeight: "600" }}>
-                  {selectedItem.namaPeminjam}
+                  {selectedItem.user?.name}
                 </div>
               </div>
               <div>
@@ -360,19 +361,19 @@ export default function Pengembalian() {
                   No. Pengajuan
                 </div>
                 <div style={{ color: "#212121", fontSize: "0.95rem", fontWeight: "600" }}>
-                  {selectedItem.noPengajuan}
+                  {selectedItem.rental_number}
                 </div>
               </div>
             </div>
 
-            {/* Row 2: Alat, Jumlah, Tanggal Pengambilan */}
+            {/* Row 2: Alat, Jumlah, Tanggal Pengembalian Klien */}
             <div
               style={{
                 display: "grid",
                 gridTemplateColumns: "1.2fr 0.8fr 1fr",
                 gap: "12px",
                 textAlign: "center",
-                marginBottom: "28px",
+                marginBottom: "20px",
               }}
             >
               <div>
@@ -380,7 +381,7 @@ export default function Pengembalian() {
                   Alat
                 </div>
                 <div style={{ color: "#212121", fontSize: "0.92rem", fontWeight: "600", lineHeight: "1.3" }}>
-                  {selectedItem.alat}
+                  {selectedItem.items?.map(i => i.instrument?.name).join(', ')}
                 </div>
               </div>
               <div>
@@ -388,16 +389,38 @@ export default function Pengembalian() {
                   Jumlah
                 </div>
                 <div style={{ color: "#212121", fontSize: "0.92rem", fontWeight: "600" }}>
-                  {selectedItem.jumlah || "2 Unit"}
+                  {selectedItem.items?.reduce((total, i) => total + i.quantity, 0)} Unit
                 </div>
               </div>
               <div>
                 <div style={{ fontWeight: "700", color: "#757575", fontSize: "0.85rem", marginBottom: "4px" }}>
-                  Tanggal Pengambilan
+                  Tgl Pengajuan Klien
                 </div>
                 <div style={{ color: "#212121", fontSize: "0.92rem", fontWeight: "600" }}>
-                  {selectedItem.tanggalAmbil || "02 Juli 2026"}
+                  {selectedItem.actual_return_date || "-"}
                 </div>
+              </div>
+            </div>
+
+            {/* Row 3: Catatan Pengembalian Klien */}
+            <div
+              style={{
+                backgroundColor: "#F9F9F9",
+                borderRadius: "12px",
+                padding: "16px",
+                marginBottom: "28px",
+                border: "1px solid #EEEEEE"
+              }}
+            >
+              <div style={{ fontWeight: "700", color: "#4A3933", fontSize: "0.85rem", marginBottom: "8px" }}>
+                Informasi dari Klien
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "12px", fontSize: "0.88rem" }}>
+                <div style={{ color: "#757575" }}>Kondisi Alat:</div>
+                <div style={{ fontWeight: "600", color: "#212121" }}>{selectedItem.return_condition || "-"}</div>
+                
+                <div style={{ color: "#757575" }}>Catatan:</div>
+                <div style={{ fontWeight: "600", color: "#212121" }}>{selectedItem.return_notes || "-"}</div>
               </div>
             </div>
 
@@ -554,6 +577,25 @@ export default function Pengembalian() {
               </Dropdown>
             </div>
 
+            {/* Denda Section if Rusak */}
+            {updateStatus === "Rusak" && (
+              <div style={{ marginBottom: "28px" }}>
+                <div style={{ fontWeight: "700", color: "#757575", fontSize: "0.88rem", marginBottom: "6px" }}>
+                  Nominal Denda (Wajib)
+                </div>
+                <InputGroup>
+                  <InputGroup.Text style={{ backgroundColor: "#F9F9F9", border: "1px solid #D0D0D0" }}>Rp</InputGroup.Text>
+                  <Form.Control
+                    type="number"
+                    value={denda}
+                    onChange={(e) => setDenda(e.target.value)}
+                    placeholder="Contoh: 50000"
+                    style={{ border: "1px solid #D0D0D0", boxShadow: "none" }}
+                  />
+                </InputGroup>
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div style={{ display: "flex", justifyContent: "center", gap: "18px" }}>
               <button
@@ -647,6 +689,56 @@ export default function Pengembalian() {
             }}
           >
             Ok
+          </button>
+        </div>
+      </Modal>
+
+      {/* ─── 3. MODAL ERROR ─── */}
+      <Modal
+        show={showErrorModal}
+        onHide={() => setShowErrorModal(false)}
+        centered
+        dialogClassName="custom-modal-narrow custom-modal-clean"
+      >
+        <div
+          style={{
+            backgroundColor: "#dc3545",
+            color: "#ffffff",
+            padding: "14px 20px",
+            textAlign: "center",
+            fontWeight: "700",
+            fontSize: "1.15rem",
+          }}
+        >
+          Gagal
+        </div>
+        <div style={{ padding: "36px 28px 32px", textAlign: "center" }}>
+          <p
+            style={{
+              fontSize: "1rem",
+              fontWeight: 600,
+              color: "#333333",
+              lineHeight: "1.5",
+              marginBottom: "28px",
+            }}
+          >
+            {errorMessage}
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowErrorModal(false)}
+            style={{
+              backgroundColor: "#dc3545",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: "12px",
+              padding: "8px 48px",
+              fontWeight: "600",
+              fontSize: "0.9rem",
+              cursor: "pointer",
+            }}
+          >
+            Tutup
           </button>
         </div>
       </Modal>

@@ -21,6 +21,11 @@ class InvoiceController extends Controller
     {
         // Eager load booking.analysisItems so frontend can show itemized details
         $query = Invoice::with(['user','booking.analysisItems','confirmer'])->orderBy('created_at','desc');
+        
+        if (Auth::check() && Auth::user()->role === 'klien') {
+            $query->where('user_id', Auth::id());
+        }
+
         if ($request->filled('status')) $query->where('status', $request->status);
         if ($request->filled('booking_id')) $query->where('booking_id', $request->booking_id);
         $invoices = $query->get();
@@ -52,6 +57,10 @@ class InvoiceController extends Controller
      */
     public function createFromBooking(Request $request)
     {
+        if (!in_array(Auth::user()->role ?? '', ['koordinator', 'teknisi'])) {
+            return response()->json(['success' => false, 'message' => 'Hanya koordinator atau teknisi yang dapat membuat invoice.'], 403);
+        }
+
         $request->validate([
             'booking_id' => 'required|exists:bookings,id'
         ]);
@@ -94,6 +103,10 @@ class InvoiceController extends Controller
 
     public function confirmPayment(Request $request, $id)
     {
+        if ((Auth::user()->role ?? '') !== 'koordinator') {
+            return response()->json(['success' => false, 'message' => 'Hanya koordinator yang dapat menyetujui pembayaran.'], 403);
+        }
+
         $inv = Invoice::findOrFail($id);
         $inv->status = 'PAID';
         $inv->paid_at = now();

@@ -225,6 +225,10 @@ class BookingController extends Controller
     // =================================================================
     public function store(Request $request)
     {
+        if (Auth::user()->role !== 'klien') {
+            return response()->json(['success' => false, 'message' => 'Hanya klien yang dapat membuat booking.'], 403);
+        }
+
         try {
             // 1. Normalisasi Nama Jenis Analisis
             $jenisRaw = strtolower($request->jenis_analisis);
@@ -630,6 +634,10 @@ class BookingController extends Controller
 
     public function updateStatus(Request $request, $id)
     {
+        if (!in_array(Auth::user()->role, ['koordinator', 'teknisi', 'kepala'])) {
+            return response()->json(['success' => false, 'message' => 'Hanya koordinator, teknisi, dan kepala yang dapat mengubah status.'], 403);
+        }
+
         // Accept all known statuses used in the application to avoid validation errors
         $request->validate(['status' => 'required|in:menunggu,disetujui,ditolak,proses,selesai,dibatalkan,menunggu_verifikasi,menunggu_ttd,menunggu_ttd_koordinator,menunggu_sign,ditandatangani,menunggu_verifikasi_kepala,menunggu_pembayaran,ditolak_kepala,dikirim_ke_teknisi']);
         $booking = Booking::findOrFail($id);
@@ -754,6 +762,10 @@ class BookingController extends Controller
 
     public function updateAnalysisResult(Request $request, $id)
     {
+        if (Auth::user()->role !== 'teknisi') {
+            return response()->json(['success' => false, 'message' => 'Hanya teknisi yang dapat mengupdate hasil analisis.'], 403);
+        }
+
         $booking = Booking::findOrFail($id);
 
         // Update setiap item analisis dengan hasil yang dikirim
@@ -793,6 +805,10 @@ class BookingController extends Controller
 
     public function finalizeAnalysis(Request $request, $id)
     {
+        if (Auth::user()->role !== 'teknisi') {
+            return response()->json(['success' => false, 'message' => 'Hanya teknisi yang dapat menyelesaikan analisis.'], 403);
+        }
+
         $booking = Booking::findOrFail($id);
         // Mark analysis as completed server-side but DO NOT change workflow status here.
         // Status transition to 'menunggu_verifikasi' must happen only when teknisi
@@ -810,6 +826,10 @@ class BookingController extends Controller
 
     public function kirimKeKoordinator(Request $request, $id)
     {
+        if (Auth::user()->role !== 'teknisi') {
+            return response()->json(['success' => false, 'message' => 'Hanya teknisi yang dapat mengirim hasil ke koordinator.'], 403);
+        }
+
         $booking = Booking::with('analysisItems', 'user')->findOrFail($id);
 
         // Ubah status menjadi menunggu_verifikasi agar Koordinator melihat dan memverifikasi hasil
@@ -828,6 +848,10 @@ class BookingController extends Controller
      */
     public function uploadPdfAndKirim(Request $request, $id)
     {
+        if (!in_array(Auth::user()->role, ['koordinator', 'teknisi'])) {
+            return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+        }
+
         $booking = Booking::findOrFail($id);
         // Validate upload (increase max to 50MB to be tolerant)
         try {
@@ -1068,6 +1092,10 @@ class BookingController extends Controller
     // Kirim ke Kepala (dari Koordinator) -> set status menunggu_verifikasi_kepala
     public function kirimKeKepala(Request $request, $id)
     {
+        if (Auth::user()->role !== 'koordinator') {
+            return response()->json(['success' => false, 'message' => 'Hanya koordinator yang dapat mengirim ke Kepala Lab.'], 403);
+        }
+
         $booking = Booking::with('analysisItems', 'user')->findOrFail($id);
         $booking->status = 'menunggu_verifikasi_kepala';
         $booking->status_updated_at = Carbon::now();
@@ -1095,6 +1123,10 @@ class BookingController extends Controller
     // Approve by Kepala -> set status menunggu_ttd_koordinator (so Koordinator can sign)
     public function approveByKepala(Request $request, $id)
     {
+        if (Auth::user()->role !== 'kepala') {
+            return response()->json(['success' => false, 'message' => 'Hanya Kepala Lab yang dapat menyetujui.'], 403);
+        }
+
         $booking = Booking::with('analysisItems', 'user')->findOrFail($id);
         // Setelah Kepala menyetujui, buat record Signature (kepala_approval)
         // Set status to menunggu_ttd_koordinator so Koordinator UI and signature creation logic remain consistent
@@ -1184,6 +1216,10 @@ class BookingController extends Controller
 
     public function verifikasiKoordinator(Request $request, $id)
     {
+        if (Auth::user()->role !== 'koordinator') {
+            return response()->json(['success' => false, 'message' => 'Hanya koordinator yang dapat memverifikasi hasil.'], 403);
+        }
+
         try {
             $booking = Booking::with('analysisItems', 'user')->findOrFail($id);
 
@@ -1414,6 +1450,11 @@ class BookingController extends Controller
                 'message' => 'Hanya booking dengan status dibatalkan yang dapat dihapus.'
             ], 403);
         }
+
+        if (Auth::user()->role !== 'koordinator' && $booking->user_id !== Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+        }
+
         try {
             $booking->delete();
             return response()->json([

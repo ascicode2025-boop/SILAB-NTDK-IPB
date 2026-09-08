@@ -6,19 +6,31 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "@fontsource/poppins/400.css";
 import "@fontsource/poppins/600.css";
 import "@fontsource/poppins/700.css";
+import axios from "axios";
 import NavbarLoginKlien from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
-import DaftarAlatComponent, { LabBannerSVG, INITIAL_TOOLS } from "../../components/DaftarAlat/DaftarAlatComponent";
+import DaftarAlatComponent, { LabBannerSVG } from "../../components/DaftarAlat/DaftarAlatComponent";
 
 const DaftarAlat = () => {
   const history = useHistory();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTool, setSelectedTool] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [tools, setTools] = useState([]);
 
   useEffect(() => {
     document.title = "SILAB-NTDK - Daftar Alat Analisis";
+    fetchTools();
   }, []);
+
+  const fetchTools = async () => {
+    try {
+      const response = await axios.get("http://localhost:8000/api/instruments");
+      setTools(response.data.data || []);
+    } catch (error) {
+      console.error("Gagal mengambil data alat", error);
+    }
+  };
 
   const handleOpenModal = (tool) => {
     setSelectedTool(tool);
@@ -31,21 +43,20 @@ const DaftarAlat = () => {
   };
 
   const handleAjukanPeminjaman = () => {
-    const toolName = selectedTool ? selectedTool.nama : "";
+    const toolName = selectedTool ? selectedTool.nama_alat : "";
+    const toolId = selectedTool ? selectedTool.id : "";
     handleCloseModal();
     history.push({
       pathname: "/dashboard/pengajuanPeminjaman",
-      state: { selectedTool: toolName },
-      search: toolName ? `?alat=${encodeURIComponent(toolName)}` : "",
+      state: { selectedTool: toolName, selectedToolId: toolId },
+      search: toolName ? `?alat=${encodeURIComponent(toolName)}&id=${toolId}` : "",
     });
   };
 
-  const filteredTools = INITIAL_TOOLS.filter(
+  const filteredTools = tools.filter(
     (tool) =>
-      tool.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tool.ringkasan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tool.deskripsi.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tool.kategori.toLowerCase().includes(searchTerm.toLowerCase())
+      (tool.nama_alat || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (tool.deskripsi || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -184,49 +195,63 @@ const DaftarAlat = () => {
                     letterSpacing: "-0.3px",
                   }}
                 >
-                  {selectedTool.nama}
+                  {selectedTool.nama_alat}
                 </h3>
 
-                {/* Status Badge & Unit Count */}
+                {/* Status Badge */}
                 <div className="d-flex align-items-center justify-content-center gap-2 mb-3">
                   <span
-                    className="px-3 py-1 fw-bold"
+                    className="px-3 py-1 fw-bold text-uppercase"
                     style={{
-                      backgroundColor: "#A8E6CF",
-                      color: "#1E5E27",
+                      backgroundColor: selectedTool.status === 'tersedia' ? "#A8E6CF" : "#FFD3B6",
+                      color: selectedTool.status === 'tersedia' ? "#1E5E27" : "#D35400",
                       borderRadius: "20px",
                       fontSize: "0.8rem",
                     }}
                   >
                     {selectedTool.status}
                   </span>
-                  <span
-                    style={{
-                      color: "#8D6E63",
-                      fontSize: "0.85rem",
-                      fontWeight: "700",
-                    }}
-                  >
-                    – {selectedTool.jumlah} Unit
-                  </span>
                 </div>
 
-                {/* Two Columns: Lokasi & Kategori */}
+                {/* Two Columns: Tipe & Harga Sewa */}
                 <Row className="mb-3 text-center">
                   <Col xs={6}>
                     <div className="fw-bold mb-1" style={{ color: "#3E2723", fontSize: "0.9rem" }}>
-                      Lokasi
+                      Tipe Layanan
                     </div>
-                    <div className="text-secondary" style={{ fontSize: "0.82rem" }}>
-                      {selectedTool.lokasi}
+                    <div className="text-secondary fw-semibold" style={{ fontSize: "0.82rem" }}>
+                      {selectedTool.is_paid ? (
+                        <span className="text-danger">Berbayar</span>
+                      ) : (
+                        <span className="text-success">Gratis</span>
+                      )}
                     </div>
                   </Col>
                   <Col xs={6}>
                     <div className="fw-bold mb-1" style={{ color: "#3E2723", fontSize: "0.9rem" }}>
-                      Kategori
+                      Harga Sewa
                     </div>
-                    <div className="text-secondary" style={{ fontSize: "0.82rem" }}>
-                      {selectedTool.kategori}
+                    <div className="text-secondary fw-semibold" style={{ fontSize: "0.82rem" }}>
+                      {selectedTool.is_paid ? `Rp ${selectedTool.harga_sewa.toLocaleString('id-ID')}` : "-"}
+                    </div>
+                  </Col>
+                </Row>
+
+                <Row className="mb-3 text-center">
+                  <Col xs={6}>
+                    <div className="fw-bold mb-1" style={{ color: "#3E2723", fontSize: "0.9rem" }}>
+                      Total Unit
+                    </div>
+                    <div className="text-secondary fw-semibold" style={{ fontSize: "0.82rem" }}>
+                      {selectedTool.total_unit ?? 1}
+                    </div>
+                  </Col>
+                  <Col xs={6}>
+                    <div className="fw-bold mb-1" style={{ color: "#3E2723", fontSize: "0.9rem" }}>
+                      Stok Tersedia (Hari Ini)
+                    </div>
+                    <div className="text-secondary fw-semibold" style={{ fontSize: "0.82rem" }}>
+                      {selectedTool.stok_tersedia ?? (selectedTool.total_unit ?? 1)}
                     </div>
                   </Col>
                 </Row>
@@ -268,18 +293,20 @@ const DaftarAlat = () => {
                   </Button>
                   <Button
                     style={{
-                      backgroundColor: "#A6867B",
-                      borderColor: "#A6867B",
+                      backgroundColor: (selectedTool.stok_tersedia ?? selectedTool.total_unit ?? 1) === 0 ? "#D3D3D3" : "#A6867B",
+                      borderColor: (selectedTool.stok_tersedia ?? selectedTool.total_unit ?? 1) === 0 ? "#D3D3D3" : "#A6867B",
                       color: "#FFFFFF",
                       borderRadius: "28px",
                       padding: "8px 22px",
                       fontWeight: "600",
                       fontSize: "0.86rem",
-                      boxShadow: "0 3px 8px rgba(166,134,123,0.35)",
+                      boxShadow: (selectedTool.stok_tersedia ?? selectedTool.total_unit ?? 1) === 0 ? "none" : "0 3px 8px rgba(166,134,123,0.35)",
+                      cursor: (selectedTool.stok_tersedia ?? selectedTool.total_unit ?? 1) === 0 ? "not-allowed" : "pointer"
                     }}
+                    disabled={(selectedTool.stok_tersedia ?? selectedTool.total_unit ?? 1) === 0}
                     onClick={handleAjukanPeminjaman}
                   >
-                    Ajukan Peminjaman
+                    {(selectedTool.stok_tersedia ?? selectedTool.total_unit ?? 1) === 0 ? "Stok Habis" : "Ajukan Peminjaman"}
                   </Button>
                 </div>
               </div>

@@ -73,9 +73,9 @@ function DaftarAnalisis() {
               >
                 <Card.Img
                   variant="top"
-                  src={`/asset/daftarAnalisis/${item.jenis_analisis.replace(/\s+/g, "_").replace(/[^\w_]/g, "")}.png`}
+                  src={`/asset/DaftarAnalisis/${item.jenis_analisis.replace(/\s+/g, "_").replace(/[^\w_]/g, "")}.png`}
                   onError={(e) => {
-                    e.target.src = "/asset/daftarAnalisis/Spektro.jpg";
+                    e.target.src = "/asset/DaftarAnalisis/Spektro.jpg";
                   }}
                   style={{ objectFit: "cover", height: "180px" }}
                 />

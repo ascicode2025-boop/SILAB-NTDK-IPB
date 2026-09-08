@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Jobs\ProcessUserAchievements;
 use App\Mail\WelcomeEmail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -122,10 +123,7 @@ class AuthController extends Controller
 
         // Logika Keaktifan
         $user->increment('login_count');
-        $this->checkLoginAchievements($user);
-
-        // Cek dan berikan achievement teknisi jika perlu
-        $this->checkTechnicianAchievements($user);
+        ProcessUserAchievements::dispatch($user, 'login');
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -141,6 +139,8 @@ class AuthController extends Controller
                 'avatar' => $user->avatar,
                 'institusi' => $user->institusi,
                 'nomor_telpon' => $user->nomor_telpon,
+                'nim' => $user->nim,
+                'prodi' => $user->prodi,
             ]
         ], 200);
     }
@@ -159,11 +159,11 @@ class AuthController extends Controller
         /** @var \App\Models\User $user */
         $user = $request->user();
 
-        // Cek dan berikan achievement untuk user
+        // Cek dan berikan achievement untuk user (background)
         if ($user->role === 'teknisi') {
-            $this->checkTechnicianAchievements($user);
+            ProcessUserAchievements::dispatch($user, 'technician_update');
         } elseif ($user->role === 'koordinator') {
-            $this->checkKoordinatorAchievements($user);
+            ProcessUserAchievements::dispatch($user, 'koordinator_update');
         }
 
         // Stats berbeda berdasarkan role
@@ -229,6 +229,9 @@ class AuthController extends Controller
             // like 'Internal Lab' or other lab names that are not part of the limited list.
             'institusi' => 'required|string',
             'nomor_telpon' => 'required|string|max:20',
+            
+            'nim' => 'nullable|string|max:50',
+            'prodi' => 'nullable|string|max:100',
 
             'bio' => 'nullable|string|max:500',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,bmp,webp,tiff,tif',
@@ -270,12 +273,16 @@ class AuthController extends Controller
             $user->email = $request->email;
             $user->institusi = $request->institusi;
             $user->nomor_telpon = $request->nomor_telpon;
+            $user->nim = $request->nim;
+            $user->prodi = $request->prodi;
             $user->bio = $request->bio;
 
             $user->save();
 
             // Cek dan berikan achievement teknisi jika perlu
-            $this->checkTechnicianAchievements($user);
+            if ($user->role === 'teknisi') {
+                ProcessUserAchievements::dispatch($user, 'technician_update');
+            }
 
             return response()->json([
                 'message' => 'Profil berhasil diperbarui!',
@@ -287,164 +294,6 @@ class AuthController extends Controller
                 'message' => 'Terjadi kesalahan saat update profil.',
                 'errors' => ['avatar' => [$e->getMessage()]]
             ], 500);
-        }
-    }
-
-    // Achievement untuk teknisi berdasarkan jumlah analisis selesai dan login
-    private function checkTechnicianAchievements($user)
-    {
-        if ($user->role !== 'teknisi') return;
-
-        // === 1. Cek Achievement LOGIN untuk Teknisi ===
-        $loginAchievements = DB::table('achievements')
-            ->where('role', 'teknisi')
-            ->where('type', 'login')
-            ->where('target', '<=', $user->login_count)
-            ->get();
-
-        foreach ($loginAchievements as $achievement) {
-            $exists = DB::table('user_achievements')
-                ->where('user_id', $user->id)
-                ->where('achievement_id', $achievement->id)
-                ->exists();
-
-            if (!$exists) {
-                DB::table('user_achievements')->insert([
-                    'user_id' => $user->id,
-                    'achievement_id' => $achievement->id,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-            }
-        }
-
-        // === 2. Cek Achievement ANALISIS untuk Teknisi ===
-        // Sementara: Hitung jumlah total booking dengan status selesai
-        // TODO: Jika ada assignment teknisi ke booking, ubah query ini
-        $analysisCount = DB::table('bookings')
-            ->where('status', 'selesai')
-            ->count();
-
-        $analysisAchievements = DB::table('achievements')
-            ->where('role', 'teknisi')
-            ->where('type', 'analysis')
-            ->where('target', '<=', $analysisCount)
-            ->get();
-
-        foreach ($analysisAchievements as $achievement) {
-            $exists = DB::table('user_achievements')
-                ->where('user_id', $user->id)
-                ->where('achievement_id', $achievement->id)
-                ->exists();
-
-            if (!$exists) {
-                DB::table('user_achievements')->insert([
-                    'user_id' => $user->id,
-                    'achievement_id' => $achievement->id,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-            }
-        }
-    }
-
-    // ==========================================
-    // FUNGSI ACHIEVEMENT KOORDINATOR
-    // ==========================================
-    private function checkKoordinatorAchievements($user)
-    {
-        if ($user->role !== 'koordinator') return;
-
-        // === 1. Cek Achievement LOGIN untuk Koordinator ===
-        $loginAchievements = DB::table('achievements')
-            ->where('role', 'koordinator')
-            ->where('type', 'login')
-            ->where('target', '<=', $user->login_count)
-            ->get();
-
-        foreach ($loginAchievements as $achievement) {
-            $exists = DB::table('user_achievements')
-                ->where('user_id', $user->id)
-                ->where('achievement_id', $achievement->id)
-                ->exists();
-
-            if (!$exists) {
-                DB::table('user_achievements')->insert([
-                    'user_id' => $user->id,
-                    'achievement_id' => $achievement->id,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-            }
-        }
-
-        // === 2. Cek Achievement VERIFIKASI untuk Koordinator ===
-        $verifikasiCount = DB::table('bookings')
-            ->whereIn('status', ['ditandatangani', 'selesai'])
-            ->count();
-
-        $verifikasiAchievements = DB::table('achievements')
-            ->where('role', 'koordinator')
-            ->where('type', 'verifikasi')
-            ->where('target', '<=', $verifikasiCount)
-            ->get();
-
-        foreach ($verifikasiAchievements as $achievement) {
-            $exists = DB::table('user_achievements')
-                ->where('user_id', $user->id)
-                ->where('achievement_id', $achievement->id)
-                ->exists();
-
-            if (!$exists) {
-                DB::table('user_achievements')->insert([
-                    'user_id' => $user->id,
-                    'achievement_id' => $achievement->id,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-            }
-        }
-    }
-
-    // ==========================================
-    // FUNGSI HELPER
-    // ==========================================
-    private function checkLoginAchievements($user)
-    {
-        // Untuk klien: cek achievement login tanpa filter role atau dengan role klien
-        $achievements = DB::table('achievements')
-            ->where('type', 'login')
-            ->where('target', '<=', $user->login_count)
-            ->where(function($query) use ($user) {
-                $query->whereNull('role')
-                      ->orWhere('role', 'klien')
-                      ->orWhere('role', $user->role);
-            })
-            ->get();
-
-        foreach ($achievements as $achievement) {
-            // Skip jika achievement untuk teknisi tapi user bukan teknisi
-            if ($achievement->role === 'teknisi' && $user->role !== 'teknisi') {
-                continue;
-            }
-            // Skip jika achievement untuk klien tapi user bukan klien
-            if (($achievement->role === 'klien' || $achievement->role === null) && $user->role === 'teknisi') {
-                continue;
-            }
-
-            $exists = DB::table('user_achievements')
-                ->where('user_id', $user->id)
-                ->where('achievement_id', $achievement->id)
-                ->exists();
-
-            if (!$exists) {
-                DB::table('user_achievements')->insert([
-                    'user_id' => $user->id,
-                    'achievement_id' => $achievement->id,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-            }
         }
     }
 }

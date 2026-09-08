@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { Calendar, ConfigProvider, DatePicker, Button, Modal, message } from "antd";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
@@ -32,7 +32,7 @@ export default function BookingCalenderKlien() {
   const [category, setCategory] = useState("metabolit");
   const [quotaData, setQuotaData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [cache, setCache] = useState({});
+  const cache = useRef({});
   const [modalOpen, setModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState("");
 
@@ -51,8 +51,8 @@ export default function BookingCalenderKlien() {
       const year = viewDate.year();
       const cacheKey = `${year}-${month}-${category}`;
 
-      if (!forceRefresh && cache[cacheKey]) {
-        setQuotaData(cache[cacheKey]);
+      if (!forceRefresh && cache.current[cacheKey]) {
+        setQuotaData(cache.current[cacheKey]);
         return;
       }
 
@@ -61,7 +61,7 @@ export default function BookingCalenderKlien() {
         const response = await getMonthlyQuota(month, year, category);
         if (Array.isArray(response.data)) {
           setQuotaData(response.data);
-          setCache((prev) => ({ ...prev, [cacheKey]: response.data }));
+          cache.current[cacheKey] = response.data;
         } else {
           setQuotaData([]);
         }
@@ -72,7 +72,8 @@ export default function BookingCalenderKlien() {
         setLoading(false);
       }
     },
-    [viewDate, category, cache],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [viewDate, category],
   );
 
   useEffect(() => {

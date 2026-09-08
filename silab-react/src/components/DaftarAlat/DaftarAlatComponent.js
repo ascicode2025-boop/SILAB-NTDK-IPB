@@ -200,7 +200,7 @@ const DaftarAlatComponent = ({ tool, onClick }) => {
               color: "#2D3436",
             }}
           >
-            {tool.nama}
+            {tool.nama_alat}
           </Card.Title>
           <Card.Text
             className="text-muted mb-0"
@@ -209,8 +209,18 @@ const DaftarAlatComponent = ({ tool, onClick }) => {
               lineHeight: "1.4",
             }}
           >
-            {tool.ringkasan}
+            {tool.deskripsi ? (tool.deskripsi.length > 50 ? tool.deskripsi.substring(0, 50) + "..." : tool.deskripsi) : ""}
           </Card.Text>
+          <div className="mt-2">
+            {tool.is_paid ? (
+              <span className="badge bg-danger">Berbayar</span>
+            ) : (
+              <span className="badge bg-success">Gratis</span>
+            )}
+            <div className="mt-2 text-muted" style={{ fontSize: "0.85rem" }}>
+              Total Unit: <strong>{tool.total_unit ?? 1}</strong> | Stok Tersedia (Hari Ini): <strong>{tool.stok_tersedia ?? (tool.total_unit ?? 1)}</strong>
+            </div>
+          </div>
         </Card.Body>
       </Card>
     </Col>

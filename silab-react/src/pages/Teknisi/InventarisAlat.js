@@ -7,132 +7,70 @@ import "@fontsource/poppins/600.css";
 import "@fontsource/poppins/700.css";
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
 import FooterSetelahLogin from "../FooterSetelahLogin";
-
-const INITIAL_EQUIPMENT = [
-  {
-    id: 1,
-    nama: "Micropipette 20–200 µL",
-    kategori: "Preparasi Sampel",
-    totalUnit: 10,
-    tersedia: 10,
-    dipinjam: 3,
-    status: "Tersedia",
-    terakhirDiupdate: "26 Jul 2026",
-    deskripsi: "Digunakan untuk mengambil cairan dengan volume 20–200 µL.",
-    lokasi: "lab Darah Hewan",
-  },
-  {
-    id: 2,
-    nama: "Micropipette 20–200 µL",
-    kategori: "Preparasi Sampel",
-    totalUnit: 10,
-    tersedia: 8,
-    dipinjam: 2,
-    status: "Dipinjam",
-    terakhirDiupdate: "26 Jul 2026",
-    deskripsi: "Digunakan untuk mengambil cairan dengan volume 20–200 µL.",
-    lokasi: "lab Darah Hewan",
-  },
-  {
-    id: 3,
-    nama: "Micropipette 20–200 µL",
-    kategori: "Preparasi Sampel",
-    totalUnit: 10,
-    tersedia: 8,
-    dipinjam: 2,
-    status: "Dipinjam",
-    terakhirDiupdate: "26 Jul 2026",
-    deskripsi: "Digunakan untuk mengambil cairan dengan volume 20–200 µL.",
-    lokasi: "lab Darah Hewan",
-  },
-  {
-    id: 4,
-    nama: "Micropipette 20–200 µL",
-    kategori: "Preparasi Sampel",
-    totalUnit: 10,
-    tersedia: 8,
-    dipinjam: 2,
-    status: "Dipinjam",
-    terakhirDiupdate: "26 Jul 2026",
-    deskripsi: "Digunakan untuk mengambil cairan dengan volume 20–200 µL.",
-    lokasi: "lab Darah Hewan",
-  },
-  {
-    id: 5,
-    nama: "Spectrophotometer UV-Vis",
-    kategori: "Analisis Molekuler",
-    totalUnit: 5,
-    tersedia: 3,
-    dipinjam: 0,
-    status: "Dalam Perawatan",
-    terakhirDiupdate: "26 Jul 2026",
-    deskripsi: "Pemeriksaan kalibrasi rutin dan perawatan lensa optik.",
-    lokasi: "lab Darah Hewan",
-  },
-  {
-    id: 6,
-    nama: "Centrifuge High Speed",
-    kategori: "Separasi Sampel",
-    totalUnit: 3,
-    tersedia: 0,
-    dipinjam: 0,
-    status: "Rusak",
-    terakhirDiupdate: "26 Jul 2026",
-    deskripsi: "Rotor mengalami getaran berlebih, menunggu perbaikan suku cadang.",
-    lokasi: "lab Darah Hewan",
-  },
-  {
-    id: 7,
-    nama: "Autoclave Digital",
-    kategori: "Sterilisasi",
-    totalUnit: 4,
-    tersedia: 2,
-    dipinjam: 1,
-    status: "Tersedia",
-    terakhirDiupdate: "26 Jul 2026",
-    deskripsi: "Digunakan untuk sterilisasi media dan alat laboratorium.",
-    lokasi: "lab Darah Hewan",
-  },
-];
+import { getInstruments, createInstrument, updateInstrument, deleteInstrument } from "../../services/InstrumentService";
 
 export default function InventarisAlat() {
-  const [equipmentList, setEquipmentList] = useState(INITIAL_EQUIPMENT);
+  const [equipmentList, setEquipmentList] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("Semua");
+  const [isLoading, setIsLoading] = useState(true);
 
   // Modal States
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [selectedItem, setSelectedItem] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
-    nama: "",
-    kategori: "Preparasi",
-    totalUnit: 10,
-    lokasi: "lab Darah Hewan",
+    nama_alat: "",
     deskripsi: "",
-    status: "Tersedia",
+    is_paid: false,
+    harga_sewa: 0,
+    status: "tersedia",
+    total_unit: 1,
   });
 
   useEffect(() => {
     document.title = "SILAB-NTDK - Inventaris Alat";
+    fetchData();
   }, []);
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const res = await getInstruments();
+      setEquipmentList(Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []);
+    } catch (err) {
+      console.error("Gagal mengambil data alat:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Filtered Equipment List
   const filteredList = equipmentList.filter((item) => {
-    const matchesSearch =
-      item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.kategori.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.status.toLowerCase().includes(searchTerm.toLowerCase());
+    const namaMatch = item.nama_alat ? item.nama_alat.toLowerCase().includes(searchTerm.toLowerCase()) : false;
+    const descMatch = item.deskripsi ? item.deskripsi.toLowerCase().includes(searchTerm.toLowerCase()) : false;
+    const matchesSearch = namaMatch || descMatch;
 
-    const matchesStatus = statusFilter === "Semua" || item.status === statusFilter;
+    const matchesStatus = statusFilter === "Semua" || 
+      (item.status && item.status.toLowerCase() === statusFilter.toLowerCase());
 
     return matchesSearch && matchesStatus;
   });
+
+  // Calculate stats
+  const totalAlat = equipmentList.length;
+  const tersedia = equipmentList.filter((i) => i.status === "tersedia").length;
+  const dipinjam = equipmentList.filter((i) => i.status === "dipinjam").length;
+  const maintenance = equipmentList.filter((i) => i.status === "perawatan").length;
 
   // Open Detail Modal
   const handleOpenDetail = (item) => {
@@ -146,56 +84,57 @@ export default function InventarisAlat() {
       setIsEditing(true);
       setSelectedItem(item);
       setFormData({
-        nama: item.nama,
-        kategori: item.kategori,
-        totalUnit: item.totalUnit,
-        lokasi: item.lokasi || "lab Darah Hewan",
-        deskripsi: item.deskripsi || "Digunakan untuk mengambil cairan dengan volume 20–200 µL.",
-        status: item.status,
+        nama_alat: item.nama_alat || "",
+        deskripsi: item.deskripsi || "",
+        is_paid: item.is_paid ? true : false,
+        harga_sewa: item.harga_sewa || 0,
+        status: item.status || "tersedia",
+        total_unit: item.total_unit || 1,
       });
     } else {
       setIsEditing(false);
       setSelectedItem(null);
       setFormData({
-        nama: "",
-        kategori: "Preparasi",
-        totalUnit: 8,
-        lokasi: "lab Darah Hewan",
+        nama_alat: "",
         deskripsi: "",
-        status: "Tersedia",
+        is_paid: false,
+        harga_sewa: 0,
+        status: "tersedia",
+        total_unit: 1,
       });
     }
     setShowFormModal(true);
   };
 
   // Save Form (Add or Edit)
-  const handleSaveForm = (e) => {
+  const handleSaveForm = async (e) => {
     e.preventDefault();
-    const today = new Date().toLocaleDateString("id-ID", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-
-    if (isEditing && selectedItem) {
-      setEquipmentList((prev) =>
-        prev.map((item) =>
-          item.id === selectedItem.id
-            ? { ...item, ...formData, terakhirDiupdate: today }
-            : item
-        )
-      );
-    } else {
-      const newItem = {
-        id: Date.now(),
-        ...formData,
-        tersedia: formData.totalUnit,
-        dipinjam: 0,
-        terakhirDiupdate: today,
+    try {
+      // Pastikan payload yang dikirim sudah sesuai format database
+      const payload = {
+        nama_alat: formData.nama_alat,
+        deskripsi: formData.deskripsi,
+        is_paid: formData.is_paid ? 1 : 0,
+        harga_sewa: parseInt(formData.harga_sewa) || 0,
+        status: formData.status,
+        total_unit: parseInt(formData.total_unit) || 1,
       };
-      setEquipmentList([newItem, ...equipmentList]);
+      
+      if (isEditing && selectedItem) {
+        await updateInstrument(selectedItem.id, payload);
+        setSuccessMessage("Data alat berhasil diubah.");
+      } else {
+        await createInstrument(payload);
+        setSuccessMessage("Data alat berhasil ditambahkan.");
+      }
+      setShowFormModal(false);
+      setShowSuccessModal(true);
+      fetchData(); // Refresh list
+    } catch (error) {
+      console.error("Error saving form:", error);
+      setErrorMessage("Gagal menyimpan data alat.");
+      setShowErrorModal(true);
     }
-    setShowFormModal(false);
   };
 
   // Open Delete Modal
@@ -204,12 +143,30 @@ export default function InventarisAlat() {
     setShowDeleteModal(true);
   };
 
-  // Confirm Delete
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (selectedItem) {
-      setEquipmentList((prev) => prev.filter((item) => item.id !== selectedItem.id));
+      try {
+        await deleteInstrument(selectedItem.id);
+        setShowDeleteModal(false);
+        setSuccessMessage("Data alat berhasil dihapus.");
+        setShowSuccessModal(true);
+        fetchData(); // Refresh list
+      } catch (error) {
+        console.error("Error deleting item:", error);
+        setShowDeleteModal(false);
+        setErrorMessage("Gagal menghapus alat.");
+        setShowErrorModal(true);
+      }
     }
-    setShowDeleteModal(false);
+  };
+  
+  // Helper Format Rupiah
+  const formatRupiah = (angka) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(angka);
   };
 
   return (
@@ -266,7 +223,7 @@ export default function InventarisAlat() {
                     Total Alat
                   </div>
                   <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#212121", lineHeight: "1.2" }}>
-                    11
+                    {totalAlat}
                   </div>
                 </div>
               </div>
@@ -312,7 +269,7 @@ export default function InventarisAlat() {
                     Tersedia
                   </div>
                   <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#212121", lineHeight: "1.2" }}>
-                    23
+                    {tersedia}
                   </div>
                 </div>
               </div>
@@ -358,7 +315,7 @@ export default function InventarisAlat() {
                     Dipinjam
                   </div>
                   <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#212121", lineHeight: "1.2" }}>
-                    14
+                    {dipinjam}
                   </div>
                 </div>
               </div>
@@ -404,7 +361,7 @@ export default function InventarisAlat() {
                     Maintenance
                   </div>
                   <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#212121", lineHeight: "1.2" }}>
-                    10
+                    {maintenance}
                   </div>
                 </div>
               </div>
@@ -444,7 +401,7 @@ export default function InventarisAlat() {
                 >
                   <Form.Control
                     type="text"
-                    placeholder="Cari"
+                    placeholder="Cari alat..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     style={{
@@ -535,10 +492,10 @@ export default function InventarisAlat() {
                   <Dropdown.Menu className="status-dropdown-menu">
                     {[
                       { label: "Semua", value: "Semua" },
-                      { label: "Tersedia", value: "Tersedia" },
-                      { label: "Dipinjam", value: "Dipinjam" },
-                      { label: "Dalam Perawatan", value: "Dalam Perawatan" },
-                      { label: "Rusak", value: "Rusak" },
+                      { label: "Tersedia", value: "tersedia" },
+                      { label: "Dipinjam", value: "dipinjam" },
+                      { label: "Dalam Perawatan", value: "perawatan" },
+                      { label: "Rusak", value: "rusak" },
                     ].map((opt) => (
                       <Dropdown.Item
                         key={opt.value}
@@ -586,16 +543,23 @@ export default function InventarisAlat() {
                     }}
                   >
                     <th style={{ paddingBottom: "16px" }}>Nama Alat</th>
-                    <th style={{ paddingBottom: "16px", textAlign: "center" }}>Kategori</th>
+                    <th style={{ paddingBottom: "16px" }}>Deskripsi</th>
+                    <th style={{ paddingBottom: "16px", textAlign: "center" }}>Biaya Sewa</th>
+                    <th style={{ paddingBottom: "16px", textAlign: "center" }}>Stok Tersedia</th>
                     <th style={{ paddingBottom: "16px", textAlign: "center" }}>Total Unit</th>
-                    <th style={{ paddingBottom: "16px", textAlign: "center" }}>Tersedia</th>
                     <th style={{ paddingBottom: "16px", textAlign: "center" }}>Status</th>
                     <th style={{ paddingBottom: "16px", textAlign: "center" }}>Terakhir Diupdate</th>
                     <th style={{ paddingBottom: "16px", textAlign: "center" }}>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredList.length > 0 ? (
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-5 text-muted">
+                        Memuat data alat...
+                      </td>
+                    </tr>
+                  ) : filteredList.length > 0 ? (
                     filteredList.map((item) => (
                       <tr
                         key={item.id}
@@ -606,22 +570,28 @@ export default function InventarisAlat() {
                       >
                         {/* Nama Alat */}
                         <td style={{ py: "14px", fontWeight: "600", color: "#212121" }}>
-                          {item.nama}
+                          {item.nama_alat}
                         </td>
 
-                        {/* Kategori */}
+                        {/* Deskripsi */}
+                        <td style={{ py: "14px", color: "#424242", maxWidth: "200px" }}>
+                          {item.deskripsi?.substring(0, 50) || "-"}
+                          {item.deskripsi?.length > 50 ? "..." : ""}
+                        </td>
+
+                        {/* Harga Sewa */}
                         <td style={{ py: "14px", textAlign: "center", color: "#424242" }}>
-                          {item.kategori}
+                          {item.is_paid ? formatRupiah(item.harga_sewa) : "Gratis"}
+                        </td>
+
+                        {/* Stok Tersedia */}
+                        <td style={{ py: "14px", textAlign: "center", color: "#424242", fontWeight: "bold" }}>
+                          {item.stok_tersedia ?? (item.total_unit ?? 1)}
                         </td>
 
                         {/* Total Unit */}
                         <td style={{ py: "14px", textAlign: "center", color: "#424242" }}>
-                          {item.totalUnit}
-                        </td>
-
-                        {/* Tersedia */}
-                        <td style={{ py: "14px", textAlign: "center", color: "#424242" }}>
-                          {item.tersedia}
+                          {item.total_unit ?? 1}
                         </td>
 
                         {/* Status */}
@@ -633,20 +603,21 @@ export default function InventarisAlat() {
                               fontSize: "0.8rem",
                               fontWeight: "600",
                               display: "inline-block",
+                              textTransform: "capitalize",
                               backgroundColor:
-                                item.status === "Tersedia"
+                                item.status === "tersedia"
                                   ? "#E8F5E9"
-                                  : item.status === "Dipinjam"
+                                  : item.status === "dipinjam"
                                   ? "#E3F2FD"
-                                  : item.status === "Dalam Perawatan" || item.status === "Maintenance"
+                                  : item.status === "perawatan"
                                   ? "#FEF3C7"
                                   : "#FFEBEE",
                               color:
-                                item.status === "Tersedia"
+                                item.status === "tersedia"
                                   ? "#2E7D32"
-                                  : item.status === "Dipinjam"
+                                  : item.status === "dipinjam"
                                   ? "#1565C0"
-                                  : item.status === "Dalam Perawatan" || item.status === "Maintenance"
+                                  : item.status === "perawatan"
                                   ? "#B45309"
                                   : "#C62828",
                             }}
@@ -657,7 +628,9 @@ export default function InventarisAlat() {
 
                         {/* Terakhir Diupdate */}
                         <td style={{ py: "14px", textAlign: "center", color: "#424242" }}>
-                          {item.terakhirDiupdate}
+                          {new Date(item.updated_at).toLocaleDateString("id-ID", {
+                            day: "2-digit", month: "short", year: "numeric"
+                          })}
                         </td>
 
                         {/* Aksi Icons */}
@@ -734,7 +707,7 @@ export default function InventarisAlat() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={7} className="text-center py-5 text-muted">
+                      <td colSpan={8} className="text-center py-5 text-muted">
                         Tidak ada data alat ditemukan.
                       </td>
                     </tr>
@@ -795,8 +768,8 @@ export default function InventarisAlat() {
                 type="text"
                 required
                 placeholder="Micropipette 20–200 µL"
-                value={formData.nama}
-                onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                value={formData.nama_alat}
+                onChange={(e) => setFormData({ ...formData, nama_alat: e.target.value })}
                 style={{
                   width: "100%",
                   borderRadius: "20px",
@@ -810,7 +783,7 @@ export default function InventarisAlat() {
               />
             </div>
 
-            {/* Kategori */}
+            {/* Total Unit */}
             <div style={{ marginBottom: "14px" }}>
               <label
                 style={{
@@ -821,49 +794,15 @@ export default function InventarisAlat() {
                   marginBottom: "6px",
                 }}
               >
-                Kategori
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Preparasi"
-                value={formData.kategori}
-                onChange={(e) => setFormData({ ...formData, kategori: e.target.value })}
-                style={{
-                  width: "100%",
-                  borderRadius: "20px",
-                  border: "1px solid #D0D0D0",
-                  padding: "8px 16px",
-                  fontSize: "0.88rem",
-                  color: "#333",
-                  outline: "none",
-                  boxShadow: "inset 0 1px 3px rgba(0,0,0,0.03)",
-                }}
-              />
-            </div>
-
-            {/* Jumlah Unit */}
-            <div style={{ marginBottom: "14px" }}>
-              <label
-                style={{
-                  display: "block",
-                  fontWeight: "700",
-                  fontSize: "0.85rem",
-                  color: "#616161",
-                  marginBottom: "6px",
-                }}
-              >
-                Jumlah Unit
+                Total Unit
               </label>
               <input
                 type="number"
                 min="1"
                 required
-                placeholder="8"
-                value={formData.totalUnit}
-                onChange={(e) =>
-                  setFormData({ ...formData, totalUnit: parseInt(e.target.value) || 0 })
-                }
+                placeholder="1"
+                value={formData.total_unit}
+                onChange={(e) => setFormData({ ...formData, total_unit: e.target.value })}
                 style={{
                   width: "100%",
                   borderRadius: "20px",
@@ -877,35 +816,69 @@ export default function InventarisAlat() {
               />
             </div>
 
-            {/* Lokasi */}
-            <div style={{ marginBottom: "14px" }}>
-              <label
-                style={{
-                  display: "block",
-                  fontWeight: "700",
-                  fontSize: "0.85rem",
-                  color: "#616161",
-                  marginBottom: "6px",
-                }}
-              >
-                Lokasi
-              </label>
-              <input
-                type="text"
-                placeholder="lab Darah Hewan"
-                value={formData.lokasi}
-                onChange={(e) => setFormData({ ...formData, lokasi: e.target.value })}
-                style={{
-                  width: "100%",
-                  borderRadius: "20px",
-                  border: "1px solid #D0D0D0",
-                  padding: "8px 16px",
-                  fontSize: "0.88rem",
-                  color: "#333",
-                  outline: "none",
-                  boxShadow: "inset 0 1px 3px rgba(0,0,0,0.03)",
-                }}
-              />
+            {/* Berbayar & Harga Sewa */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "14px" }}>
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontWeight: "700",
+                    fontSize: "0.85rem",
+                    color: "#616161",
+                    marginBottom: "6px",
+                  }}
+                >
+                  Berbayar
+                </label>
+                <select
+                  value={formData.is_paid ? "1" : "0"}
+                  onChange={(e) => setFormData({ ...formData, is_paid: e.target.value === "1", harga_sewa: e.target.value === "0" ? 0 : formData.harga_sewa })}
+                  style={{
+                    width: "100%",
+                    borderRadius: "20px",
+                    border: "1px solid #D0D0D0",
+                    padding: "8px 16px",
+                    fontSize: "0.88rem",
+                    color: "#333",
+                    outline: "none",
+                  }}
+                >
+                  <option value="0">Gratis</option>
+                  <option value="1">Berbayar</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontWeight: "700",
+                    fontSize: "0.85rem",
+                    color: "#616161",
+                    marginBottom: "6px",
+                  }}
+                >
+                  Harga Sewa
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Rp"
+                  value={formData.harga_sewa}
+                  disabled={!formData.is_paid}
+                  onChange={(e) => setFormData({ ...formData, harga_sewa: parseInt(e.target.value) || 0 })}
+                  style={{
+                    width: "100%",
+                    borderRadius: "20px",
+                    border: "1px solid #D0D0D0",
+                    padding: "8px 16px",
+                    fontSize: "0.88rem",
+                    color: "#333",
+                    outline: "none",
+                    backgroundColor: formData.is_paid ? "#fff" : "#f5f5f5"
+                  }}
+                />
+              </div>
             </div>
 
             {/* Deskripsi */}
@@ -968,8 +941,8 @@ export default function InventarisAlat() {
                   <input
                     type="radio"
                     name="status"
-                    value="Tersedia"
-                    checked={formData.status === "Tersedia"}
+                    value="tersedia"
+                    checked={formData.status === "tersedia"}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     style={{ accentColor: "#4A3933", cursor: "pointer" }}
                   />
@@ -989,8 +962,8 @@ export default function InventarisAlat() {
                   <input
                     type="radio"
                     name="status"
-                    value="Dipinjam"
-                    checked={formData.status === "Dipinjam"}
+                    value="dipinjam"
+                    checked={formData.status === "dipinjam"}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     style={{ accentColor: "#4A3933", cursor: "pointer" }}
                   />
@@ -1010,8 +983,8 @@ export default function InventarisAlat() {
                   <input
                     type="radio"
                     name="status"
-                    value="Dalam Perawatan"
-                    checked={formData.status === "Dalam Perawatan" || formData.status === "Maintenance"}
+                    value="perawatan"
+                    checked={formData.status === "perawatan"}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     style={{ accentColor: "#4A3933", cursor: "pointer" }}
                   />
@@ -1031,8 +1004,8 @@ export default function InventarisAlat() {
                   <input
                     type="radio"
                     name="status"
-                    value="Rusak"
-                    checked={formData.status === "Rusak"}
+                    value="rusak"
+                    checked={formData.status === "rusak"}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     style={{ accentColor: "#4A3933", cursor: "pointer" }}
                   />
@@ -1118,7 +1091,7 @@ export default function InventarisAlat() {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
+                  gridTemplateColumns: "1fr",
                   gap: "16px",
                   textAlign: "center",
                   marginBottom: "20px",
@@ -1129,20 +1102,12 @@ export default function InventarisAlat() {
                     Nama Alat
                   </div>
                   <div style={{ color: "#212121", fontSize: "0.95rem", fontWeight: "600" }}>
-                    {selectedItem.nama}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontWeight: "700", color: "#616161", fontSize: "0.88rem", marginBottom: "4px" }}>
-                    Kategori
-                  </div>
-                  <div style={{ color: "#212121", fontSize: "0.95rem", fontWeight: "600" }}>
-                    {selectedItem.kategori}
+                    {selectedItem.nama_alat}
                   </div>
                 </div>
               </div>
 
-              {/* Row 2: Jumlah Unit, Tersedia, Dipinjam */}
+              {/* Row 2: Biaya Sewa, Total Unit, Stok Tersedia */}
               <div
                 style={{
                   display: "grid",
@@ -1154,26 +1119,26 @@ export default function InventarisAlat() {
               >
                 <div>
                   <div style={{ fontWeight: "700", color: "#616161", fontSize: "0.88rem", marginBottom: "4px" }}>
-                    Jumlah Unit
+                    Biaya Sewa
                   </div>
                   <div style={{ color: "#212121", fontSize: "0.95rem", fontWeight: "600" }}>
-                    {selectedItem.totalUnit}
+                    {selectedItem.is_paid ? formatRupiah(selectedItem.harga_sewa) : "Gratis"}
                   </div>
                 </div>
                 <div>
                   <div style={{ fontWeight: "700", color: "#616161", fontSize: "0.88rem", marginBottom: "4px" }}>
-                    Tersedia
+                    Total Unit
                   </div>
                   <div style={{ color: "#212121", fontSize: "0.95rem", fontWeight: "600" }}>
-                    {selectedItem.tersedia}
+                    {selectedItem.total_unit ?? 1}
                   </div>
                 </div>
                 <div>
                   <div style={{ fontWeight: "700", color: "#616161", fontSize: "0.88rem", marginBottom: "4px" }}>
-                    Dipinjam
+                    Stok Tersedia
                   </div>
                   <div style={{ color: "#212121", fontSize: "0.95rem", fontWeight: "600" }}>
-                    {selectedItem.dipinjam !== undefined ? selectedItem.dipinjam : selectedItem.totalUnit - selectedItem.tersedia}
+                    {selectedItem.stok_tersedia ?? (selectedItem.total_unit ?? 1)}
                   </div>
                 </div>
               </div>
@@ -1200,6 +1165,7 @@ export default function InventarisAlat() {
                       color: "#212121",
                       fontWeight: "600",
                       fontSize: "0.88rem",
+                      textTransform: "capitalize",
                     }}
                   >
                     <span
@@ -1207,7 +1173,10 @@ export default function InventarisAlat() {
                         width: "18px",
                         height: "18px",
                         borderRadius: "50%",
-                        backgroundColor: "#66BB6A",
+                        backgroundColor: 
+                          selectedItem.status === 'tersedia' ? "#66BB6A" : 
+                          selectedItem.status === 'dipinjam' ? "#42A5F5" : 
+                          selectedItem.status === 'perawatan' ? "#FFA726" : "#EF5350",
                         display: "inline-block",
                       }}
                     />
@@ -1219,7 +1188,7 @@ export default function InventarisAlat() {
                     Deskripsi
                   </div>
                   <div style={{ fontSize: "0.82rem", color: "#424242", textAlign: "center", lineHeight: "1.4" }}>
-                    {selectedItem.deskripsi || "Digunakan untuk mengambil cairan dengan volume 20–200 µL."}
+                    {selectedItem.deskripsi || "-"}
                   </div>
                 </div>
               </div>
@@ -1241,24 +1210,7 @@ export default function InventarisAlat() {
                     boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
                   }}
                 >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowDetailModal(false)}
-                  style={{
-                    backgroundColor: "#4A3933",
-                    color: "#ffffff",
-                    border: "none",
-                    borderRadius: "12px",
-                    padding: "8px 34px",
-                    fontWeight: "600",
-                    fontSize: "0.88rem",
-                    cursor: "pointer",
-                    boxShadow: "0 2px 6px rgba(74,57,51,0.3)",
-                  }}
-                >
-                  Simpan
+                  Tutup
                 </button>
               </div>
             </div>
@@ -1333,6 +1285,92 @@ export default function InventarisAlat() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* Modal Success */}
+      <Modal
+        show={showSuccessModal}
+        onHide={() => setShowSuccessModal(false)}
+        centered
+        style={{ fontFamily: "Poppins, sans-serif" }}
+      >
+        <Modal.Header closeButton style={{ borderBottom: "none" }} />
+        <Modal.Body className="text-center pb-5">
+          <div
+            style={{
+              width: "60px",
+              height: "60px",
+              borderRadius: "50%",
+              backgroundColor: "#d4edda",
+              color: "#155724",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "1.5rem",
+              margin: "0 auto 16px",
+            }}
+          >
+            ✓
+          </div>
+          <h5 className="fw-bold text-dark mb-2">Berhasil!</h5>
+          <p className="text-muted">{successMessage}</p>
+          <Button
+            variant="success"
+            className="px-4 mt-2"
+            style={{
+              borderRadius: "10px",
+              fontWeight: 600,
+              backgroundColor: "#28a745",
+              border: "none",
+            }}
+            onClick={() => setShowSuccessModal(false)}
+          >
+            Tutup
+          </Button>
+        </Modal.Body>
+      </Modal>
+
+      {/* Modal Error */}
+      <Modal
+        show={showErrorModal}
+        onHide={() => setShowErrorModal(false)}
+        centered
+        style={{ fontFamily: "Poppins, sans-serif" }}
+      >
+        <Modal.Header closeButton style={{ borderBottom: "none" }} />
+        <Modal.Body className="text-center pb-5">
+          <div
+            style={{
+              width: "60px",
+              height: "60px",
+              borderRadius: "50%",
+              backgroundColor: "#f8d7da",
+              color: "#721c24",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "1.5rem",
+              margin: "0 auto 16px",
+            }}
+          >
+            ✗
+          </div>
+          <h5 className="fw-bold text-dark mb-2">Terjadi Kesalahan</h5>
+          <p className="text-muted">{errorMessage}</p>
+          <Button
+            variant="danger"
+            className="px-4 mt-2"
+            style={{
+              borderRadius: "10px",
+              fontWeight: 600,
+              backgroundColor: "#dc3545",
+              border: "none",
+            }}
+            onClick={() => setShowErrorModal(false)}
+          >
+            Tutup
+          </Button>
+        </Modal.Body>
       </Modal>
 
       {/* Custom CSS for Modal size and offset below top header */}

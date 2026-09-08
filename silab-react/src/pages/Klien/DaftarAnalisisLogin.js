@@ -56,11 +56,11 @@ function DaftarAnalisisLogin() {
         <div style={{ position: "relative" }}>
           <Card.Img
             variant="top"
-            src={`/asset/daftarAnalisis/${(item.jenis_analisis || item.nama).replace(/\s+/g, "_").replace(/[^\w_]/g, "")}.png`}
+            src={`/asset/DaftarAnalisis/${(item.jenis_analisis || item.nama).replace(/\s+/g, "_").replace(/[^\w_]/g, "")}.png`}
             onError={(e) => {
               // Jika gambar tidak ditemukan, pakai default
               if (!e.target.src.endsWith("Spektro.jpg")) {
-                e.target.src = "/asset/daftarAnalisis/Spektro.jpg";
+                e.target.src = "/asset/DaftarAnalisis/Spektro.jpg";
               }
             }}
             style={{ height: "180px", objectFit: "cover" }}

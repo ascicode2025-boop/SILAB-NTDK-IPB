@@ -2,40 +2,16 @@ import React, { useState } from "react";
 import { Table, Modal, Form, InputGroup, Dropdown } from "react-bootstrap";
 import { FaSearch, FaFilter } from "react-icons/fa";
 
-const INITIAL_SEDANG_DIPINJAM = [
-  {
-    id: 1,
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia Fauzi",
-    alat: "Micropipette 20–200 µL",
-    tanggalPinjam: "02 Juli 2026",
-    tanggalKembali: "06 Juli 2026",
-    status: "Tersedia",
-    catatan: "Praktikum Analisis Hematologi",
-  },
-  {
-    id: 2,
-    noPengajuan: "PJ001",
-    namaPeminjam: "Nadine Maulia Fauzi",
-    alat: "Micropipette 20–200 µL",
-    tanggalPinjam: "02 Juli 2026",
-    tanggalKembali: "06 Juli 2026",
-    status: "Tersedia",
-    catatan: "Praktikum Analisis Hematologi",
-  },
-];
-
-export default function SedangDipinjam() {
-  const [dataList] = useState(INITIAL_SEDANG_DIPINJAM);
+export default function SedangDipinjam({ rentals = [] }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedItem, setSelectedItem] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  const filteredData = dataList.filter(
+  const filteredData = rentals.filter(
     (item) =>
-      item.namaPeminjam.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.noPengajuan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.alat.toLowerCase().includes(searchTerm.toLowerCase())
+      item.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.rental_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.items?.some(i => i.instrument?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleOpenDetail = (item) => {
@@ -216,16 +192,16 @@ export default function SedangDipinjam() {
                       {index + 1}
                     </td>
                     <td style={{ py: "16px", fontWeight: "600", color: "#212121" }}>
-                      {item.noPengajuan}
+                      {item.rental_number}
                     </td>
                     <td style={{ py: "16px", color: "#424242" }}>
-                      {item.namaPeminjam}
+                      {item.user?.name}
                     </td>
                     <td style={{ py: "16px", color: "#424242" }}>
-                      {item.alat}
+                      {item.items?.map((i) => `${i.instrument?.name} (${i.quantity})`).join(", ")}
                     </td>
                     <td style={{ py: "16px", textAlign: "center", color: "#424242" }}>
-                      {item.tanggalPinjam}
+                      {item.start_date}
                     </td>
                     <td style={{ py: "16px", textAlign: "center", color: "#424242", fontWeight: 500 }}>
                       Dipinjam
@@ -306,7 +282,7 @@ export default function SedangDipinjam() {
                 No Pengajuan
               </div>
               <div style={{ color: "#212121", fontSize: "0.95rem", fontWeight: "600" }}>
-                {selectedItem.noPengajuan}
+                {selectedItem.rental_number}
               </div>
             </div>
 
@@ -316,7 +292,7 @@ export default function SedangDipinjam() {
                 Nama
               </div>
               <div style={{ color: "#212121", fontSize: "0.95rem", fontWeight: "600" }}>
-                {selectedItem.namaPeminjam}
+                {selectedItem.user?.name}
               </div>
             </div>
 
@@ -326,7 +302,7 @@ export default function SedangDipinjam() {
                 Alat
               </div>
               <div style={{ color: "#212121", fontSize: "0.95rem", fontWeight: "600", lineHeight: "1.3" }}>
-                {selectedItem.alat}
+                {selectedItem.items?.map((i) => `${i.instrument?.name} (${i.quantity})`).join(", ")}
               </div>
             </div>
 
@@ -336,7 +312,7 @@ export default function SedangDipinjam() {
                 Tanggal Pinjam
               </div>
               <div style={{ color: "#212121", fontSize: "0.95rem", fontWeight: "600" }}>
-                {selectedItem.tanggalPinjam}
+                {selectedItem.start_date}
               </div>
             </div>
 
@@ -346,7 +322,7 @@ export default function SedangDipinjam() {
                 Tanggal Kembali
               </div>
               <div style={{ color: "#212121", fontSize: "0.95rem", fontWeight: "600" }}>
-                {selectedItem.tanggalKembali}
+                {selectedItem.end_date}
               </div>
             </div>
 
@@ -395,7 +371,7 @@ export default function SedangDipinjam() {
                 Catatan
               </div>
               <div style={{ color: "#333333", fontSize: "0.92rem", fontWeight: "500", lineHeight: "1.4" }}>
-                {selectedItem.catatan}
+                {selectedItem.handover_notes || "-"}
               </div>
             </div>
 

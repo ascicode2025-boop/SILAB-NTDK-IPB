@@ -114,6 +114,14 @@ function ProfileAkunKlien() {
                   <h3 className="fw-bold">{user.name}</h3>
                   <span className="badge bg-primary mb-2">{user.role}</span>
                   <p className="text-muted mb-0">{user.email}</p>
+                  <p className="text-muted mb-0"><small>{user.institusi}</small></p>
+                  
+                  {user.institusi === "Mahasiswa IPB" && (
+                    <div className="mt-2">
+                      <span className="badge bg-secondary me-2">NIM: {user.nim || '-'}</span>
+                      <span className="badge bg-secondary">Prodi: {user.prodi || '-'}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

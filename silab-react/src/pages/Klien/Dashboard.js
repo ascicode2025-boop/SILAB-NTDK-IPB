@@ -4,6 +4,7 @@ import NavbarLoginKlien from "./NavbarLoginKlien";
 import "@fontsource/poppins";
 import { getUser } from "../../services/AuthService";
 import { getUserBookings } from "../../services/BookingService";
+import { getRentals } from "../../services/RentalService";
 import FooterSetelahLogin from "../FooterSetelahLogin";
 
 function Dashboard() {
@@ -15,6 +16,7 @@ function Dashboard() {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ total: 0, inProgress: 0, completed: 0 });
+  const [toolStats, setToolStats] = useState({ pending: 0, approved: 0, inUse: 0, completed: 0, rejected: 0 });
 
   const colors = {
     background: "#FDFBF7",
@@ -44,6 +46,28 @@ function Dashboard() {
           total: valid.length,
           inProgress: valid.filter((b) => (b.status || "").toLowerCase() === "proses").length,
           completed: valid.filter((b) => ["selesai", "ditandatangani"].includes((b.status || "").toLowerCase())).length,
+        });
+
+        // Fetch tool rentals
+        const rentalsRes = await getRentals();
+        const rentalsData = Array.isArray(rentalsRes?.data)
+          ? rentalsRes.data
+          : Array.isArray(rentalsRes)
+          ? rentalsRes
+          : [];
+
+        const pendingCount = rentalsData.filter((r) => r.status === "pending" || r.status === "menunggu_pengembalian").length;
+        const approvedCount = rentalsData.filter((r) => r.status === "disetujui").length;
+        const inUseCount = rentalsData.filter((r) => r.status === "aktif").length;
+        const completedCount = rentalsData.filter((r) => r.status === "selesai").length;
+        const rejectedCount = rentalsData.filter((r) => r.status === "ditolak").length;
+
+        setToolStats({
+          pending: pendingCount,
+          approved: approvedCount,
+          inUse: inUseCount,
+          completed: completedCount,
+          rejected: rejectedCount,
         });
       } catch (e) {
         console.error(e);
@@ -211,9 +235,9 @@ function Dashboard() {
               </div>
 
               {/* Status Items Row */}
-              <div className="row g-3 g-md-4 justify-content-between align-items-center my-2 my-md-3">
+              <div className="row g-3 g-md-4 justify-content-center align-items-center my-2 my-md-3">
                 {/* Item 1: Menunggu Verifikasi */}
-                <div className="col-12 col-sm-6 col-md-4">
+                <div className="col-12 col-md-4 col-xl">
                   <div className="tool-status-item d-flex align-items-center justify-content-start gap-3">
                     <div
                       className="tool-status-badge d-flex flex-column align-items-center justify-content-between p-3 text-white shadow-sm flex-shrink-0"
@@ -244,7 +268,7 @@ function Dashboard() {
                         </svg>
                       </div>
                       <h2 className="fw-bold mb-0 text-white" style={{ fontSize: "2rem", lineHeight: 1 }}>
-                        2
+                        {loading ? "—" : toolStats.pending}
                       </h2>
                     </div>
                     <h6 className="tool-status-label fw-bold mb-0" style={{ color: "#5A483E", fontSize: "1rem", lineHeight: "1.3" }}>
@@ -254,7 +278,7 @@ function Dashboard() {
                 </div>
 
                 {/* Item 2: Disetujui */}
-                <div className="col-12 col-sm-6 col-md-4">
+                <div className="col-12 col-md-4 col-xl">
                   <div className="tool-status-item d-flex align-items-center justify-content-start gap-3">
                     <div
                       className="tool-status-badge d-flex flex-column align-items-center justify-content-between p-3 text-white shadow-sm flex-shrink-0"
@@ -283,7 +307,7 @@ function Dashboard() {
                         📝
                       </div>
                       <h2 className="fw-bold mb-0 text-white" style={{ fontSize: "2rem", lineHeight: 1 }}>
-                        2
+                        {loading ? "—" : toolStats.approved}
                       </h2>
                     </div>
                     <h6 className="tool-status-label fw-bold mb-0" style={{ color: "#5A483E", fontSize: "1rem", lineHeight: "1.3" }}>
@@ -293,7 +317,7 @@ function Dashboard() {
                 </div>
 
                 {/* Item 3: Sedang Dipinjam */}
-                <div className="col-12 col-sm-6 col-md-4">
+                <div className="col-12 col-md-4 col-xl">
                   <div className="tool-status-item d-flex align-items-center justify-content-start gap-3">
                     <div
                       className="tool-status-badge d-flex flex-column align-items-center justify-content-between p-3 text-white shadow-sm flex-shrink-0"
@@ -325,11 +349,87 @@ function Dashboard() {
                         <div style={{ width: "7px", height: "25px", backgroundColor: "#2980B9", borderRadius: "2px" }}></div>
                       </div>
                       <h2 className="fw-bold mb-0 text-white" style={{ fontSize: "2rem", lineHeight: 1 }}>
-                        2
+                        {loading ? "—" : toolStats.inUse}
                       </h2>
                     </div>
                     <h6 className="tool-status-label fw-bold mb-0" style={{ color: "#5A483E", fontSize: "1rem", lineHeight: "1.3" }}>
                       Sedang Dipinjam
+                    </h6>
+                  </div>
+                </div>
+
+                {/* Item 4: Selesai */}
+                <div className="col-12 col-md-4 col-xl">
+                  <div className="tool-status-item d-flex align-items-center justify-content-start gap-3">
+                    <div
+                      className="tool-status-badge d-flex flex-column align-items-center justify-content-between p-3 text-white shadow-sm flex-shrink-0"
+                      style={{
+                        width: "105px",
+                        height: "135px",
+                        borderRadius: "18px",
+                        background: "linear-gradient(180deg, #9C7A6B 0%, #836355 100%)",
+                        boxShadow: "0 8px 18px rgba(131, 99, 85, 0.25)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "44px",
+                          height: "44px",
+                          borderRadius: "12px",
+                          background: "#F5F5F5",
+                          boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "20px",
+                        }}
+                      >
+                        ✅
+                      </div>
+                      <h2 className="fw-bold mb-0 text-white" style={{ fontSize: "2rem", lineHeight: 1 }}>
+                        {loading ? "—" : toolStats.completed}
+                      </h2>
+                    </div>
+                    <h6 className="tool-status-label fw-bold mb-0" style={{ color: "#5A483E", fontSize: "1rem", lineHeight: "1.3" }}>
+                      Selesai
+                    </h6>
+                  </div>
+                </div>
+
+                {/* Item 5: Ditolak */}
+                <div className="col-12 col-md-4 col-xl">
+                  <div className="tool-status-item d-flex align-items-center justify-content-start gap-3">
+                    <div
+                      className="tool-status-badge d-flex flex-column align-items-center justify-content-between p-3 text-white shadow-sm flex-shrink-0"
+                      style={{
+                        width: "105px",
+                        height: "135px",
+                        borderRadius: "18px",
+                        background: "linear-gradient(180deg, #9C7A6B 0%, #836355 100%)",
+                        boxShadow: "0 8px 18px rgba(131, 99, 85, 0.25)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "44px",
+                          height: "44px",
+                          borderRadius: "12px",
+                          background: "#F5F5F5",
+                          boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "20px",
+                        }}
+                      >
+                        ❌
+                      </div>
+                      <h2 className="fw-bold mb-0 text-white" style={{ fontSize: "2rem", lineHeight: 1 }}>
+                        {loading ? "—" : toolStats.rejected}
+                      </h2>
+                    </div>
+                    <h6 className="tool-status-label fw-bold mb-0" style={{ color: "#5A483E", fontSize: "1rem", lineHeight: "1.3" }}>
+                      Ditolak
                     </h6>
                   </div>
                 </div>

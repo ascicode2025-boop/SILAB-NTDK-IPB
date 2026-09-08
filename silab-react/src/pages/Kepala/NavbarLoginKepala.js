@@ -80,7 +80,6 @@ function NavbarLoginKepala({ children }) {
     {
       title: "Peminjaman Alat",
       items: [
-        { key: "persetujuanPengajuan", label: "Persetujuan Pengajuan", icon: <RiFileCheckLine size={20} /> },
         { key: "laporanPeminjaman", label: "Laporan Peminjaman", icon: <RiFileTextLine size={20} /> },
       ],
     },

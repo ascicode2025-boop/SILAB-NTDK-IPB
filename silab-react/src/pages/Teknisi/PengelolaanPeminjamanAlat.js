@@ -10,13 +10,45 @@ import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
 import SiapDiambil from "../../components/PengelolaanPeminjaman/SiapDiambil";
 import SedangDipinjam from "../../components/PengelolaanPeminjaman/SedangDipinjam";
 import Pengembalian from "../../components/PengelolaanPeminjaman/Pengembalian";
+import { getRentals, handoverRental, returnRental } from "../../services/InstrumentRentalService";
 
 export default function PengelolaanPeminjamanAlat() {
   const [activeTab, setActiveTab] = useState("siapDiambil");
+  const [rentals, setRentals] = useState([]);
+
+  const fetchRentals = async () => {
+    try {
+      const res = await getRentals();
+      const mappedData = (res?.data || []).map(r => ({
+        ...r,
+        rental_number: `PJ${String(r.id).padStart(3, '0')}`,
+        user: { name: r.user?.name || "Unknown" },
+        items: r.instruments?.map(i => ({
+          instrument_id: i.id,
+          instrument: { name: i.nama_alat },
+          quantity: i.pivot?.quantity || 1
+        })) || [],
+        start_date: r.tanggal_peminjaman,
+        end_date: r.tanggal_pengembalian,
+        handover_notes: r.handover_notes,
+        actual_return_date: r.client_return_date,
+        return_condition: r.client_return_condition,
+        return_notes: r.client_return_notes,
+      }));
+      setRentals(mappedData);
+    } catch (error) {
+      console.error("Failed to fetch rentals", error);
+    }
+  };
 
   useEffect(() => {
     document.title = "SILAB-NTDK - Pengelolaan Peminjaman Alat";
+    fetchRentals();
   }, []);
+
+  const siapDiambilRentals = rentals.filter((r) => r.status === "disetujui");
+  const sedangDipinjamRentals = rentals.filter((r) => r.status === "aktif");
+  const pengembalianRentals = rentals.filter((r) => r.status === "menunggu_pengembalian");
 
   return (
     <NavbarLoginTeknisi>
@@ -59,7 +91,7 @@ export default function PengelolaanPeminjamanAlat() {
                 transition: "all 0.2s ease-in-out",
               }}
             >
-              Siap Diambil (12)
+              Siap Diambil ({siapDiambilRentals.length})
             </button>
 
             {/* Tab 2: Sedang Dipinjam */}
@@ -82,7 +114,7 @@ export default function PengelolaanPeminjamanAlat() {
                 transition: "all 0.2s ease-in-out",
               }}
             >
-              Sedang Dipinjam (7)
+              Sedang Dipinjam ({sedangDipinjamRentals.length})
             </button>
 
             {/* Tab 3: Pengembalian */}
@@ -105,14 +137,28 @@ export default function PengelolaanPeminjamanAlat() {
                 transition: "all 0.2s ease-in-out",
               }}
             >
-              Pengembalian (4)
+              Pengembalian ({pengembalianRentals.length})
             </button>
           </div>
 
           {/* Dynamic Component Content */}
-          {activeTab === "siapDiambil" && <SiapDiambil />}
-          {activeTab === "sedangDipinjam" && <SedangDipinjam />}
-          {activeTab === "pengembalian" && <Pengembalian />}
+          {activeTab === "siapDiambil" && (
+            <SiapDiambil 
+              rentals={siapDiambilRentals} 
+              onRefresh={fetchRentals} 
+              onHandover={handoverRental} 
+            />
+          )}
+          {activeTab === "sedangDipinjam" && (
+            <SedangDipinjam rentals={sedangDipinjamRentals} />
+          )}
+          {activeTab === "pengembalian" && (
+            <Pengembalian 
+              rentals={pengembalianRentals} 
+              onRefresh={fetchRentals} 
+              onReturn={returnRental} 
+            />
+          )}
         </Container>
       </div>
     </NavbarLoginTeknisi>

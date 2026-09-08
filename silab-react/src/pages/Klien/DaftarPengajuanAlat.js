@@ -1,6 +1,6 @@
-import React, { useEffect } from "react";
-import { Container, Card, Badge } from "react-bootstrap";
-import { FaChevronRight } from "react-icons/fa";
+import React, { useState, useEffect } from "react";
+import { Container, Card, Badge, Spinner, Nav, Modal, Button } from "react-bootstrap";
+import { FaChevronRight, FaTools, FaTrash } from "react-icons/fa";
 import { useHistory } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "@fontsource/poppins/400.css";
@@ -8,68 +8,69 @@ import "@fontsource/poppins/600.css";
 import "@fontsource/poppins/700.css";
 import NavbarLoginKlien from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
-
-const DEMO_PENGAJUAN = [
-  {
-    id: "PJ001",
-    kode: "PJ001 – Micropipette 20–200 µL",
-    tanggal: "02 Juli 2026",
-    status: "Menunggu Verifikasi",
-    badgeBg: "#A6867B",
-  },
-  {
-    id: "PJ002",
-    kode: "PJ001 – Micropipette 20–200 µL",
-    tanggal: "02 Juli 2026",
-    status: "Menunggu Verifikasi",
-    badgeBg: "#A6867B",
-  },
-  {
-    id: "PJ003",
-    kode: "PJ001 – Micropipette 20–200 µL",
-    tanggal: "02 Juli 2026",
-    status: "Menunggu Verifikasi",
-    badgeBg: "#A6867B",
-  },
-  {
-    id: "PJ004",
-    kode: "PJ001 – Micropipette 20–200 µL",
-    tanggal: "02 Juli 2026",
-    status: "Menunggu Verifikasi",
-    badgeBg: "#A6867B",
-  },
-  {
-    id: "PJ005",
-    kode: "PJ001 – Micropipette 20–200 µL",
-    tanggal: "02 Juli 2026",
-    status: "Menunggu Verifikasi",
-    badgeBg: "#A6867B",
-  },
-  {
-    id: "PJ006",
-    kode: "PJ001 – Micropipette 20–200 µL",
-    tanggal: "02 Juli 2026",
-    status: "Menunggu Verifikasi",
-    badgeBg: "#A6867B",
-  },
-  {
-    id: "PJ007",
-    kode: "PJ001 – Micropipette 20–200 µL",
-    tanggal: "02 Juli 2026",
-    status: "Menunggu Verifikasi",
-    badgeBg: "#A6867B",
-  },
-];
+import { getRentals, deleteRental } from "../../services/RentalService";
 
 const DaftarPengajuanAlat = () => {
   const history = useHistory();
+  const [rentals, setRentals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("semua"); // semua, aktif, riwayat
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedDeleteId, setSelectedDeleteId] = useState(null);
 
   useEffect(() => {
     document.title = "SILAB-NTDK - Daftar Pengajuan Peminjaman Alat";
+    fetchData();
   }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await getRentals();
+      setRentals(Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []);
+    } catch (err) {
+      console.error("Gagal mengambil daftar peminjaman:", err);
+      setRentals([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleOpenDetail = (id) => {
     history.push(`/dashboard/detailPengajuan/step/${id}`);
+  };
+
+  const handleDeleteClick = (e, id) => {
+    e.stopPropagation();
+    setSelectedDeleteId(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedDeleteId) return;
+    try {
+      await deleteRental(selectedDeleteId);
+      setShowDeleteModal(false);
+      setSelectedDeleteId(null);
+      fetchData(); // Reload data
+    } catch (error) {
+      alert("Gagal menghapus riwayat.");
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "pending":
+        return { label: "Menunggu Verifikasi", bg: "#A6867B" };
+      case "disetujui":
+        return { label: "Disetujui", bg: "#2E7D32" };
+      case "ditolak":
+        return { label: "Ditolak", bg: "#C62828" };
+      case "selesai":
+        return { label: "Selesai", bg: "#616161" };
+      default:
+        return { label: status || "Diproses", bg: "#A6867B" };
+    }
   };
 
   return (
@@ -119,86 +120,210 @@ const DaftarPengajuanAlat = () => {
             </p>
           </div>
 
+          <Nav variant="pills" className="mb-4" activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
+            <Nav.Item>
+              <Nav.Link eventKey="semua" style={{ borderRadius: "20px" }}>Semua</Nav.Link>
+            </Nav.Item>
+            <Nav.Item>
+              <Nav.Link eventKey="aktif" style={{ borderRadius: "20px" }}>Aktif</Nav.Link>
+            </Nav.Item>
+            <Nav.Item>
+              <Nav.Link eventKey="riwayat" style={{ borderRadius: "20px" }}>Riwayat (Selesai/Ditolak/Batal)</Nav.Link>
+            </Nav.Item>
+          </Nav>
+
           {/* List of Submission Cards */}
           <div className="d-flex flex-column gap-3 mb-5">
-            {DEMO_PENGAJUAN.map((item) => (
-              <Card
-                key={item.id}
-                className="border-0 shadow-sm pengajuan-card"
-                style={{
-                  borderRadius: "20px",
-                  backgroundColor: "#ffffff",
-                  transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                  cursor: "pointer",
-                }}
-                onClick={() => handleOpenDetail(item.id)}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-3px)";
-                  e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.08)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.05)";
-                }}
-              >
-                <Card.Body className="px-4 py-3.5 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
-                  {/* Left Info: Code & Date */}
-                  <div>
-                    <h5
-                      className="fw-bold mb-1 text-dark"
-                      style={{
-                        fontSize: "1.05rem",
-                        fontFamily: "Poppins, sans-serif",
-                        letterSpacing: "-0.2px",
-                      }}
-                    >
-                      {item.kode}
-                    </h5>
-                    <div
-                      className="text-muted"
-                      style={{
-                        fontSize: "0.88rem",
-                        color: "#6C757D",
-                      }}
-                    >
-                      {item.tanggal}
+            {loading ? (
+              <div className="text-center py-5 bg-white rounded-4 shadow-sm">
+                <Spinner animation="border" variant="primary" />
+                <p className="mt-2 text-muted">Memuat data pengajuan...</p>
+              </div>
+            ) : (() => {
+                const filteredRentals = rentals.filter((item) => {
+                  if (activeTab === "semua") return true;
+                  const isHistory = ["selesai", "ditolak", "dibatalkan"].includes(item.status);
+                  if (activeTab === "riwayat") return isHistory;
+                  if (activeTab === "aktif") return !isHistory;
+                  return true;
+                });
+                
+                if (filteredRentals.length === 0) {
+                  return (
+                    <div className="text-center py-5 bg-white rounded-4 shadow-sm">
+                      <FaTools size={48} className="text-muted mb-3" />
+                      <h5 className="fw-semibold text-secondary">Belum Ada Pengajuan</h5>
+                      <p className="text-muted mb-3">Tidak ada pengajuan pada tab ini.</p>
+                      <button
+                        className="btn text-white fw-semibold px-4 py-2"
+                        style={{ backgroundColor: "#8D6E63", borderRadius: "20px" }}
+                        onClick={() => history.push("/dashboard/pengajuanPeminjaman")}
+                      >
+                        + Ajukan Peminjaman
+                      </button>
                     </div>
-                  </div>
+                  );
+                }
 
-                  {/* Right Info: Status Pill & Lihat Progress */}
-                  <div className="d-flex flex-column align-items-sm-end gap-1">
-                    <Badge
+                const renderCard = (item) => {
+                  const toolNames = item.instruments?.map((i) => i.nama_alat).join(", ") || "Peminjaman Alat";
+                  const kodeStr = `PJ-${String(item.id).padStart(3, "0")} – ${toolNames}`;
+                  const tanggalStr = item.created_at
+                    ? new Date(item.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })
+                    : item.tanggal_peminjaman || "-";
+                  const badgeInfo = getStatusBadge(item.status);
+
+                  return (
+                    <Card
+                      key={item.id}
+                      className="border-0 shadow-sm pengajuan-card mb-3"
                       style={{
-                        backgroundColor: item.badgeBg,
-                        color: "#ffffff",
                         borderRadius: "20px",
-                        padding: "6px 18px",
-                        fontSize: "0.82rem",
-                        fontWeight: "600",
-                        letterSpacing: "0.2px",
-                      }}
-                    >
-                      {item.status}
-                    </Badge>
-                    <div
-                      className="fw-bold mt-1 d-flex align-items-center"
-                      style={{
-                        fontSize: "0.85rem",
-                        color: "#4A3B32",
+                        backgroundColor: "#ffffff",
+                        transition: "transform 0.2s ease, box-shadow 0.2s ease",
                         cursor: "pointer",
                       }}
+                      onClick={() => handleOpenDetail(item.id)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-3px)";
+                        e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.08)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.05)";
+                      }}
                     >
-                      Lihat Progress <FaChevronRight size={10} className="ms-1" />
-                      <FaChevronRight size={10} style={{ marginLeft: "-3px" }} />
-                    </div>
-                  </div>
-                </Card.Body>
-              </Card>
-            ))}
+                      <Card.Body className="px-4 py-3.5 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
+                        {/* Left Info: Code & Date */}
+                        <div>
+                          <h5
+                            className="fw-bold mb-1 text-dark"
+                            style={{
+                              fontSize: "1.05rem",
+                              fontFamily: "Poppins, sans-serif",
+                              letterSpacing: "-0.2px",
+                            }}
+                          >
+                            {kodeStr}
+                          </h5>
+                          <div
+                            className="text-muted"
+                            style={{
+                              fontSize: "0.88rem",
+                              color: "#6C757D",
+                            }}
+                          >
+                            {tanggalStr}
+                          </div>
+                        </div>
+
+                        {/* Right Info: Status Pill & Lihat Progress */}
+                        <div className="d-flex align-items-center gap-3">
+                          {["selesai", "ditolak", "dibatalkan"].includes(item.status) && (
+                            <button
+                              className="btn btn-outline-danger btn-sm px-3 rounded-pill"
+                              onClick={(e) => handleDeleteClick(e, item.id)}
+                              style={{ fontWeight: "600" }}
+                            >
+                              <FaTrash size={12} className="me-2 mb-1" /> Hapus
+                            </button>
+                          )}
+                          <div className="d-flex flex-column align-items-sm-end gap-1">
+                            <span
+                              className="badge"
+                              style={{
+                                backgroundColor: badgeInfo.bg,
+                                color: "#ffffff",
+                                borderRadius: "20px",
+                                padding: "6px 18px",
+                                fontSize: "0.82rem",
+                                fontWeight: "600",
+                                letterSpacing: "0.2px",
+                              }}
+                            >
+                              {badgeInfo.label}
+                            </span>
+                            <div
+                              className="fw-bold mt-1 d-flex align-items-center"
+                              style={{
+                                fontSize: "0.85rem",
+                                color: "#4A3B32",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Lihat Progress <FaChevronRight size={10} className="ms-1" />
+                              <FaChevronRight size={10} style={{ marginLeft: "-3px" }} />
+                            </div>
+                          </div>
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  );
+                };
+
+                if (activeTab === "riwayat") {
+                  const selesai = filteredRentals.filter((i) => i.status === "selesai");
+                  const ditolak = filteredRentals.filter((i) => i.status === "ditolak");
+                  const dibatalkan = filteredRentals.filter((i) => i.status === "dibatalkan");
+                  
+                  return (
+                    <>
+                      {selesai.length > 0 && (
+                        <div className="mb-4">
+                          <h6 className="fw-bold text-muted mb-3 px-2">Selesai</h6>
+                          {selesai.map(renderCard)}
+                        </div>
+                      )}
+                      {ditolak.length > 0 && (
+                        <div className="mb-4">
+                          <h6 className="fw-bold text-muted mb-3 px-2">Ditolak</h6>
+                          {ditolak.map(renderCard)}
+                        </div>
+                      )}
+                      {dibatalkan.length > 0 && (
+                        <div className="mb-4">
+                          <h6 className="fw-bold text-muted mb-3 px-2">Dibatalkan</h6>
+                          {dibatalkan.map(renderCard)}
+                        </div>
+                      )}
+                    </>
+                  );
+                }
+                
+                return filteredRentals.map(renderCard);
+              })()}
           </div>
         </div>
       </Container>
       <FooterSetelahLogin />
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
+        <Modal.Header closeButton className="border-0 pb-0">
+        </Modal.Header>
+        <Modal.Body className="text-center pt-0 pb-4 px-4">
+          <div className="mb-3">
+            <div
+              className="mx-auto bg-danger bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center"
+              style={{ width: "80px", height: "80px" }}
+            >
+              <FaTrash className="text-danger" size={32} />
+            </div>
+          </div>
+          <h4 className="fw-bold mb-2">Hapus Riwayat?</h4>
+          <p className="text-muted mb-4">
+            Apakah Anda yakin ingin menghapus riwayat pengajuan ini? Data yang sudah dihapus tidak dapat dikembalikan.
+          </p>
+          <div className="d-flex justify-content-center gap-2">
+            <Button variant="secondary" onClick={() => setShowDeleteModal(false)} className="px-4 rounded-pill fw-semibold" style={{ minWidth: "120px" }}>
+              Batal
+            </Button>
+            <Button variant="danger" onClick={confirmDelete} className="px-4 rounded-pill fw-semibold" style={{ minWidth: "120px" }}>
+              Hapus
+            </Button>
+          </div>
+        </Modal.Body>
+      </Modal>
     </NavbarLoginKlien>
   );
 };

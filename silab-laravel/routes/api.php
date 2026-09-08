@@ -41,8 +41,9 @@ Route::get('/analysis-prices', [AnalysisPriceController::class, 'index']);
 Route::get('/analysis-prices-grouped', [AnalysisPriceController::class, 'grouped']);
 Route::get('/calendar-quota', [QuotaController::class, 'getMonthlyQuota']);
 
-// Public debug route for koordinator report (temporary - remove in production)
-Route::get('/koordinator-report-debug', [App\Http\Controllers\Api\BookingController::class, 'getKoordinatorReport']);
+// Public Instruments (no auth required)
+Route::get('/instruments', [\App\Http\Controllers\Api\InstrumentController::class, 'index']);
+Route::get('/instruments/{id}', [\App\Http\Controllers\Api\InstrumentController::class, 'show']);
 
 
 // Protected Routes (Harus Login)
@@ -111,4 +112,31 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/users', [\App\Http\Controllers\Api\UserController::class, 'store']);
     Route::patch('/users/{id}', [\App\Http\Controllers\Api\UserController::class, 'update']);
 
+    // ==========================================
+    // INSTRUMENTS (Peminjaman Alat) ROUTES
+    // ==========================================
+    Route::post('/instruments', [\App\Http\Controllers\Api\InstrumentController::class, 'store']);
+    Route::put('/instruments/{id}', [\App\Http\Controllers\Api\InstrumentController::class, 'update']);
+    Route::delete('/instruments/{id}', [\App\Http\Controllers\Api\InstrumentController::class, 'destroy']);
+
+    Route::get('/rentals', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'index']);
+    Route::get('/rentals/booked-dates', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'getBookedDates']);
+    Route::post('/rentals', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'store']);
+    Route::put('/rentals/{id}/verify', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'verify']);
+    Route::post('/rentals/{id}/payment', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'uploadPayment']);
+    Route::put('/rentals/{id}/verify-payment', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'verifyPayment']);
+    Route::put('/rentals/{id}/reject-payment', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'rejectPayment']);
+    Route::post('/rentals/{id}/denda', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'uploadDenda']);
+    Route::put('/rentals/{id}/verify-denda', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'verifyDenda']);
+    Route::put('/rentals/{id}/update-dates', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'updateDates']);
+    Route::put('/rentals/{id}/handover', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'handover']);
+    Route::put('/rentals/{id}/return', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'returnInstruments']);
+    Route::post('/rentals/{id}/return-request', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'clientReturnRequest']);
+    Route::put('/rentals/{id}/cancel', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'cancelRental']);
+    Route::delete('/rentals/{id}', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'destroy']);
+
+    Route::get('/lab-clearance', [\App\Http\Controllers\Api\LabClearanceController::class, 'index']);
+    Route::post('/lab-clearance/generate', [\App\Http\Controllers\Api\LabClearanceController::class, 'generate']);
+
+    Route::get('/download-template', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'downloadTemplateWithTtd']);
 });
