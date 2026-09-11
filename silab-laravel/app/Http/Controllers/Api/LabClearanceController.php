@@ -32,7 +32,7 @@ class LabClearanceController extends Controller
 
         // Cek peminjaman yang belum selesai dikembalikan
         $hasUnreturned = InstrumentRental::where('user_id', $user->id)
-            ->whereIn('status', ['pending', 'disetujui', 'aktif', 'menunggu_pengembalian'])
+            ->whereIn('status', ['pending', 'disetujui', 'siap_diambil', 'aktif', 'menunggu_pengembalian'])
             ->exists();
 
         $canBeCleared = !$hasUnpaid && !$hasUnreturned;
@@ -75,7 +75,7 @@ class LabClearanceController extends Controller
             ->exists();
 
         $hasUnreturned = InstrumentRental::where('user_id', $user->id)
-            ->whereIn('status', ['pending', 'disetujui', 'aktif', 'menunggu_pengembalian'])
+            ->whereIn('status', ['pending', 'disetujui', 'siap_diambil', 'aktif', 'menunggu_pengembalian'])
             ->exists();
 
         if ($hasUnpaid) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Container, Row, Col, Form, Button, InputGroup, Table, Modal, Dropdown } from "react-bootstrap";
-import { FaSearch, FaPlus, FaEye, FaPencilAlt, FaTrashAlt } from "react-icons/fa";
+import { getStorageUrl } from "../../config/apiConfig";
+import { FaSearch, FaPlus, FaEye, FaPencilAlt, FaTrashAlt, FaImage } from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "@fontsource/poppins/400.css";
 import "@fontsource/poppins/600.css";
@@ -10,10 +11,20 @@ import FooterSetelahLogin from "../FooterSetelahLogin";
 import { getInstruments, createInstrument, updateInstrument, deleteInstrument } from "../../services/InstrumentService";
 
 export default function InventarisAlat() {
+  const storageUrl = getStorageUrl();
   const [equipmentList, setEquipmentList] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("Semua");
   const [isLoading, setIsLoading] = useState(true);
+
+  // ponytail: simple width hook; upgrade to shared hook if reused elsewhere
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  useEffect(() => {
+    const onResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  const isMobile = windowWidth < 768;
 
   // Modal States
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -26,6 +37,7 @@ export default function InventarisAlat() {
 
   const [selectedItem, setSelectedItem] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
 
   // Form State
   const [formData, setFormData] = useState({
@@ -36,6 +48,8 @@ export default function InventarisAlat() {
     status: "tersedia",
     total_unit: 1,
   });
+  // State for selected photo file
+  const [selectedFile, setSelectedFile] = useState(null);
 
   useEffect(() => {
     document.title = "SILAB-NTDK - Inventaris Alat";
@@ -60,7 +74,7 @@ export default function InventarisAlat() {
     const descMatch = item.deskripsi ? item.deskripsi.toLowerCase().includes(searchTerm.toLowerCase()) : false;
     const matchesSearch = namaMatch || descMatch;
 
-    const matchesStatus = statusFilter === "Semua" || 
+    const matchesStatus = statusFilter === "Semua" ||
       (item.status && item.status.toLowerCase() === statusFilter.toLowerCase());
 
     return matchesSearch && matchesStatus;
@@ -80,6 +94,7 @@ export default function InventarisAlat() {
 
   // Open Form Modal (Add or Edit)
   const handleOpenForm = (item = null) => {
+    setFormErrors({});
     if (item) {
       setIsEditing(true);
       setSelectedItem(item);
@@ -106,20 +121,62 @@ export default function InventarisAlat() {
     setShowFormModal(true);
   };
 
+  // Form Validation
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.nama_alat || !formData.nama_alat.trim()) {
+      errors.nama_alat = "Nama alat wajib diisi.";
+    }
+    if (
+      formData.total_unit === "" ||
+      formData.total_unit === null ||
+      parseInt(formData.total_unit, 10) < 1 ||
+      isNaN(parseInt(formData.total_unit, 10))
+    ) {
+      errors.total_unit = "Total unit harus diisi minimal 1.";
+    }
+    if (formData.is_paid && (!formData.harga_sewa || parseInt(formData.harga_sewa, 10) <= 0)) {
+      errors.harga_sewa = "Harga sewa wajib diisi lebih dari 0 untuk alat berbayar.";
+    }
+    if (!formData.deskripsi || !formData.deskripsi.trim()) {
+      errors.deskripsi = "Deskripsi alat wajib diisi.";
+    }
+    if (!formData.status) {
+      errors.status = "Status alat wajib dipilih.";
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   // Save Form (Add or Edit)
   const handleSaveForm = async (e) => {
     e.preventDefault();
-    try {
-      // Pastikan payload yang dikirim sudah sesuai format database
-      const payload = {
-        nama_alat: formData.nama_alat,
-        deskripsi: formData.deskripsi,
+    if (!validateForm()) {
+      return;
+    }
+
+    let payload;
+    if (selectedFile) {
+      payload = new FormData();
+      payload.append('nama_alat', formData.nama_alat.trim());
+      payload.append('deskripsi', formData.deskripsi.trim());
+      payload.append('is_paid', formData.is_paid ? 1 : 0);
+      payload.append('harga_sewa', formData.is_paid ? (parseInt(formData.harga_sewa, 10) || 0) : 0);
+      payload.append('status', formData.status);
+      payload.append('total_unit', parseInt(formData.total_unit, 10) || 1);
+      payload.append('foto', selectedFile);
+    } else {
+      payload = {
+        nama_alat: formData.nama_alat.trim(),
+        deskripsi: formData.deskripsi.trim(),
         is_paid: formData.is_paid ? 1 : 0,
-        harga_sewa: parseInt(formData.harga_sewa) || 0,
+        harga_sewa: formData.is_paid ? (parseInt(formData.harga_sewa, 10) || 0) : 0,
         status: formData.status,
-        total_unit: parseInt(formData.total_unit) || 1,
+        total_unit: parseInt(formData.total_unit, 10) || 1,
       };
-      
+    }
+
+    try {
       if (isEditing && selectedItem) {
         await updateInstrument(selectedItem.id, payload);
         setSuccessMessage("Data alat berhasil diubah.");
@@ -132,7 +189,16 @@ export default function InventarisAlat() {
       fetchData(); // Refresh list
     } catch (error) {
       console.error("Error saving form:", error);
-      setErrorMessage("Gagal menyimpan data alat.");
+      const backendErrors = error?.response?.data?.errors;
+      if (backendErrors) {
+        const mappedErrors = {};
+        Object.keys(backendErrors).forEach((key) => {
+          mappedErrors[key] = Array.isArray(backendErrors[key]) ? backendErrors[key][0] : backendErrors[key];
+        });
+        setFormErrors(mappedErrors);
+      }
+      const msg = error?.response?.data?.message || (backendErrors ? Object.values(backendErrors).flat().join(", ") : "Gagal menyimpan data alat.");
+      setErrorMessage(msg);
       setShowErrorModal(true);
     }
   };
@@ -159,7 +225,7 @@ export default function InventarisAlat() {
       }
     }
   };
-  
+
   // Helper Format Rupiah
   const formatRupiah = (angka) => {
     return new Intl.NumberFormat("id-ID", {
@@ -176,7 +242,7 @@ export default function InventarisAlat() {
           minHeight: "100vh",
           backgroundColor: "#FAF9F8",
           fontFamily: "Poppins, sans-serif",
-          padding: "24px 28px 40px",
+          padding: isMobile ? "16px 12px 32px" : "24px 28px 40px",
         }}
       >
         <Container fluid>
@@ -372,8 +438,8 @@ export default function InventarisAlat() {
           <div
             style={{
               backgroundColor: "#ffffff",
-              borderRadius: "24px",
-              padding: "28px 32px",
+              borderRadius: isMobile ? "16px" : "24px",
+              padding: isMobile ? "16px 14px" : "28px 32px",
               boxShadow: "0 6px 24px rgba(0,0,0,0.06)",
               border: "1px solid #EAEAEA",
             }}
@@ -382,15 +448,16 @@ export default function InventarisAlat() {
             <div
               style={{
                 display: "flex",
+                flexDirection: isMobile ? "column" : "row",
                 flexWrap: "wrap",
                 justifyContent: "space-between",
-                alignItems: "center",
-                gap: "16px",
-                marginBottom: "28px",
+                alignItems: isMobile ? "stretch" : "center",
+                gap: isMobile ? "12px" : "16px",
+                marginBottom: isMobile ? "20px" : "28px",
               }}
             >
               {/* Search Bar (Left) */}
-              <div style={{ maxWidth: "320px", width: "100%" }}>
+              <div style={{ maxWidth: isMobile ? "100%" : "320px", width: "100%" }}>
                 <InputGroup
                   style={{
                     borderRadius: "30px",
@@ -429,7 +496,7 @@ export default function InventarisAlat() {
               </div>
 
               {/* Controls Right (Status Dropdown + Tambah Alat Button) */}
-              <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", justifyContent: isMobile ? "space-between" : "flex-end" }}>
                 {/* Status Dropdown */}
                 <style>{`
                   .status-dropdown-menu {
@@ -530,7 +597,109 @@ export default function InventarisAlat() {
               </div>
             </div>
 
-            {/* Equipment Data Table */}
+            {/* Equipment Data Table / Mobile Cards */}
+            {isMobile ? (
+              /* ── Mobile Card View ── */
+              <div>
+                {isLoading ? (
+                  <div className="text-center py-5 text-muted">Memuat data alat...</div>
+                ) : filteredList.length > 0 ? (
+                  filteredList.map((item) => (
+                    <div
+                      key={item.id}
+                      style={{
+                        backgroundColor: "#FAFAFA",
+                        borderRadius: "14px",
+                        padding: "14px 16px",
+                        marginBottom: "12px",
+                        border: "1px solid #F0F0F0",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                      }}
+                    >
+                      {/* Top: Foto + Nama + Status */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "10px" }}>
+                        {item.foto_path ? (
+                          <img
+                            src={`${storageUrl}/storage/${item.foto_path}`}
+                            alt="Foto Alat"
+                            style={{ width: "44px", height: "44px", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+                          />
+                        ) : (
+                          <div style={{ width: "44px", height: "44px", borderRadius: "50%", backgroundColor: "#F0F0F0", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <FaImage size={18} color="#cccccc" />
+                          </div>
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: "0.92rem", color: "#212121", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {item.nama_alat}
+                          </div>
+                          <span
+                            style={{
+                              padding: "2px 10px",
+                              borderRadius: "12px",
+                              fontSize: "0.72rem",
+                              fontWeight: 600,
+                              textTransform: "capitalize",
+                              backgroundColor:
+                                item.status === "tersedia" ? "#E8F5E9" :
+                                item.status === "dipinjam" ? "#E3F2FD" :
+                                item.status === "perawatan" ? "#FEF3C7" : "#FFEBEE",
+                              color:
+                                item.status === "tersedia" ? "#2E7D32" :
+                                item.status === "dipinjam" ? "#1565C0" :
+                                item.status === "perawatan" ? "#B45309" : "#C62828",
+                            }}
+                          >
+                            {item.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Info grid */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px", fontSize: "0.78rem", marginBottom: "10px" }}>
+                        <div>
+                          <div style={{ color: "#9E9E9E", fontWeight: 600 }}>Biaya</div>
+                          <div style={{ color: "#424242", fontWeight: 600 }}>{item.is_paid ? formatRupiah(item.harga_sewa) : "Gratis"}</div>
+                        </div>
+                        <div style={{ textAlign: "center" }}>
+                          <div style={{ color: "#9E9E9E", fontWeight: 600 }}>Stok</div>
+                          <div style={{ color: "#424242", fontWeight: 700 }}>{item.stok_tersedia ?? (item.total_unit ?? 1)}</div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ color: "#9E9E9E", fontWeight: 600 }}>Unit</div>
+                          <div style={{ color: "#424242", fontWeight: 600 }}>{item.total_unit ?? 1}</div>
+                        </div>
+                      </div>
+
+                      {/* Deskripsi */}
+                      <div style={{ fontSize: "0.78rem", color: "#757575", marginBottom: "10px", lineHeight: 1.4 }}>
+                        {item.deskripsi?.substring(0, 80) || "-"}
+                        {item.deskripsi?.length > 80 ? "..." : ""}
+                      </div>
+
+                      {/* Aksi buttons */}
+                      <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+                        <button type="button" onClick={() => handleOpenDetail(item)} title="Lihat Detail"
+                          style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "#757575", border: "none", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                          <FaEye size={14} />
+                        </button>
+                        <button type="button" onClick={() => handleOpenForm(item)} title="Edit Alat"
+                          style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "#4CAF50", border: "none", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                          <FaPencilAlt size={13} />
+                        </button>
+                        <button type="button" onClick={() => handleOpenDelete(item)} title="Hapus Alat"
+                          style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "#E53935", border: "none", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                          <FaTrashAlt size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-5 text-muted">Tidak ada data alat ditemukan.</div>
+                )}
+              </div>
+            ) : (
+            /* ── Desktop Table View ── */
             <div className="table-responsive">
               <Table borderless style={{ verticalAlign: "middle", marginBottom: "0" }}>
                 <thead>
@@ -543,6 +712,7 @@ export default function InventarisAlat() {
                     }}
                   >
                     <th style={{ paddingBottom: "16px" }}>Nama Alat</th>
+                    <th style={{ paddingBottom: "16px" }}>Foto</th>
                     <th style={{ paddingBottom: "16px" }}>Deskripsi</th>
                     <th style={{ paddingBottom: "16px", textAlign: "center" }}>Biaya Sewa</th>
                     <th style={{ paddingBottom: "16px", textAlign: "center" }}>Stok Tersedia</th>
@@ -571,6 +741,17 @@ export default function InventarisAlat() {
                         {/* Nama Alat */}
                         <td style={{ py: "14px", fontWeight: "600", color: "#212121" }}>
                           {item.nama_alat}
+                        </td>
+                        <td style={{ py: "14px", textAlign: "center" }}>
+                          {item.foto_path ? (
+                            <img
+                              src={`${storageUrl}/storage/${item.foto_path}`}
+                              alt="Foto Alat"
+                              style={{ width: "40px", height: "40px", borderRadius: "50%", objectFit: "cover" }}
+                            />
+                          ) : (
+                            <FaImage size={24} color="#cccccc" />
+                          )}
                         </td>
 
                         {/* Deskripsi */}
@@ -608,18 +789,18 @@ export default function InventarisAlat() {
                                 item.status === "tersedia"
                                   ? "#E8F5E9"
                                   : item.status === "dipinjam"
-                                  ? "#E3F2FD"
-                                  : item.status === "perawatan"
-                                  ? "#FEF3C7"
-                                  : "#FFEBEE",
+                                    ? "#E3F2FD"
+                                    : item.status === "perawatan"
+                                      ? "#FEF3C7"
+                                      : "#FFEBEE",
                               color:
                                 item.status === "tersedia"
                                   ? "#2E7D32"
                                   : item.status === "dipinjam"
-                                  ? "#1565C0"
-                                  : item.status === "perawatan"
-                                  ? "#B45309"
-                                  : "#C62828",
+                                    ? "#1565C0"
+                                    : item.status === "perawatan"
+                                      ? "#B45309"
+                                      : "#C62828",
                             }}
                           >
                             {item.status}
@@ -715,6 +896,7 @@ export default function InventarisAlat() {
                 </tbody>
               </Table>
             </div>
+            )}
           </div>
         </Container>
       </div>
@@ -750,7 +932,29 @@ export default function InventarisAlat() {
           </div>
 
           {/* Form Body */}
-          <form onSubmit={handleSaveForm} style={{ padding: "22px 28px 28px" }}>
+          <form onSubmit={handleSaveForm} noValidate style={{ padding: isMobile ? "16px 16px 20px" : "22px 28px 28px" }}>
+            {/* Top Error Alert Banner if any errors exist */}
+            {Object.keys(formErrors).length > 0 && (
+              <div
+                style={{
+                  backgroundColor: "#FFEBEE",
+                  color: "#C62828",
+                  padding: "10px 16px",
+                  borderRadius: "12px",
+                  marginBottom: "16px",
+                  fontSize: "0.83rem",
+                  fontWeight: "600",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  border: "1px solid #FFCDD2",
+                }}
+              >
+                <span>⚠️</span>
+                <span>Harap lengkapi semua isian kolom yang wajib diisi dengan benar.</span>
+              </div>
+            )}
+
             {/* Nama Alat */}
             <div style={{ marginBottom: "14px" }}>
               <label
@@ -762,25 +966,79 @@ export default function InventarisAlat() {
                   marginBottom: "6px",
                 }}
               >
-                Nama Alat
+                Nama Alat <span style={{ color: "#E53935" }}>*</span>
               </label>
               <input
                 type="text"
-                required
                 placeholder="Micropipette 20–200 µL"
                 value={formData.nama_alat}
-                onChange={(e) => setFormData({ ...formData, nama_alat: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, nama_alat: e.target.value });
+                  if (formErrors.nama_alat) setFormErrors({ ...formErrors, nama_alat: "" });
+                }}
                 style={{
                   width: "100%",
                   borderRadius: "20px",
-                  border: "1px solid #D0D0D0",
+                  border: formErrors.nama_alat ? "1.5px solid #E53935" : "1px solid #D0D0D0",
                   padding: "8px 16px",
                   fontSize: "0.88rem",
                   color: "#333",
                   outline: "none",
+                  backgroundColor: formErrors.nama_alat ? "#FFF8F8" : "#fff",
                   boxShadow: "inset 0 1px 3px rgba(0,0,0,0.03)",
                 }}
               />
+              {/* Photo Upload */}
+              <div style={{ marginBottom: "14px", marginTop: "10px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontWeight: "700",
+                    fontSize: "0.85rem",
+                    color: "#616161",
+                    marginBottom: "6px",
+                  }}
+                >
+                  Foto Alat {" "}
+                  <span style={{ color: "#E53935" }}>*</span>
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      setSelectedFile(file);
+                      // optional preview URL
+                      const previewUrl = URL.createObjectURL(file);
+                      setFormData({ ...formData, preview: previewUrl });
+                    }
+                  }}
+                  style={{
+                    width: "100%",
+                    border: selectedFile ? "1px solid #4A3933" : "1px solid #D0D0D0",
+                    borderRadius: "20px",
+                    padding: "8px 16px",
+                  }}
+                />
+                {selectedFile && (
+                  <div style={{ marginTop: "8px", textAlign: "center" }}>
+                    <img
+                      src={URL.createObjectURL(selectedFile)}
+                      alt="preview"
+                      style={{ maxWidth: "100%", maxHeight: "200px", borderRadius: "8px" }}
+                    />
+                  </div>
+                )}
+                {formErrors.foto && (
+                  <div style={{ color: "#E53935", fontSize: "0.78rem", marginTop: "4px" }}>{formErrors.foto}</div>
+                )}
+              </div>
+              {formErrors.nama_alat && (
+                <div style={{ color: "#E53935", fontSize: "0.78rem", marginTop: "4px", paddingLeft: "6px", fontWeight: "500" }}>
+                  {formErrors.nama_alat}
+                </div>
+              )}
             </div>
 
             {/* Total Unit */}
@@ -794,30 +1052,38 @@ export default function InventarisAlat() {
                   marginBottom: "6px",
                 }}
               >
-                Total Unit
+                Total Unit <span style={{ color: "#E53935" }}>*</span>
               </label>
               <input
                 type="number"
                 min="1"
-                required
                 placeholder="1"
                 value={formData.total_unit}
-                onChange={(e) => setFormData({ ...formData, total_unit: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, total_unit: e.target.value });
+                  if (formErrors.total_unit) setFormErrors({ ...formErrors, total_unit: "" });
+                }}
                 style={{
                   width: "100%",
                   borderRadius: "20px",
-                  border: "1px solid #D0D0D0",
+                  border: formErrors.total_unit ? "1.5px solid #E53935" : "1px solid #D0D0D0",
                   padding: "8px 16px",
                   fontSize: "0.88rem",
                   color: "#333",
                   outline: "none",
+                  backgroundColor: formErrors.total_unit ? "#FFF8F8" : "#fff",
                   boxShadow: "inset 0 1px 3px rgba(0,0,0,0.03)",
                 }}
               />
+              {formErrors.total_unit && (
+                <div style={{ color: "#E53935", fontSize: "0.78rem", marginTop: "4px", paddingLeft: "6px", fontWeight: "500" }}>
+                  {formErrors.total_unit}
+                </div>
+              )}
             </div>
 
             {/* Berbayar & Harga Sewa */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "14px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "16px", marginBottom: "14px" }}>
               <div>
                 <label
                   style={{
@@ -832,7 +1098,13 @@ export default function InventarisAlat() {
                 </label>
                 <select
                   value={formData.is_paid ? "1" : "0"}
-                  onChange={(e) => setFormData({ ...formData, is_paid: e.target.value === "1", harga_sewa: e.target.value === "0" ? 0 : formData.harga_sewa })}
+                  onChange={(e) => {
+                    const isPaid = e.target.value === "1";
+                    setFormData({ ...formData, is_paid: isPaid, harga_sewa: isPaid ? formData.harga_sewa : 0 });
+                    if (!isPaid && formErrors.harga_sewa) {
+                      setFormErrors({ ...formErrors, harga_sewa: "" });
+                    }
+                  }}
                   style={{
                     width: "100%",
                     borderRadius: "20px",
@@ -858,26 +1130,64 @@ export default function InventarisAlat() {
                     marginBottom: "6px",
                   }}
                 >
-                  Harga Sewa
+                  Harga Sewa {formData.is_paid && <span style={{ color: "#E53935" }}>*</span>}
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Rp"
-                  value={formData.harga_sewa}
-                  disabled={!formData.is_paid}
-                  onChange={(e) => setFormData({ ...formData, harga_sewa: parseInt(e.target.value) || 0 })}
+                <div
                   style={{
+                    display: "flex",
+                    alignItems: "center",
                     width: "100%",
                     borderRadius: "20px",
-                    border: "1px solid #D0D0D0",
-                    padding: "8px 16px",
-                    fontSize: "0.88rem",
-                    color: "#333",
-                    outline: "none",
-                    backgroundColor: formData.is_paid ? "#fff" : "#f5f5f5"
+                    border: formErrors.harga_sewa ? "1.5px solid #E53935" : "1px solid #D0D0D0",
+                    backgroundColor: formData.is_paid ? (formErrors.harga_sewa ? "#FFF8F8" : "#fff") : "#f5f5f5",
+                    overflow: "hidden",
+                    boxShadow: "inset 0 1px 3px rgba(0,0,0,0.03)",
                   }}
-                />
+                >
+                  <span
+                    style={{
+                      padding: "8px 14px",
+                      fontSize: "0.88rem",
+                      fontWeight: "700",
+                      color: formData.is_paid ? (formErrors.harga_sewa ? "#C62828" : "#543D31") : "#9E9E9E",
+                      backgroundColor: formData.is_paid ? (formErrors.harga_sewa ? "#FFEBEE" : "#F5ECE6") : "#EBEBEB",
+                      borderRight: formErrors.harga_sewa ? "1px solid #FFCDD2" : "1px solid #D0D0D0",
+                      userSelect: "none",
+                    }}
+                  >
+                    Rp
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={formData.harga_sewa ? Number(formData.harga_sewa).toLocaleString("id-ID") : (formData.is_paid ? "" : "0")}
+                    disabled={!formData.is_paid}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, "");
+                      setFormData({
+                        ...formData,
+                        harga_sewa: raw ? parseInt(raw, 10) : 0,
+                      });
+                      if (formErrors.harga_sewa) setFormErrors({ ...formErrors, harga_sewa: "" });
+                    }}
+                    style={{
+                      flex: 1,
+                      width: "100%",
+                      border: "none",
+                      padding: "8px 14px",
+                      fontSize: "0.88rem",
+                      color: "#333",
+                      outline: "none",
+                      backgroundColor: "transparent",
+                    }}
+                  />
+                </div>
+                {formErrors.harga_sewa && (
+                  <div style={{ color: "#E53935", fontSize: "0.78rem", marginTop: "4px", paddingLeft: "6px", fontWeight: "500" }}>
+                    {formErrors.harga_sewa}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -892,25 +1202,34 @@ export default function InventarisAlat() {
                   marginBottom: "6px",
                 }}
               >
-                Deskripsi
+                Deskripsi <span style={{ color: "#E53935" }}>*</span>
               </label>
               <textarea
                 rows={3}
                 placeholder="Digunakan untuk mengambil cairan dengan volume 20–200 µL."
                 value={formData.deskripsi}
-                onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, deskripsi: e.target.value });
+                  if (formErrors.deskripsi) setFormErrors({ ...formErrors, deskripsi: "" });
+                }}
                 style={{
                   width: "100%",
                   borderRadius: "20px",
-                  border: "1px solid #D0D0D0",
+                  border: formErrors.deskripsi ? "1.5px solid #E53935" : "1px solid #D0D0D0",
                   padding: "10px 16px",
                   fontSize: "0.85rem",
                   color: "#333",
                   outline: "none",
                   resize: "none",
+                  backgroundColor: formErrors.deskripsi ? "#FFF8F8" : "#fff",
                   boxShadow: "inset 0 1px 3px rgba(0,0,0,0.03)",
                 }}
               />
+              {formErrors.deskripsi && (
+                <div style={{ color: "#E53935", fontSize: "0.78rem", marginTop: "4px", paddingLeft: "6px", fontWeight: "500" }}>
+                  {formErrors.deskripsi}
+                </div>
+              )}
             </div>
 
             {/* Status Radio Group */}
@@ -924,7 +1243,7 @@ export default function InventarisAlat() {
                   marginBottom: "8px",
                 }}
               >
-                Status
+                Status <span style={{ color: "#E53935" }}>*</span>
               </label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "14px 16px", alignItems: "center" }}>
                 <label
@@ -943,7 +1262,10 @@ export default function InventarisAlat() {
                     name="status"
                     value="tersedia"
                     checked={formData.status === "tersedia"}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, status: e.target.value });
+                      if (formErrors.status) setFormErrors({ ...formErrors, status: "" });
+                    }}
                     style={{ accentColor: "#4A3933", cursor: "pointer" }}
                   />
                   Tersedia
@@ -964,7 +1286,10 @@ export default function InventarisAlat() {
                     name="status"
                     value="dipinjam"
                     checked={formData.status === "dipinjam"}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, status: e.target.value });
+                      if (formErrors.status) setFormErrors({ ...formErrors, status: "" });
+                    }}
                     style={{ accentColor: "#4A3933", cursor: "pointer" }}
                   />
                   Dipinjam
@@ -985,7 +1310,10 @@ export default function InventarisAlat() {
                     name="status"
                     value="perawatan"
                     checked={formData.status === "perawatan"}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, status: e.target.value });
+                      if (formErrors.status) setFormErrors({ ...formErrors, status: "" });
+                    }}
                     style={{ accentColor: "#4A3933", cursor: "pointer" }}
                   />
                   Dalam Perawatan
@@ -1006,12 +1334,20 @@ export default function InventarisAlat() {
                     name="status"
                     value="rusak"
                     checked={formData.status === "rusak"}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, status: e.target.value });
+                      if (formErrors.status) setFormErrors({ ...formErrors, status: "" });
+                    }}
                     style={{ accentColor: "#4A3933", cursor: "pointer" }}
                   />
                   Rusak
                 </label>
               </div>
+              {formErrors.status && (
+                <div style={{ color: "#E53935", fontSize: "0.78rem", marginTop: "4px", paddingLeft: "6px", fontWeight: "500" }}>
+                  {formErrors.status}
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}
@@ -1107,6 +1443,17 @@ export default function InventarisAlat() {
                 </div>
               </div>
 
+              {/* Photo Display */}
+              {selectedItem.foto_path && (
+                <div style={{ marginBottom: "20px", textAlign: "center" }}>
+                  <img
+                    src={`${process.env.REACT_APP_API_BASE_URL}/storage/${selectedItem.foto_path}`}
+                    alt="Foto Alat"
+                    style={{ maxWidth: "100%", maxHeight: "250px", borderRadius: "8px" }}
+                  />
+                </div>
+              )}
+
               {/* Row 2: Biaya Sewa, Total Unit, Stok Tersedia */}
               <div
                 style={{
@@ -1173,10 +1520,10 @@ export default function InventarisAlat() {
                         width: "18px",
                         height: "18px",
                         borderRadius: "50%",
-                        backgroundColor: 
-                          selectedItem.status === 'tersedia' ? "#66BB6A" : 
-                          selectedItem.status === 'dipinjam' ? "#42A5F5" : 
-                          selectedItem.status === 'perawatan' ? "#FFA726" : "#EF5350",
+                        backgroundColor:
+                          selectedItem.status === 'tersedia' ? "#66BB6A" :
+                            selectedItem.status === 'dipinjam' ? "#42A5F5" :
+                              selectedItem.status === 'perawatan' ? "#FFA726" : "#EF5350",
                         display: "inline-block",
                       }}
                     />
@@ -1385,6 +1732,13 @@ export default function InventarisAlat() {
           background: transparent !important;
           border-radius: 16px !important;
           box-shadow: none !important;
+        }
+        @media (max-width: 767px) {
+          .modal-custom-inventaris {
+            max-width: 100% !important;
+            width: 95% !important;
+            margin: 20px auto 1rem !important;
+          }
         }
       `}</style>
       <FooterSetelahLogin />

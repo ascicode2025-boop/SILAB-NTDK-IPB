@@ -3,6 +3,7 @@ import NavbarLogin from "./NavbarLoginKlien";
 import FooterSetelahLogin from "../FooterSetelahLogin";
 import { motion } from "framer-motion";
 import { Copy, Clock, CheckCircle, Wallet, Upload, Building } from "lucide-react";
+import { Modal } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { getApiBaseUrl, getStorageUrl } from "../../config/apiConfig";
 
@@ -24,7 +25,8 @@ const PembayaranKlien = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [pendingBookings, setPendingBookings] = useState([]); // --- FUNGSI FETCH UTAMA (PERBAIKAN GLITCH TOTAL) --- // Parameter isBackground = true mencegah loading screen muncul saat auto-refresh
+  const [pendingBookings, setPendingBookings] = useState([]);
+  const [showProofModal, setShowProofModal] = useState(false);
 
   const fetchInvoiceForBooking = async (useBookingId, isBackground = false) => {
     if (!useBookingId) return;
@@ -398,15 +400,14 @@ const PembayaranKlien = () => {
                         </div>
                       </div>
                     </div>
-                    <a
-                      href={`${apiHost}/storage/${detailBooking?.payment_proof_path || invoiceProofPath}`}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => setShowProofModal(true)}
                       className="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold"
                       style={{ fontSize: "12px" }}
                     >
                       Lihat Bukti
-                    </a>
+                    </button>
                   </div>
                 )}
 
@@ -502,6 +503,52 @@ const PembayaranKlien = () => {
         .hover-effect:hover { background-color: #F8F9FA; border-color: #DDD !important; }
         .z-1 { z-index: 1; }
       `}</style>
+      {/* ─── Modal Lihat Bukti Pembayaran ─── */}
+      <Modal
+        show={showProofModal}
+        onHide={() => setShowProofModal(false)}
+        centered
+        size="lg"
+        style={{ fontFamily: "Poppins, sans-serif" }}
+      >
+        <Modal.Header closeButton style={{ borderBottom: "1px solid #eee", backgroundColor: "#f8f9fa", padding: "16px 24px" }}>
+          <Modal.Title style={{ fontSize: "1.1rem", fontWeight: "700", color: "#3E2723" }}>
+            Bukti Pembayaran Sampel
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ padding: "24px", textAlign: "center", backgroundColor: "#fafafa" }}>
+          {detailBooking?.payment_proof_path || invoiceProofPath ? (
+            <div style={{ borderRadius: "12px", overflow: "hidden", border: "1px solid #E0E0E0", backgroundColor: "#fff", padding: "12px", display: "inline-block", maxWidth: "100%" }}>
+              <img
+                src={`${apiHost}/storage/${detailBooking?.payment_proof_path || invoiceProofPath}`}
+                alt="Bukti Pembayaran"
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "70vh",
+                  objectFit: "contain",
+                  borderRadius: "8px",
+                }}
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='140' viewBox='0 0 240 140'%3E%3Crect width='240' height='140' fill='%23f8f9fa'/%3E%3Ctext x='50%25' y='45%25' text-anchor='middle' dominant-baseline='middle' fill='%23777' font-family='sans-serif' font-size='14' font-weight='bold'%3EGambar Tidak Dapat Dimuat%3C/text%3E%3Ctext x='50%25' y='65%25' text-anchor='middle' dominant-baseline='middle' fill='%23999' font-family='sans-serif' font-size='11'%3EFile mungkin belum tersinkronisasi%3C/text%3E%3C/svg%3E";
+                }}
+              />
+            </div>
+          ) : (
+            <p className="text-muted">Tidak ada bukti yang dapat ditampilkan.</p>
+          )}
+        </Modal.Body>
+        <Modal.Footer style={{ borderTop: "none", backgroundColor: "#f8f9fa", padding: "12px 24px" }}>
+          <button
+            className="btn btn-secondary rounded-pill px-4"
+            style={{ fontWeight: "600", fontSize: "0.88rem" }}
+            onClick={() => setShowProofModal(false)}
+          >
+            Tutup
+          </button>
+        </Modal.Footer>
+      </Modal>
+
       <FooterSetelahLogin />
     </NavbarLogin>
   );

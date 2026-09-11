@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import "dayjs/locale/id";
 import NavbarLoginKoordinator from "./NavbarLoginKoordinator";
 import FooterSetelahLogin from "../FooterSetelahLogin";
+import { getStorageUrl } from "../../config/apiConfig";
 import "@fontsource/poppins/400.css";
 import "@fontsource/poppins/500.css";
 import "@fontsource/poppins/600.css";
@@ -182,17 +183,37 @@ export default function ManajemenPengajuanKoordinator() {
       });
       const data = response.data.data.map(rental => {
         let statusTab = "menunggu";
-        if (["disetujui", "aktif", "menunggu_pengembalian", "selesai"].includes(rental.status)) statusTab = "disetujui";
+        if (["disetujui", "siap_diambil", "aktif", "menunggu_pengembalian", "selesai"].includes(rental.status)) statusTab = "disetujui";
         if (rental.status === "ditolak") statusTab = "ditolak";
-        
+
         // Asumsi data alat digabung jadi 1 string, dummy logic untuk frontend
-        const namaAlat = rental.instruments && rental.instruments.length > 0 
-          ? rental.instruments.map(item => item.nama_alat).join(', ') 
+        const namaAlat = rental.instruments && rental.instruments.length > 0
+          ? rental.instruments.map(item => item.nama_alat).join(', ')
           : "Alat";
 
         const totalBiaya = rental.instruments && rental.instruments.length > 0
           ? rental.instruments.reduce((acc, inst) => acc + (inst.is_paid ? parseInt(inst.harga_sewa) || 0 : 0), 0)
           : 0;
+
+        let statusTeknisi = "Belum Mengambil Alat";
+        if (rental.status === "siap_diambil") {
+          statusTeknisi = "Alat Siap Diambil";
+        } else if (rental.status === "aktif") {
+          statusTeknisi = "Alat Sedang Dipinjam";
+        } else if (rental.status === "menunggu_pengembalian") {
+          statusTeknisi = "Menunggu Konfirmasi Pengembalian";
+        } else if (rental.status === "selesai") {
+          statusTeknisi = "Selesai Dikembalikan";
+        }
+
+        let statusPeminjaman = rental.status;
+        if (rental.status === "pending") statusPeminjaman = "Menunggu";
+        else if (rental.status === "disetujui") statusPeminjaman = "Disetujui";
+        else if (rental.status === "siap_diambil") statusPeminjaman = "Siap Diambil";
+        else if (rental.status === "aktif") statusPeminjaman = "Sedang Dipinjam";
+        else if (rental.status === "menunggu_pengembalian") statusPeminjaman = "Menunggu Pengembalian";
+        else if (rental.status === "ditolak") statusPeminjaman = "Ditolak";
+        else if (rental.status === "selesai") statusPeminjaman = "Selesai";
 
         return {
           id: rental.id,
@@ -206,24 +227,24 @@ export default function ManajemenPengajuanKoordinator() {
           tanggalPinjamRange: `${dayjs(rental.tanggal_peminjaman).format("DD MMMM YYYY")} - ${dayjs(rental.tanggal_pengembalian).format("DD MMMM YYYY")}`,
           keperluan: rental.kegiatan_penelitian || rental.tujuan_peminjaman,
           suratFile: rental.final_document_path ? rental.final_document_path.split('/').pop() : (rental.surat_pembimbing_path ? rental.surat_pembimbing_path.split('/').pop() : "-"),
-          suratUrl: rental.final_document_path ? `http://localhost:8000/storage/${rental.final_document_path}` : (rental.surat_pembimbing_path ? `http://localhost:8000/storage/${rental.surat_pembimbing_path}` : "#"),
+          suratUrl: rental.final_document_path ? (rental.final_document_path.startsWith('http') ? rental.final_document_path : `${getStorageUrl()}/storage/${rental.final_document_path}`) : (rental.surat_pembimbing_path ? (rental.surat_pembimbing_path.startsWith('http') ? rental.surat_pembimbing_path : `${getStorageUrl()}/storage/${rental.surat_pembimbing_path}`) : "#"),
           biaya: totalBiaya,
           statusTab: statusTab,
-          statusPeminjaman: rental.status === "menunggu_pengembalian" ? "Menunggu Pengembalian" : rental.status.charAt(0).toUpperCase() + rental.status.slice(1),
+          statusPeminjaman: statusPeminjaman,
           hasConflict: false, // Boleh tambahkan logic check conflict dari BE kalau perlu
           conflictNote: "",
           catatan: rental.catatan_koordinator || "",
-          approvalDate: null,
+          approvalDate: rental.updated_at ? dayjs(rental.updated_at).format("DD MMMM YYYY") : null,
           rejectionDate: null,
           rejectionReason: "",
-          statusTeknisi: "-",
+          statusTeknisi: statusTeknisi,
           statusPembayaran: rental.status_pembayaran === "belum_lunas" ? "belum_bayar" : rental.status_pembayaran,
           buktiPembayaran: rental.payment_proof_path ? rental.payment_proof_path.split('/').pop() : null,
-          buktiUrl: rental.payment_proof_path ? `http://localhost:8000/storage/${rental.payment_proof_path}` : "#",
+          buktiUrl: rental.payment_proof_path ? (rental.payment_proof_path.startsWith('http') ? rental.payment_proof_path : `${getStorageUrl()}/storage/${rental.payment_proof_path}`) : "#",
           tglKonfirmasiBayar: null,
           denda: rental.denda || 0,
           statusDenda: rental.status_denda || "tidak_ada",
-          buktiDendaUrl: rental.denda_payment_proof_path ? `http://localhost:8000/storage/${rental.denda_payment_proof_path}` : null,
+          buktiDendaUrl: rental.denda_payment_proof_path ? (rental.denda_payment_proof_path.startsWith('http') ? rental.denda_payment_proof_path : `${getStorageUrl()}/storage/${rental.denda_payment_proof_path}`) : null,
           buktiDenda: rental.denda_payment_proof_path ? rental.denda_payment_proof_path.split('/').pop() : null,
         };
       });
@@ -256,10 +277,25 @@ export default function ManajemenPengajuanKoordinator() {
 
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
+  // Modal Preview Bukti Pembayaran State
+  const [showProofModal, setShowProofModal] = useState(false);
+  const [proofModalUrl, setProofModalUrl] = useState("");
+  const [proofModalTitle, setProofModalTitle] = useState("Bukti Pembayaran");
+
+  const handleOpenProofModal = (url, title = "Bukti Pembayaran") => {
+    if (!url || url === "#") {
+      alert("Bukti pembayaran belum diunggah atau tidak ditemukan.");
+      return;
+    }
+    setProofModalUrl(url);
+    setProofModalTitle(title);
+    setShowProofModal(true);
+  };
+
   // Dual Scroll Controller: Synchronize inside pop up and outside background page scrolling
   useEffect(() => {
     const isAnyModalOpen =
-      showDetailModal || showConfirmRejectModal || showPaymentConfirmModal || showPaymentSuccessModal;
+      showDetailModal || showConfirmRejectModal || showPaymentConfirmModal || showPaymentSuccessModal || showProofModal;
 
     if (isAnyModalOpen) {
       document.body.style.overflow = "auto";
@@ -283,7 +319,7 @@ export default function ManajemenPengajuanKoordinator() {
     return () => {
       window.removeEventListener("wheel", handleWheelOutsideModal);
     };
-  }, [showDetailModal, showConfirmRejectModal, showPaymentConfirmModal, showPaymentSuccessModal]);
+  }, [showDetailModal, showConfirmRejectModal, showPaymentConfirmModal, showPaymentSuccessModal, showProofModal]);
 
   const countMenunggu = useMemo(() => loans.filter((l) => l.statusTab === "menunggu").length, [loans]);
   const countDisetujui = useMemo(() => loans.filter((l) => l.statusTab === "disetujui").length, [loans]);
@@ -342,7 +378,7 @@ export default function ManajemenPengajuanKoordinator() {
 
   const handleApprove = async () => {
     if (!selectedItem) return;
-    
+
     try {
       await axios.put(`http://localhost:8000/api/rentals/${selectedItem.id}/verify`, {
         status: "disetujui",
@@ -391,7 +427,7 @@ export default function ManajemenPengajuanKoordinator() {
 
   const handleExecutePaymentConfirm = async () => {
     if (!selectedItem) return;
-    
+
     try {
       await axios.put(`http://localhost:8000/api/rentals/${selectedItem.id}/verify-payment`, {}, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
@@ -414,7 +450,7 @@ export default function ManajemenPengajuanKoordinator() {
   const handleExecutePaymentReject = async () => {
     if (!selectedItem) return;
     const reason = paymentRejectReason.trim() || "Pembayaran ditolak/tidak valid";
-    
+
     try {
       await axios.put(`http://localhost:8000/api/rentals/${selectedItem.id}/reject-payment`, {
         alasan: reason
@@ -432,7 +468,7 @@ export default function ManajemenPengajuanKoordinator() {
 
   const handleExecuteDendaConfirm = async () => {
     if (!selectedItem) return;
-    
+
     try {
       await axios.put(`http://localhost:8000/api/rentals/${selectedItem.id}/verify-denda`, {}, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
@@ -929,25 +965,28 @@ export default function ManajemenPengajuanKoordinator() {
                     Bukti Bayar
                   </small>
                   {selectedItem.buktiPembayaran && selectedItem.buktiPembayaran !== null ? (
-                    <a
-                      href={selectedItem.buktiUrl}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => handleOpenProofModal(selectedItem.buktiUrl, "Bukti Pembayaran Sewa")}
                       style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
                         color: "#3B82F6",
                         fontSize: "0.82rem",
                         textDecoration: "underline",
-                        display: "flex",
+                        display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
                         gap: "4px",
+                        cursor: "pointer",
                       }}
                     >
                       <FaFilePdf size={12} color="#EF4444" />
                       <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "90px" }}>
                         {selectedItem.buktiPembayaran}
                       </span>
-                    </a>
+                    </button>
                   ) : (
                     <span style={{ fontSize: "0.82rem", color: "#9CA3AF" }}>-</span>
                   )}
@@ -1006,36 +1045,10 @@ export default function ManajemenPengajuanKoordinator() {
 
                   <div className="d-flex align-items-center gap-2 ms-auto">
                     <span className="fw-medium" style={{ fontSize: "0.82rem", color: "#1F2937" }}>
-                      {tempAdjustedDates ? `${tempAdjustedDates[0]} - ${tempAdjustedDates[1]}` : selectedItem.tanggalPinjamRange}
+                      {selectedItem.tanggalPinjamRange}
                     </span>
-
-                    <button
-                      type="button"
-                      onClick={() => setIsAdjustingSchedule(!isAdjustingSchedule)}
-                      style={{
-                        backgroundColor: "#FFFFFF",
-                        border: "1px solid #D1D5DB",
-                        borderRadius: "14px",
-                        padding: "2px 8px",
-                        fontSize: "0.72rem",
-                        color: "#4B5563",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Atur Jadwal ▾
-                    </button>
                   </div>
                 </div>
-
-                {isAdjustingSchedule && (
-                  <MiniCalendarPicker
-                    initialDate="2026-07-01"
-                    onSelectRange={(dates) => {
-                      setTempAdjustedDates(dates);
-                    }}
-                    onClose={() => setIsAdjustingSchedule(false)}
-                  />
-                )}
 
                 <div className="text-center mt-2">
                   {selectedItem.hasConflict && !tempAdjustedDates ? (
@@ -1426,22 +1439,29 @@ export default function ManajemenPengajuanKoordinator() {
                   <small className="text-muted d-block mb-1" style={{ fontSize: "0.75rem" }}>
                     Bukti Pembayaran
                   </small>
-                  <a
-                    href={selectedItem.buktiUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{
-                      color: "#3B82F6",
-                      fontSize: "0.82rem",
-                      textDecoration: "underline",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    <FaFilePdf size={13} color="#EF4444" />
-                    {selectedItem.buktiPembayaran || "Bukti_Transfer.pdf"}
-                  </a>
+                  {selectedItem.buktiUrl && selectedItem.buktiUrl !== "#" ? (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenProofModal(selectedItem.buktiUrl, "Bukti Pembayaran Sewa Alat")}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        color: "#3B82F6",
+                        fontSize: "0.82rem",
+                        textDecoration: "underline",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <FaFilePdf size={13} color="#EF4444" />
+                      {selectedItem.buktiPembayaran || "Bukti_Transfer.pdf"}
+                    </button>
+                  ) : (
+                    <span style={{ fontSize: "0.82rem", color: "#9CA3AF" }}>Belum ada bukti</span>
+                  )}
                 </div>
               )}
 
@@ -1456,7 +1476,7 @@ export default function ManajemenPengajuanKoordinator() {
                     <h4 className="fw-bold mb-2" style={{ color: "#DC2626", fontSize: "1.2rem" }}>
                       Rp {selectedItem.denda.toLocaleString("id-ID")}
                     </h4>
-                    
+
                     {selectedItem.statusDenda === "lunas" && (
                       <span
                         style={{
@@ -1511,22 +1531,25 @@ export default function ManajemenPengajuanKoordinator() {
                       <small className="text-muted d-block mb-1" style={{ fontSize: "0.75rem" }}>
                         Bukti Pembayaran Denda
                       </small>
-                      <a
-                        href={selectedItem.buktiDendaUrl}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button
+                        type="button"
+                        onClick={() => handleOpenProofModal(selectedItem.buktiDendaUrl, "Bukti Pembayaran Denda")}
                         style={{
+                          background: "none",
+                          border: "none",
+                          padding: 0,
                           color: "#3B82F6",
                           fontSize: "0.82rem",
                           textDecoration: "underline",
                           display: "inline-flex",
                           alignItems: "center",
                           gap: "6px",
+                          cursor: "pointer",
                         }}
                       >
                         <FaFilePdf size={13} color="#EF4444" />
                         {selectedItem.buktiDenda || "Bukti_Denda.pdf"}
-                      </a>
+                      </button>
                     </div>
                   )}
 
@@ -1808,6 +1831,77 @@ export default function ManajemenPengajuanKoordinator() {
                 className="clean-btn-danger"
               >
                 Tolak Pembayaran
+              </button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* ========================================================================= */}
+        {/* MODAL PREVIEW BUKTI PEMBAYARAN                                            */}
+        {/* ========================================================================= */}
+        <Modal
+          show={showProofModal}
+          onHide={() => setShowProofModal(false)}
+          centered
+          size="lg"
+          style={{ zIndex: 1080, fontFamily: "Poppins, sans-serif" }}
+        >
+          <div className="clean-rounded-modal-content" style={{ maxWidth: "600px", margin: "auto" }}>
+            <div className="clean-modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px" }}>
+              <span style={{ margin: "0 auto", paddingLeft: "20px", fontWeight: "600" }}>{proofModalTitle}</span>
+              <button
+                type="button"
+                onClick={() => setShowProofModal(false)}
+                className="clean-modal-close-btn"
+                style={{ position: "static" }}
+              >
+                <FaTimes size={16} />
+              </button>
+            </div>
+            <div className="clean-modal-body" style={{ textAlign: "center", padding: "20px", backgroundColor: "#FAFAFA" }}>
+              {proofModalUrl && proofModalUrl !== "#" ? (
+                <div style={{ borderRadius: "12px", overflow: "hidden", border: "1px solid #E0E0E0", backgroundColor: "#FFF", padding: "12px", display: "inline-block", maxWidth: "100%" }}>
+                  <img
+                    src={proofModalUrl}
+                    alt={proofModalTitle}
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "68vh",
+                      objectFit: "contain",
+                      borderRadius: "8px",
+                      display: "block",
+                      margin: "0 auto",
+                    }}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='160' viewBox='0 0 280 160'%3E%3Crect width='280' height='160' fill='%23f8f9fa'/%3E%3Ctext x='50%25' y='45%25' text-anchor='middle' dominant-baseline='middle' fill='%23777' font-family='sans-serif' font-size='14' font-weight='bold'%3EGambar Tidak Dapat Dimuat%3C/text%3E%3Ctext x='50%25' y='65%25' text-anchor='middle' dominant-baseline='middle' fill='%23999' font-family='sans-serif' font-size='11'%3EFile bukti mungkin berformat PDF atau belum tersedia%3C/text%3E%3C/svg%3E";
+                    }}
+                  />
+                  {proofModalUrl.toLowerCase().endsWith(".pdf") && (
+                    <div className="mt-3">
+                      <a
+                        href={proofModalUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-sm btn-outline-primary"
+                        style={{ borderRadius: "20px", fontSize: "0.8rem", padding: "4px 16px" }}
+                      >
+                        Buka Dokumen PDF di Tab Baru
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-muted py-4">Tidak ada bukti yang dapat ditampilkan.</div>
+              )}
+            </div>
+            <div style={{ padding: "12px 20px", backgroundColor: "#F9FAFB", borderTop: "1px solid #F3F4F6", textAlign: "right", borderBottomLeftRadius: "28px", borderBottomRightRadius: "28px" }}>
+              <button
+                type="button"
+                onClick={() => setShowProofModal(false)}
+                className="clean-btn-secondary"
+              >
+                Tutup
               </button>
             </div>
           </div>

@@ -7,13 +7,14 @@ import "@fontsource/poppins/700.css";
 import "@fontsource/poppins/800.css";
 
 import NavbarLoginTeknisi from "./NavbarLoginTeknisi";
+import PersiapkanAlat from "../../components/PengelolaanPeminjaman/PersiapkanAlat";
 import SiapDiambil from "../../components/PengelolaanPeminjaman/SiapDiambil";
 import SedangDipinjam from "../../components/PengelolaanPeminjaman/SedangDipinjam";
 import Pengembalian from "../../components/PengelolaanPeminjaman/Pengembalian";
-import { getRentals, handoverRental, returnRental } from "../../services/InstrumentRentalService";
+import { getRentals, handoverRental, returnRental, readyPickupRental } from "../../services/InstrumentRentalService";
 
 export default function PengelolaanPeminjamanAlat() {
-  const [activeTab, setActiveTab] = useState("siapDiambil");
+  const [activeTab, setActiveTab] = useState("persiapkanAlat");
   const [rentals, setRentals] = useState([]);
 
   const fetchRentals = async () => {
@@ -46,9 +47,17 @@ export default function PengelolaanPeminjamanAlat() {
     fetchRentals();
   }, []);
 
-  const siapDiambilRentals = rentals.filter((r) => r.status === "disetujui");
+  const persiapkanAlatRentals = rentals.filter((r) => r.status === "disetujui");
+  const siapDiambilRentals = rentals.filter((r) => r.status === "siap_diambil");
   const sedangDipinjamRentals = rentals.filter((r) => r.status === "aktif");
   const pengembalianRentals = rentals.filter((r) => r.status === "menunggu_pengembalian");
+
+  const tabs = [
+    { key: "persiapkanAlat", label: "Persiapkan Alat", count: persiapkanAlatRentals.length },
+    { key: "siapDiambil", label: "Siap Diambil", count: siapDiambilRentals.length },
+    { key: "sedangDipinjam", label: "Sedang Dipinjam", count: sedangDipinjamRentals.length },
+    { key: "pengembalian", label: "Pengembalian", count: pengembalianRentals.length },
+  ];
 
   return (
     <NavbarLoginTeknisi>
@@ -71,92 +80,57 @@ export default function PengelolaanPeminjamanAlat() {
               flexWrap: "wrap",
             }}
           >
-            {/* Tab 1: Siap Diambil */}
-            <button
-              type="button"
-              onClick={() => setActiveTab("siapDiambil")}
-              style={{
-                backgroundColor: activeTab === "siapDiambil" ? "#9E8880" : "#ffffff",
-                color: activeTab === "siapDiambil" ? "#ffffff" : "#424242",
-                border: activeTab === "siapDiambil" ? "none" : "1.5px solid #D0D0D0",
-                borderRadius: "30px",
-                padding: "8px 24px",
-                fontSize: "0.92rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                boxShadow:
-                  activeTab === "siapDiambil"
-                    ? "0 4px 14px rgba(158,136,128,0.4)"
-                    : "0 2px 6px rgba(0,0,0,0.04)",
-                transition: "all 0.2s ease-in-out",
-              }}
-            >
-              Siap Diambil ({siapDiambilRentals.length})
-            </button>
-
-            {/* Tab 2: Sedang Dipinjam */}
-            <button
-              type="button"
-              onClick={() => setActiveTab("sedangDipinjam")}
-              style={{
-                backgroundColor: activeTab === "sedangDipinjam" ? "#9E8880" : "#ffffff",
-                color: activeTab === "sedangDipinjam" ? "#ffffff" : "#424242",
-                border: activeTab === "sedangDipinjam" ? "none" : "1.5px solid #D0D0D0",
-                borderRadius: "30px",
-                padding: "8px 24px",
-                fontSize: "0.92rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                boxShadow:
-                  activeTab === "sedangDipinjam"
-                    ? "0 4px 14px rgba(158,136,128,0.4)"
-                    : "0 2px 6px rgba(0,0,0,0.04)",
-                transition: "all 0.2s ease-in-out",
-              }}
-            >
-              Sedang Dipinjam ({sedangDipinjamRentals.length})
-            </button>
-
-            {/* Tab 3: Pengembalian */}
-            <button
-              type="button"
-              onClick={() => setActiveTab("pengembalian")}
-              style={{
-                backgroundColor: activeTab === "pengembalian" ? "#9E8880" : "#ffffff",
-                color: activeTab === "pengembalian" ? "#ffffff" : "#424242",
-                border: activeTab === "pengembalian" ? "none" : "1.5px solid #D0D0D0",
-                borderRadius: "30px",
-                padding: "8px 24px",
-                fontSize: "0.92rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                boxShadow:
-                  activeTab === "pengembalian"
-                    ? "0 4px 14px rgba(158,136,128,0.4)"
-                    : "0 2px 6px rgba(0,0,0,0.04)",
-                transition: "all 0.2s ease-in-out",
-              }}
-            >
-              Pengembalian ({pengembalianRentals.length})
-            </button>
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  style={{
+                    backgroundColor: isActive ? "#9E8880" : "#ffffff",
+                    color: isActive ? "#ffffff" : "#424242",
+                    border: isActive ? "none" : "1.5px solid #D0D0D0",
+                    borderRadius: "30px",
+                    padding: "8px 24px",
+                    fontSize: "0.92rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    boxShadow: isActive
+                      ? "0 4px 14px rgba(158,136,128,0.4)"
+                      : "0 2px 6px rgba(0,0,0,0.04)",
+                    transition: "all 0.2s ease-in-out",
+                  }}
+                >
+                  {tab.label} ({tab.count})
+                </button>
+              );
+            })}
           </div>
 
           {/* Dynamic Component Content */}
+          {activeTab === "persiapkanAlat" && (
+            <PersiapkanAlat
+              rentals={persiapkanAlatRentals}
+              onRefresh={fetchRentals}
+              onReadyPickup={readyPickupRental}
+            />
+          )}
           {activeTab === "siapDiambil" && (
-            <SiapDiambil 
-              rentals={siapDiambilRentals} 
-              onRefresh={fetchRentals} 
-              onHandover={handoverRental} 
+            <SiapDiambil
+              rentals={siapDiambilRentals}
+              onRefresh={fetchRentals}
+              onHandover={handoverRental}
             />
           )}
           {activeTab === "sedangDipinjam" && (
             <SedangDipinjam rentals={sedangDipinjamRentals} />
           )}
           {activeTab === "pengembalian" && (
-            <Pengembalian 
-              rentals={pengembalianRentals} 
-              onRefresh={fetchRentals} 
-              onReturn={returnRental} 
+            <Pengembalian
+              rentals={pengembalianRentals}
+              onRefresh={fetchRentals}
+              onReturn={returnRental}
             />
           )}
         </Container>
@@ -164,3 +138,4 @@ export default function PengelolaanPeminjamanAlat() {
     </NavbarLoginTeknisi>
   );
 }
+

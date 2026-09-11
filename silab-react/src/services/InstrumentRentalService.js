@@ -30,6 +30,20 @@ export const handoverRental = async (id, data) => {
   }
 };
 
+export const readyPickupRental = async (id) => {
+  try {
+    const response = await axios.put(
+      `${API_URL}/rentals/${id}/ready-pickup`,
+      {},
+      { headers: getAuthHeader() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Gagal menandai siap diambil:", error);
+    throw error?.response?.data || new Error("Gagal menandai siap diambil");
+  }
+};
+
 export const returnRental = async (id, items, denda = 0) => {
   try {
     const response = await axios.put(

@@ -1,4 +1,5 @@
 import React from "react";
+import { getStorageUrl } from "../../config/apiConfig";
 import { Col, Card } from "react-bootstrap";
 
 // Detailed SVG Vector illustration banner for laboratory equipment card & modal header
@@ -170,6 +171,9 @@ export const INITIAL_TOOLS = [
 ];
 
 const DaftarAlatComponent = ({ tool, onClick }) => {
+  const storageUrl = getStorageUrl();
+  const [imgError, setImgError] = React.useState(false);
+
   return (
     <Col xs={12} sm={6} lg={4} key={tool.id}>
       <Card
@@ -179,6 +183,7 @@ const DaftarAlatComponent = ({ tool, onClick }) => {
           backgroundColor: "#ffffff",
           transition: "transform 0.25s ease, box-shadow 0.25s ease",
           cursor: "pointer",
+          overflow: "hidden",
         }}
         onClick={() => onClick && onClick(tool)}
         onMouseEnter={(e) => {
@@ -190,12 +195,40 @@ const DaftarAlatComponent = ({ tool, onClick }) => {
           e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.05)";
         }}
       >
-        <LabBannerSVG />
+        {tool.foto_path && !imgError ? (
+          <div
+            style={{
+              width: "100%",
+              height: "175px",
+              backgroundColor: "#FFFFFF",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              padding: "16px",
+              borderBottom: "1px solid #F1F5F9",
+            }}
+          >
+            <img
+              src={`${storageUrl}/storage/${tool.foto_path}`}
+              alt={tool.nama_alat || "Foto Alat"}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "100%",
+                objectFit: "contain",
+              }}
+              onError={() => setImgError(true)}
+            />
+          </div>
+        ) : (
+          <LabBannerSVG height="175px" />
+        )}
+
         <Card.Body className="p-4 d-flex flex-column align-items-center text-center">
           <Card.Title
             className="fw-bold mb-2 text-dark"
             style={{
-              fontSize: "1.2rem",
+              fontSize: "1.15rem",
               fontFamily: "Poppins, sans-serif",
               color: "#2D3436",
             }}
@@ -203,22 +236,26 @@ const DaftarAlatComponent = ({ tool, onClick }) => {
             {tool.nama_alat}
           </Card.Title>
           <Card.Text
-            className="text-muted mb-0"
+            className="text-muted mb-3 flex-grow-1"
             style={{
-              fontSize: "0.9rem",
+              fontSize: "0.85rem",
               lineHeight: "1.4",
             }}
           >
-            {tool.deskripsi ? (tool.deskripsi.length > 50 ? tool.deskripsi.substring(0, 50) + "..." : tool.deskripsi) : ""}
+            {tool.deskripsi ? (tool.deskripsi.length > 50 ? tool.deskripsi.substring(0, 50) + "..." : tool.deskripsi) : "-"}
           </Card.Text>
-          <div className="mt-2">
-            {tool.is_paid ? (
-              <span className="badge bg-danger">Berbayar</span>
-            ) : (
-              <span className="badge bg-success">Gratis</span>
-            )}
-            <div className="mt-2 text-muted" style={{ fontSize: "0.85rem" }}>
-              Total Unit: <strong>{tool.total_unit ?? 1}</strong> | Stok Tersedia (Hari Ini): <strong>{tool.stok_tersedia ?? (tool.total_unit ?? 1)}</strong>
+          <div className="w-100 mt-auto pt-2 border-top">
+            <div className="mb-2">
+              {tool.is_paid ? (
+                <span className="badge bg-danger">Berbayar</span>
+              ) : (
+                <span className="badge bg-success">Gratis</span>
+              )}
+            </div>
+            <div className="d-flex justify-content-around align-items-center text-muted" style={{ fontSize: "0.82rem" }}>
+              <span>Total Unit: <strong>{tool.total_unit ?? 1}</strong></span>
+              <span style={{ color: "#CBD5E1" }}>|</span>
+              <span>Status: <strong className={tool.status === "tersedia" ? "text-success" : "text-danger"}>{tool.status === "tersedia" ? "Tersedia" : tool.status}</strong></span>
             </div>
           </div>
         </Card.Body>

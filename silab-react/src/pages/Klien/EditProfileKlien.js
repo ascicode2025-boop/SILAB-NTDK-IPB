@@ -363,11 +363,6 @@ function EditProfileKlien() {
                   </label>
                   <input type="text" className="form-control" name="nomor_telpon" value={formData.nomor_telpon} onChange={handleChange} placeholder="Contoh: 08123456789" required />
                 </div>
-                {/* ROLE (Read Only) */}
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Role</label>
-                  <input type="text" className="form-control bg-light" name="role" value={formData.role ? formData.role.toUpperCase() : ""} disabled />
-                </div>
                 {/* BIO (Opsional - Tidak ada tanda bintang) */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold">Bio</label>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Container, Card, Badge, Spinner, Nav, Modal, Button } from "react-bootstrap";
-import { FaChevronRight, FaTools, FaTrash } from "react-icons/fa";
+import { FaChevronRight, FaTools, FaTrash, FaShoppingCart, FaArrowRight } from "react-icons/fa";
 import { useHistory } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "@fontsource/poppins/400.css";
@@ -17,10 +17,15 @@ const DaftarPengajuanAlat = () => {
   const [activeTab, setActiveTab] = useState("semua"); // semua, aktif, riwayat
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedDeleteId, setSelectedDeleteId] = useState(null);
+  const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
     document.title = "SILAB-NTDK - Daftar Pengajuan Peminjaman Alat";
     fetchData();
+    try {
+      const savedCart = JSON.parse(localStorage.getItem("equipment_cart") || "[]");
+      setCartCount(Array.isArray(savedCart) ? savedCart.length : 0);
+    } catch (e) {}
   }, []);
 
   const fetchData = async () => {
@@ -64,6 +69,12 @@ const DaftarPengajuanAlat = () => {
         return { label: "Menunggu Verifikasi", bg: "#A6867B" };
       case "disetujui":
         return { label: "Disetujui", bg: "#2E7D32" };
+      case "siap_diambil":
+        return { label: "Siap Diambil", bg: "#2E7D32" };
+      case "aktif":
+        return { label: "Sedang Dipinjam", bg: "#2E7D32" };
+      case "menunggu_pengembalian":
+        return { label: "Menunggu Pengembalian", bg: "#A6867B" };
       case "ditolak":
         return { label: "Ditolak", bg: "#C62828" };
       case "selesai":
@@ -72,6 +83,10 @@ const DaftarPengajuanAlat = () => {
         return { label: status || "Diproses", bg: "#A6867B" };
     }
   };
+
+  const countSemua = rentals.length;
+  const countAktif = rentals.filter((r) => !["selesai", "ditolak", "dibatalkan"].includes(r.status)).length;
+  const countRiwayat = rentals.filter((r) => ["selesai", "ditolak", "dibatalkan"].includes(r.status)).length;
 
   return (
     <NavbarLoginKlien>
@@ -120,17 +135,102 @@ const DaftarPengajuanAlat = () => {
             </p>
           </div>
 
-          <Nav variant="pills" className="mb-4" activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
-            <Nav.Item>
-              <Nav.Link eventKey="semua" style={{ borderRadius: "20px" }}>Semua</Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="aktif" style={{ borderRadius: "20px" }}>Aktif</Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="riwayat" style={{ borderRadius: "20px" }}>Riwayat (Selesai/Ditolak/Batal)</Nav.Link>
-            </Nav.Item>
-          </Nav>
+          {/* Cart Reminder Banner */}
+          {cartCount > 0 && (
+            <div
+              className="p-3 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3"
+              style={{
+                backgroundColor: "#543D31",
+                color: "#ffffff",
+                borderRadius: "18px",
+                boxShadow: "0 6px 18px rgba(84, 61, 49, 0.25)",
+              }}
+            >
+              <div className="d-flex align-items-center gap-3">
+                <div
+                  style={{
+                    backgroundColor: "rgba(255,255,255,0.15)",
+                    width: "42px",
+                    height: "42px",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "1.1rem",
+                  }}
+                >
+                  <FaShoppingCart />
+                </div>
+                <div>
+                  <div className="fw-bold" style={{ fontSize: "0.95rem" }}>
+                    Ada {cartCount} jenis alat di keranjang peminjaman Anda
+                  </div>
+                  <div style={{ fontSize: "0.82rem", color: "#F5EBE6" }}>
+                    Lanjutkan formulir pengajuan peminjaman untuk menyelesaikan peminjaman alat.
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                style={{
+                  backgroundColor: "#A6867B",
+                  borderColor: "#A6867B",
+                  color: "#FFFFFF",
+                  borderRadius: "24px",
+                  padding: "8px 20px",
+                  fontWeight: "600",
+                  fontSize: "0.85rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+                onClick={() => history.push("/dashboard/pengajuanPeminjaman")}
+              >
+                Lanjutkan Pengajuan <FaArrowRight size={12} />
+              </Button>
+            </div>
+          )}
+
+          {/* Filter Tabs */}
+          <div className="d-flex flex-wrap gap-2 mb-4">
+            {[
+              { key: "semua", label: `Semua (${countSemua})` },
+              { key: "aktif", label: `Aktif (${countAktif})` },
+              { key: "riwayat", label: `Riwayat (${countRiwayat})`, title: "Selesai, Ditolak, atau Batal" },
+            ].map((tab) => {
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  title={tab.title}
+                  onClick={() => setActiveTab(tab.key)}
+                  style={{
+                    backgroundColor: isActive ? "#8D6E63" : "#FFFFFF",
+                    color: isActive ? "#FFFFFF" : "#424242",
+                    border: isActive ? "none" : "1.5px solid #D0D0D0",
+                    borderRadius: "30px",
+                    padding: "8px 24px",
+                    fontSize: "0.9rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    boxShadow: isActive
+                      ? "0 4px 14px rgba(141, 110, 99, 0.35)"
+                      : "0 2px 6px rgba(0, 0, 0, 0.04)",
+                    transition: "all 0.2s ease-in-out",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) e.currentTarget.style.backgroundColor = "#F5F0EE";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) e.currentTarget.style.backgroundColor = "#FFFFFF";
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
 
           {/* List of Submission Cards */}
           <div className="d-flex flex-column gap-3 mb-5">

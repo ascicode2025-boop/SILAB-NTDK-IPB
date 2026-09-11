@@ -34,6 +34,23 @@ const DetailPengajuanAlat = () => {
   const [departemenBebasLab, setDepartemenBebasLab] = useState("");
   const [loadingBebasLab, setLoadingBebasLab] = useState(false);
 
+  // State untuk Modal Konfirmasi Pembatalan Peminjaman
+  const [showModalCancel, setShowModalCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  // State untuk Modal Lihat Bukti Pembayaran
+  const [showProofModal, setShowProofModal] = useState(false);
+  const [proofModalUrl, setProofModalUrl] = useState("");
+  const [proofModalTitle, setProofModalTitle] = useState("Bukti Pembayaran");
+
+  const handleOpenProofModal = (path, title = "Bukti Pembayaran") => {
+    if (!path) return;
+    const fullUrl = `${getStorageUrl()}/storage/${path}`;
+    setProofModalUrl(fullUrl);
+    setProofModalTitle(title);
+    setShowProofModal(true);
+  };
+
   useEffect(() => {
     document.title = "SILAB-NTDK - Detail Progress Pengajuan Alat";
     fetchRentalDetail();
@@ -88,17 +105,16 @@ const DetailPengajuanAlat = () => {
   };
 
   const handleCancelRental = async () => {
-    if (!window.confirm("Apakah Anda yakin ingin membatalkan peminjaman alat ini?")) {
-      return;
-    }
     try {
-      setLoading(true);
+      setCancelling(true);
       await cancelRental(id);
+      setShowModalCancel(false);
       alert("Peminjaman alat berhasil dibatalkan.");
       fetchRentalDetail();
     } catch (error) {
       alert("Gagal membatalkan peminjaman: " + (error.message || ""));
     } finally {
+      setCancelling(false);
       setLoading(false);
     }
   };
@@ -178,11 +194,13 @@ const DetailPengajuanAlat = () => {
       case "pending":
         return 1;
       case "disetujui_koordinator":
-        return 2;
       case "disetujui":
+        return 2;
+      case "siap_diambil":
         return 3;
       case "aktif":
         return 4;
+      case "menunggu_pengembalian":
       case "selesai":
         return 5;
       default:
@@ -199,8 +217,10 @@ const DetailPengajuanAlat = () => {
         statusPeminjaman:
           rental.status === "pending"
             ? "Menunggu Verifikasi"
-            : rental.status === "disetujui"
-            ? "Disetujui Kepala Lab"
+            : rental.status === "disetujui_koordinator" || rental.status === "disetujui"
+            ? "Disetujui Koordinator"
+            : rental.status === "siap_diambil"
+            ? "Siap Diambil"
             : rental.status === "aktif"
             ? "Alat Sedang Dipinjam"
             : rental.status === "menunggu_pengembalian"
@@ -259,10 +279,10 @@ const DetailPengajuanAlat = () => {
       ),
     },
     {
-      title: "Disetujui Kepala\nLab",
+      title: "Siap\nDiambil",
       icon: (
         <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-          <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
+          <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3-9H9V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2z" />
         </svg>
       ),
     },
@@ -488,7 +508,7 @@ const DetailPengajuanAlat = () => {
               {rental?.status === "pending" && (
                 <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "16px" }}>
                   <button
-                    onClick={handleCancelRental}
+                    onClick={() => setShowModalCancel(true)}
                     style={{
                       backgroundColor: "#ef4444",
                       color: "#fff",
@@ -565,13 +585,13 @@ const DetailPengajuanAlat = () => {
 
               {/* Stepper container */}
               <div style={{ position: "relative", padding: "8px 0 0" }}>
-                {/* Background Line (full width, gray) */}
+                {/* Background Line (between first and last circle centers) */}
                 <div
                   style={{
                     position: "absolute",
                     top: `${CIRCLE_SIZE / 2 + 8}px`,
-                    left: `${CIRCLE_SIZE / 2}px`,
-                    right: `${CIRCLE_SIZE / 2}px`,
+                    left: `calc(${100 / (steps.length * 2)}% )`,
+                    right: `calc(${100 / (steps.length * 2)}% )`,
                     height: "5px",
                     backgroundColor: LINE_COLOR_INACTIVE,
                     zIndex: 0,
@@ -583,8 +603,8 @@ const DetailPengajuanAlat = () => {
                   style={{
                     position: "absolute",
                     top: `${CIRCLE_SIZE / 2 + 8}px`,
-                    left: `${CIRCLE_SIZE / 2}px`,
-                    width: `${((dataDetail.activeStep - 1) / (steps.length - 1)) * (100 - (CIRCLE_SIZE / 300) * 100)}%`,
+                    left: `calc(${100 / (steps.length * 2)}% )`,
+                    width: `calc(${((dataDetail.activeStep - 1) / (steps.length - 1)) * 100}% * ${(steps.length - 1) / steps.length})`,
                     height: "5px",
                     backgroundColor: LINE_COLOR_ACTIVE,
                     zIndex: 0,
@@ -667,14 +687,14 @@ const DetailPengajuanAlat = () => {
                     <div style={styles.labelSmall}>Status Pembayaran</div>
                     <span
                       style={
-                        rental.status_pembayaran === "lunas" || ["disetujui", "aktif", "menunggu_pengembalian", "selesai", "menunggu_pembayaran_denda"].includes(rental.status)
+                        rental.status_pembayaran === "lunas" || ["disetujui", "siap_diambil", "aktif", "menunggu_pengembalian", "selesai", "menunggu_pembayaran_denda"].includes(rental.status)
                           ? styles.greenBadge
                           : rental.status_pembayaran === "menunggu"
                           ? { ...styles.greenBadge, backgroundColor: "#FFF3E0", color: "#E65100" }
                           : styles.redBadge
                       }
                     >
-                      {rental.status_pembayaran === "lunas" || ["disetujui", "aktif", "menunggu_pengembalian", "selesai", "menunggu_pembayaran_denda"].includes(rental.status)
+                      {rental.status_pembayaran === "lunas" || ["disetujui", "siap_diambil", "aktif", "menunggu_pengembalian", "selesai", "menunggu_pembayaran_denda"].includes(rental.status)
                         ? "Disetujui"
                         : rental.status_pembayaran === "menunggu"
                         ? "Menunggu Konfirmasi"
@@ -689,14 +709,25 @@ const DetailPengajuanAlat = () => {
 
                   {rental.payment_proof_path && (
                     <div style={{ flex: 1, minWidth: "150px" }}>
-                      <a
-                        href={`${getStorageUrl()}/storage/${rental.payment_proof_path}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ fontSize: "0.88rem", fontWeight: 600, color: "#2E7D32", textDecoration: "underline" }}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenProofModal(rental.payment_proof_path, "Bukti Pembayaran Alat")}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          padding: 0,
+                          fontSize: "0.88rem",
+                          fontWeight: 600,
+                          color: "#2E7D32",
+                          textDecoration: "underline",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
                       >
                         Lihat Bukti Terunggah
-                      </a>
+                      </button>
                     </div>
                   )}
 
@@ -759,14 +790,25 @@ const DetailPengajuanAlat = () => {
 
                   {rental.denda_payment_proof_path && (
                     <div style={{ flex: 1, minWidth: "150px" }}>
-                      <a
-                        href={`${getStorageUrl()}/storage/${rental.denda_payment_proof_path}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ fontSize: "0.88rem", fontWeight: 600, color: "#2E7D32", textDecoration: "underline" }}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenProofModal(rental.denda_payment_proof_path, "Bukti Pembayaran Denda")}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          padding: 0,
+                          fontSize: "0.88rem",
+                          fontWeight: 600,
+                          color: "#2E7D32",
+                          textDecoration: "underline",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
                       >
                         Lihat Bukti Terunggah
-                      </a>
+                      </button>
                     </div>
                   )}
 
@@ -1365,6 +1407,104 @@ const DetailPengajuanAlat = () => {
             </div>
           </div>
         </div>
+      </Modal>
+
+      {/* ─── Modal Konfirmasi Pembatalan Peminjaman ─── */}
+      <Modal
+        show={showModalCancel}
+        onHide={() => !cancelling && setShowModalCancel(false)}
+        centered
+        style={{ fontFamily: "Poppins, sans-serif" }}
+      >
+        <Modal.Header closeButton={!cancelling} style={{ borderBottom: "1px solid #eee", backgroundColor: "#f8f9fa", padding: "16px 24px" }}>
+          <Modal.Title style={{ fontSize: "1.1rem", fontWeight: "700", color: "#3E2723" }}>
+            Batalkan Peminjaman
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ padding: "24px", textAlign: "center" }}>
+          <div className="mb-3">
+            <div
+              className="mx-auto bg-danger bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center"
+              style={{ width: "80px", height: "80px" }}
+            >
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="#dc3545">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+              </svg>
+            </div>
+          </div>
+          <h5 className="fw-bold mb-2">Apakah Anda yakin?</h5>
+          <p className="text-muted mb-0" style={{ fontSize: "0.92rem" }}>
+            Apakah Anda yakin ingin membatalkan peminjaman alat{" "}? Tindakan ini tidak dapat dibatalkan.
+          </p>
+        </Modal.Body>
+        <Modal.Footer style={{ borderTop: "none", backgroundColor: "#f8f9fa", padding: "16px 24px", justifyContent: "center", gap: "12px" }}>
+          <button
+            className="btn btn-light rounded-pill px-4"
+            onClick={() => setShowModalCancel(false)}
+            disabled={cancelling}
+            style={{ fontWeight: "600", fontSize: "0.88rem", minWidth: "120px" }}
+          >
+            Tidak
+          </button>
+          <button
+            className="btn btn-danger rounded-pill px-4 text-white"
+            onClick={handleCancelRental}
+            disabled={cancelling}
+            style={{ fontWeight: "600", fontSize: "0.88rem", minWidth: "140px", border: "none" }}
+          >
+            {cancelling ? (
+              <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+            ) : (
+              "Ya, Batalkan"
+            )}
+          </button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* ─── Modal Lihat Bukti Pembayaran ─── */}
+      <Modal
+        show={showProofModal}
+        onHide={() => setShowProofModal(false)}
+        centered
+        size="lg"
+        style={{ fontFamily: "Poppins, sans-serif" }}
+      >
+        <Modal.Header closeButton style={{ borderBottom: "1px solid #eee", backgroundColor: "#f8f9fa", padding: "16px 24px" }}>
+          <Modal.Title style={{ fontSize: "1.1rem", fontWeight: "700", color: "#3E2723" }}>
+            {proofModalTitle}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ padding: "24px", textAlign: "center", backgroundColor: "#fafafa" }}>
+          {proofModalUrl ? (
+            <div style={{ borderRadius: "12px", overflow: "hidden", border: "1px solid #E0E0E0", backgroundColor: "#fff", padding: "12px", display: "inline-block", maxWidth: "100%" }}>
+              <img
+                src={proofModalUrl}
+                alt={proofModalTitle}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "70vh",
+                  objectFit: "contain",
+                  borderRadius: "8px",
+                }}
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='140' viewBox='0 0 240 140'%3E%3Crect width='240' height='140' fill='%23f8f9fa'/%3E%3Ctext x='50%25' y='45%25' text-anchor='middle' dominant-baseline='middle' fill='%23777' font-family='sans-serif' font-size='14' font-weight='bold'%3EGambar Tidak Dapat Dimuat%3C/text%3E%3Ctext x='50%25' y='65%25' text-anchor='middle' dominant-baseline='middle' fill='%23999' font-family='sans-serif' font-size='11'%3EFile mungkin belum tersinkronisasi%3C/text%3E%3C/svg%3E";
+                }}
+              />
+            </div>
+          ) : (
+            <p className="text-muted">Tidak ada bukti yang dapat ditampilkan.</p>
+          )}
+        </Modal.Body>
+        <Modal.Footer style={{ borderTop: "none", backgroundColor: "#f8f9fa", padding: "12px 24px" }}>
+          <button
+            className="btn btn-secondary rounded-pill px-4"
+            style={{ fontWeight: "600", fontSize: "0.88rem" }}
+            onClick={() => setShowProofModal(false)}
+          >
+            Tutup
+          </button>
+        </Modal.Footer>
       </Modal>
 
       {/* Custom CSS for Modal centering, position, and z-index */}

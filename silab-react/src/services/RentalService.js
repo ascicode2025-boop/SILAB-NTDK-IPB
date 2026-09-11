@@ -147,3 +147,50 @@ export const deleteRental = async (id) => {
     throw error?.response?.data || new Error("Gagal menghapus peminjaman alat");
   }
 };
+
+// Ambil daftar tanggal ditutup koordinator
+export const getClosedRentalDates = async (month = null, year = null) => {
+  try {
+    let url = `${API_URL}/rentals/closed-dates`;
+    if (month && year) {
+      url += `?month=${month}&year=${year}`;
+    }
+    const response = await axios.get(url, {
+      headers: getAuthHeader(),
+    });
+    return response.data?.data || [];
+  } catch (error) {
+    console.error("Gagal mengambil tanggal ditutup:", error);
+    return [];
+  }
+};
+
+// Koordinator menutup tanggal
+export const closeRentalDate = async (tanggal, alasan = "") => {
+  try {
+    const response = await axios.post(`${API_URL}/rentals/closed-dates`, {
+      tanggal,
+      alasan,
+    }, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Gagal menutup tanggal peminjaman:", error);
+    throw error?.response?.data || new Error("Gagal menutup tanggal peminjaman");
+  }
+};
+
+// Koordinator membuka kembali tanggal
+export const openRentalDate = async (tanggal) => {
+  try {
+    const response = await axios.delete(`${API_URL}/rentals/closed-dates/${tanggal}`, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Gagal membuka kembali tanggal peminjaman:", error);
+    throw error?.response?.data || new Error("Gagal membuka kembali tanggal peminjaman");
+  }
+};
+

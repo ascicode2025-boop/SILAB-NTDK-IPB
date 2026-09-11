@@ -24,17 +24,43 @@ class AuthController extends Controller
     // ==========================================
     public function register(Request $request)
     {
-        // Validasi
-        $request->validate([
-            // Akun Dasar
-            'name' => ['required', 'string', 'max:255', 'unique:users'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-
-            // [DIKEMBALIKAN] Data ini wajib diisi saat register agar muncul di edit profil nanti
-            'institusi' => ['required', 'string', 'in:Umum,Dosen IPB,Mahasiswa IPB,Tendik IPB'],
-            'nomor_telpon' => ['required', 'string', 'max:20'],
+        Log::info('Register attempt: ', [
+            'name' => $request->name,
+            'email' => $request->email,
+            'institusi' => $request->institusi,
+            'nomor_telpon' => $request->nomor_telpon,
         ]);
+
+        try {
+            // Validasi
+            $request->validate([
+                // Akun Dasar
+                'name' => ['required', 'string', 'max:255', 'unique:users'],
+                'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+                'password' => ['required', 'confirmed', Rules\Password::defaults()],
+
+                // [DIKEMBALIKAN] Data ini wajib diisi saat register agar muncul di edit profil nanti
+                'institusi' => ['required', 'string', 'in:Umum,Dosen IPB,Mahasiswa IPB,Tendik IPB'],
+                'nomor_telpon' => ['required', 'string', 'max:20'],
+            ], [
+                'name.required' => 'Username wajib diisi.',
+                'name.unique' => 'Username sudah digunakan, silakan pilih username lain.',
+                'name.max' => 'Username maksimal 255 karakter.',
+                'email.required' => 'Email wajib diisi.',
+                'email.email' => 'Format email tidak valid.',
+                'email.unique' => 'Email sudah terdaftar, silakan gunakan email lain atau login.',
+                'password.required' => 'Password wajib diisi.',
+                'password.confirmed' => 'Konfirmasi password tidak cocok.',
+                'password.min' => 'Password minimal 8 karakter.',
+                'institusi.required' => 'Pilihan institusi wajib dipilih.',
+                'institusi.in' => 'Institusi yang dipilih tidak valid.',
+                'nomor_telpon.required' => 'Nomor telepon wajib diisi.',
+                'nomor_telpon.max' => 'Nomor telepon maksimal 20 digit.',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('Register validation failed: ', $e->errors());
+            throw $e;
+        }
 
         // Buat User
         $user = User::create([

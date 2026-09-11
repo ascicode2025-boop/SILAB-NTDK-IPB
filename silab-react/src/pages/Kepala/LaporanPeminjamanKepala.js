@@ -50,6 +50,8 @@ export default function LaporanPeminjamanKepala() {
     // Calculate status text
     const statusText = item.status === "menunggu_pengembalian" 
       ? "Menunggu Pengembalian" 
+      : item.status === "siap_diambil"
+      ? "Siap Diambil"
       : item.status.charAt(0).toUpperCase() + item.status.slice(1);
 
     return {

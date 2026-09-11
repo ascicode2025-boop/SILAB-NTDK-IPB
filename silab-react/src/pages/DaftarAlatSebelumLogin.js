@@ -8,6 +8,7 @@ import "@fontsource/poppins/600.css";
 import "@fontsource/poppins/700.css";
 import Footer from "./Footer";
 import DaftarAlatComponent, { LabBannerSVG } from "../components/DaftarAlat/DaftarAlatComponent";
+import { getStorageUrl } from "../config/apiConfig";
 import axios from "axios";
 
 const DaftarAlatSebelumLogin = () => {
@@ -175,8 +176,34 @@ const DaftarAlatSebelumLogin = () => {
                 boxShadow: "0 20px 40px rgba(0, 0, 0, 0.18)",
               }}
             >
-              {/* Top Banner Illustration */}
-              <LabBannerSVG height="165px" />
+              {/* Top Banner / Photo */}
+              {selectedTool.foto_path ? (
+                <div
+                  style={{
+                    width: "100%",
+                    height: "175px",
+                    backgroundColor: "#F8FAFC",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                    padding: "16px",
+                    borderBottom: "1px solid #F1F5F9",
+                  }}
+                >
+                  <img
+                    src={`${getStorageUrl()}/storage/${selectedTool.foto_path}`}
+                    alt={selectedTool.nama_alat}
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "100%",
+                      objectFit: "contain",
+                    }}
+                  />
+                </div>
+              ) : (
+                <LabBannerSVG height="165px" />
+              )}
 
               {/* Modal Inner Content */}
               <div className="px-4 pt-3 pb-4 text-center">
@@ -238,18 +265,28 @@ const DaftarAlatSebelumLogin = () => {
                       Total Unit
                     </div>
                     <div className="text-secondary fw-semibold" style={{ fontSize: "0.82rem" }}>
-                      {selectedTool.total_unit ?? 1}
+                      {selectedTool.total_unit ?? 1} Unit
                     </div>
                   </Col>
                   <Col xs={6}>
                     <div className="fw-bold mb-1" style={{ color: "#3E2723", fontSize: "0.9rem" }}>
-                      Stok Tersedia (Hari Ini)
+                      Status Alat
                     </div>
                     <div className="text-secondary fw-semibold" style={{ fontSize: "0.82rem" }}>
-                      {selectedTool.stok_tersedia ?? (selectedTool.total_unit ?? 1)}
+                      <span className={selectedTool.status === "tersedia" ? "text-success fw-bold" : "text-warning fw-bold"}>
+                        {selectedTool.status === "tersedia" ? "Tersedia untuk Dipinjam" : selectedTool.status}
+                      </span>
                     </div>
                   </Col>
                 </Row>
+
+                {/* Info Note */}
+                <div
+                  className="mb-3 p-2 rounded text-center"
+                  style={{ backgroundColor: "#F5EFEA", fontSize: "0.78rem", color: "#6D4C41", border: "1px dashed #D7CCC8" }}
+                >
+                  ℹ️ Ketersediaan tanggal peminjaman akan diverifikasi pada formulir pengajuan. Alat yang sudah dipesan klien lain tidak dapat dipinjam di tanggal bersamaan.
+                </div>
 
                 {/* Deskripsi Section */}
                 <div className="mb-4">
@@ -288,20 +325,20 @@ const DaftarAlatSebelumLogin = () => {
                   </Button>
                   <Button
                     style={{
-                      backgroundColor: (selectedTool.stok_tersedia ?? selectedTool.total_unit ?? 1) === 0 ? "#D3D3D3" : "#A6867B",
-                      borderColor: (selectedTool.stok_tersedia ?? selectedTool.total_unit ?? 1) === 0 ? "#D3D3D3" : "#A6867B",
+                      backgroundColor: (selectedTool.status === "rusak" || selectedTool.status === "perawatan" || (selectedTool.total_unit ?? 1) <= 0) ? "#D3D3D3" : "#A6867B",
+                      borderColor: (selectedTool.status === "rusak" || selectedTool.status === "perawatan" || (selectedTool.total_unit ?? 1) <= 0) ? "#D3D3D3" : "#A6867B",
                       color: "#FFFFFF",
                       borderRadius: "28px",
                       padding: "8px 22px",
                       fontWeight: "600",
                       fontSize: "0.86rem",
-                      boxShadow: (selectedTool.stok_tersedia ?? selectedTool.total_unit ?? 1) === 0 ? "none" : "0 3px 8px rgba(166,134,123,0.35)",
-                      cursor: (selectedTool.stok_tersedia ?? selectedTool.total_unit ?? 1) === 0 ? "not-allowed" : "pointer"
+                      boxShadow: (selectedTool.status === "rusak" || selectedTool.status === "perawatan" || (selectedTool.total_unit ?? 1) <= 0) ? "none" : "0 3px 8px rgba(166,134,123,0.35)",
+                      cursor: (selectedTool.status === "rusak" || selectedTool.status === "perawatan" || (selectedTool.total_unit ?? 1) <= 0) ? "not-allowed" : "pointer"
                     }}
-                    disabled={(selectedTool.stok_tersedia ?? selectedTool.total_unit ?? 1) === 0}
+                    disabled={selectedTool.status === "rusak" || selectedTool.status === "perawatan" || (selectedTool.total_unit ?? 1) <= 0}
                     onClick={handleAjukanPeminjaman}
                   >
-                    {(selectedTool.stok_tersedia ?? selectedTool.total_unit ?? 1) === 0 ? "Stok Habis" : "Ajukan Peminjaman"}
+                    {(selectedTool.status === "rusak" || selectedTool.status === "perawatan" || (selectedTool.total_unit ?? 1) <= 0) ? "Tidak Tersedia" : "Ajukan Peminjaman"}
                   </Button>
                 </div>
               </div>

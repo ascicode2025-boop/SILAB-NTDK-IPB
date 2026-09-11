@@ -15,7 +15,7 @@ class InstrumentController extends Controller
     {
         $today = now()->toDateString();
         $instruments = Instrument::withCount(['rentals as active_rentals_count' => function ($query) use ($today) {
-            $query->whereIn('instrument_rentals.status', ['pending', 'disetujui', 'aktif', 'menunggu_pengembalian'])
+            $query->whereIn('instrument_rentals.status', ['pending', 'disetujui', 'siap_diambil', 'aktif', 'menunggu_pengembalian'])
                   ->whereDate('tanggal_peminjaman', '<=', $today)
                   ->whereDate('tanggal_pengembalian', '>=', $today);
         }])->get();
@@ -24,7 +24,7 @@ class InstrumentController extends Controller
             if (in_array($instrument->status, ['rusak', 'perawatan'])) {
                 $instrument->stok_tersedia = 0;
             } else {
-                $instrument->stok_tersedia = max(0, $instrument->total_unit - $instrument->active_rentals_count);
+                $instrument->stok_tersedia = $instrument->total_unit;
             }
         }
 
@@ -71,7 +71,7 @@ class InstrumentController extends Controller
     {
         $today = now()->toDateString();
         $instrument = Instrument::withCount(['rentals as active_rentals_count' => function ($query) use ($today) {
-            $query->whereIn('instrument_rentals.status', ['pending', 'disetujui', 'aktif', 'menunggu_pengembalian'])
+            $query->whereIn('instrument_rentals.status', ['pending', 'disetujui', 'siap_diambil', 'aktif', 'menunggu_pengembalian'])
                   ->whereDate('tanggal_peminjaman', '<=', $today)
                   ->whereDate('tanggal_pengembalian', '>=', $today);
         }])->find($id);
@@ -83,7 +83,7 @@ class InstrumentController extends Controller
         if (in_array($instrument->status, ['rusak', 'perawatan'])) {
             $instrument->stok_tersedia = 0;
         } else {
-            $instrument->stok_tersedia = max(0, $instrument->total_unit - $instrument->active_rentals_count);
+            $instrument->stok_tersedia = $instrument->total_unit;
         }
 
         return response()->json([

@@ -120,7 +120,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/instruments/{id}', [\App\Http\Controllers\Api\InstrumentController::class, 'destroy']);
 
     Route::get('/rentals', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'index']);
+    Route::get('/rentals/closed-dates', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'getClosedDates']);
+    Route::post('/rentals/closed-dates', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'storeClosedDate']);
+    Route::delete('/rentals/closed-dates/{date}', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'deleteClosedDate']);
     Route::get('/rentals/booked-dates', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'getBookedDates']);
+    Route::get('/rentals/available-stock', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'getAvailableStock']);
     Route::post('/rentals', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'store']);
     Route::put('/rentals/{id}/verify', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'verify']);
     Route::post('/rentals/{id}/payment', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'uploadPayment']);
@@ -129,6 +133,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/rentals/{id}/denda', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'uploadDenda']);
     Route::put('/rentals/{id}/verify-denda', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'verifyDenda']);
     Route::put('/rentals/{id}/update-dates', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'updateDates']);
+    Route::put('/rentals/{id}/ready-pickup', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'markReadyForPickup']);
     Route::put('/rentals/{id}/handover', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'handover']);
     Route::put('/rentals/{id}/return', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'returnInstruments']);
     Route::post('/rentals/{id}/return-request', [\App\Http\Controllers\Api\InstrumentRentalController::class, 'clientReturnRequest']);

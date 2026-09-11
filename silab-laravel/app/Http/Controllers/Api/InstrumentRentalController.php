@@ -13,6 +13,7 @@ use setasign\Fpdi\Fpdi;
 use Illuminate\Support\Facades\Log;
 use App\Models\Notification;
 use App\Models\User;
+use App\Models\ClosedRentalDate;
 use Illuminate\Support\Facades\Auth;
 
 class InstrumentRentalController extends Controller
@@ -62,49 +63,95 @@ class InstrumentRentalController extends Controller
         $instruments = Instrument::whereIn('id', $request->instrument_ids)->get();
         $isAnyPaid = $instruments->where('is_paid', true)->isNotEmpty();
 
-        // Cek bentrok tanggal
-        $isConflict = false;
         $reqStart = \Carbon\Carbon::parse($request->tanggal_peminjaman);
         $reqEnd = \Carbon\Carbon::parse($request->tanggal_pengembalian);
 
-        foreach ($instruments as $instrument) {
-            $rentals = InstrumentRental::whereHas('instruments', function ($q) use ($instrument) {
-                $q->where('instrument_id', $instrument->id);
-            })
-            ->whereIn('status', ['pending', 'disetujui', 'aktif', 'menunggu_pengembalian'])
-            ->where(function ($q) use ($request) {
-                $q->whereBetween('tanggal_peminjaman', [$request->tanggal_peminjaman, $request->tanggal_pengembalian])
-                  ->orWhereBetween('tanggal_pengembalian', [$request->tanggal_peminjaman, $request->tanggal_pengembalian])
-                  ->orWhere(function ($q2) use ($request) {
-                      $q2->where('tanggal_peminjaman', '<=', $request->tanggal_peminjaman)
-                         ->where('tanggal_pengembalian', '>=', $request->tanggal_pengembalian);
-                  });
-            })
-            ->get(['tanggal_peminjaman', 'tanggal_pengembalian']);
-
-            if ($rentals->isNotEmpty()) {
-                $current = $reqStart->copy();
-                while ($current->lte($reqEnd)) {
-                    $dateString = $current->toDateString();
-                    $count = 0;
-                    foreach ($rentals as $rental) {
-                        if ($dateString >= $rental->tanggal_peminjaman && $dateString <= $rental->tanggal_pengembalian) {
-                            $count++;
-                        }
-                    }
-                    if ($count >= $instrument->total_unit) {
-                        $isConflict = true;
-                        break 2;
-                    }
-                    $current->addDay();
-                }
-            }
+        // Cek hari libur (Sabtu & Minggu)
+        if ($reqStart->isWeekend() || $reqEnd->isWeekend()) {
+            return response()->json([
+                'errors' => [
+                    'tanggal_peminjaman' => ['Peminjaman alat tidak dapat dilakukan pada hari libur (Sabtu dan Minggu).']
+                ]
+            ], 422);
         }
 
-        if ($isConflict) {
+        // Cek tanggal ditutup oleh koordinator
+        $closedDates = ClosedRentalDate::where(function ($q) use ($request) {
+            $q->whereBetween('tanggal', [$request->tanggal_peminjaman, $request->tanggal_pengembalian]);
+        })->get();
+
+        if ($closedDates->isNotEmpty()) {
+            $listDates = $closedDates->map(function ($item) {
+                $tgl = \Carbon\Carbon::parse($item->tanggal)->format('d-m-Y');
+                return $item->alasan ? "{$tgl} ({$item->alasan})" : $tgl;
+            })->join(', ');
+
             return response()->json([
-                'errors' => ['tanggal_peminjaman' => ['Beberapa alat yang dipilih sudah habis dipesan pada rentang tanggal tersebut.']]
+                'errors' => [
+                    'tanggal_peminjaman' => ["Layanan peminjaman alat ditutup pada tanggal: {$listDates}."]
+                ]
             ], 422);
+        }
+
+        $activeStatuses = ['pending', 'disetujui', 'siap_diambil', 'aktif', 'menunggu_pengembalian'];
+
+        foreach ($instruments as $instrument) {
+            $requestedCount = collect($request->instrument_ids)->filter(function($id) use ($instrument) {
+                return (string)$id === (string)$instrument->id;
+            })->count();
+
+            if (in_array($instrument->status, ['rusak', 'perawatan']) || $instrument->total_unit <= 0) {
+                return response()->json([
+                    'errors' => [
+                        'tanggal_peminjaman' => ["Stok alat '{$instrument->nama_alat}' saat ini tidak tersedia untuk dipinjam."]
+                    ]
+                ], 422);
+            }
+
+            if ($requestedCount > $instrument->total_unit) {
+                return response()->json([
+                    'errors' => [
+                        'tanggal_peminjaman' => ["Jumlah permintaan alat '{$instrument->nama_alat}' ({$requestedCount} unit) melebihi total unit yang tersedia ({$instrument->total_unit} unit)."]
+                    ]
+                ], 422);
+            }
+
+            // Ambil rental aktif yang beririsan dengan rentang tanggal permintaan
+            // Formula irisan: (tanggal_peminjaman <= reqEnd) AND (tanggal_pengembalian >= reqStart)
+            $rentals = InstrumentRentalItem::where('instrument_id', $instrument->id)
+                ->whereHas('rental', function ($q) use ($reqStart, $reqEnd, $activeStatuses) {
+                    $q->whereIn('status', $activeStatuses)
+                      ->where('tanggal_peminjaman', '<=', $reqEnd->toDateString())
+                      ->where('tanggal_pengembalian', '>=', $reqStart->toDateString());
+                })
+                ->with('rental')
+                ->get();
+
+            // Cek ketersediaan setiap hari di rentang permintaan
+            for ($date = $reqStart->copy(); $date->lte($reqEnd); $date->addDay()) {
+                $dateStr = $date->toDateString();
+
+                $bookedOnDate = $rentals->filter(function ($item) use ($dateStr) {
+                    return $item->rental
+                        && $dateStr >= $item->rental->tanggal_peminjaman
+                        && $dateStr <= $item->rental->tanggal_pengembalian;
+                })->count();
+
+                $sisaStok = $instrument->total_unit - $bookedOnDate;
+
+                if ($requestedCount > $sisaStok) {
+                    $dateFmt = $date->format('d-m-Y');
+                    return response()->json([
+                        'errors' => [
+                            'tanggal_peminjaman' => [
+                                $sisaStok <= 0
+                                    ? "Alat '{$instrument->nama_alat}' sudah dipesan pada tanggal {$dateFmt}. Tidak dapat memesan di tanggal yang bersamaan. Silakan pilih tanggal lain."
+                                    : "Alat '{$instrument->nama_alat}' pada tanggal {$dateFmt} sudah dipesan ({$bookedOnDate} unit terpakai, sisa {$sisaStok} unit). Permintaan ({$requestedCount} unit) melebihi kapasitas yang tersedia di tanggal tersebut."
+                            ]
+                        ]
+                    ], 422);
+                }
+            }
         }
 
         $statusPembayaran = $isAnyPaid ? 'belum_lunas' : 'tidak_perlu';
@@ -183,11 +230,6 @@ class InstrumentRentalController extends Controller
                 'catatan_koordinator' => $request->catatan_koordinator,
                 'final_document_path' => $finalPath
             ]);
-
-            $items = InstrumentRentalItem::where('rental_id', $rental->id)->get();
-            foreach ($items as $item) {
-                Instrument::where('id', $item->instrument_id)->update(['status' => 'dipinjam']);
-            }
         }
 
         $this->sendNotification($rental->user_id, 'Status Peminjaman Alat', "Status peminjaman alat Anda (ID: {$rental->id}) telah diubah menjadi {$rental->status}.");
@@ -432,8 +474,8 @@ class InstrumentRentalController extends Controller
         ], 200);
     }
 
-    // Serah Terima Alat ke Klien (Teknisi)
-    public function handover(Request $request, $id)
+    // Tandai Siap Diambil (Teknisi: disetujui → siap_diambil)
+    public function markReadyForPickup(Request $request, $id)
     {
         $user = $request->user();
         if ($user->role !== 'teknisi') {
@@ -444,6 +486,30 @@ class InstrumentRentalController extends Controller
 
         if ($rental->status !== 'disetujui') {
             return response()->json(['message' => 'Status peminjaman bukan disetujui'], 422);
+        }
+
+        $rental->update(['status' => 'siap_diambil']);
+
+        $this->sendNotification($rental->user_id, 'Alat Siap Diambil', "Alat untuk peminjaman (ID: {$rental->id}) telah disiapkan dan siap diambil.");
+
+        return response()->json([
+            'message' => 'Alat berhasil ditandai siap diambil',
+            'data' => $rental
+        ], 200);
+    }
+
+    // Serah Terima Alat ke Klien (Teknisi: siap_diambil → aktif)
+    public function handover(Request $request, $id)
+    {
+        $user = $request->user();
+        if ($user->role !== 'teknisi') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $rental = InstrumentRental::findOrFail($id);
+
+        if ($rental->status !== 'siap_diambil') {
+            return response()->json(['message' => 'Status peminjaman bukan siap_diambil'], 422);
         }
 
         $rental->update([
@@ -643,6 +709,51 @@ class InstrumentRentalController extends Controller
         }
 
         $rental = InstrumentRental::findOrFail($id);
+        $reqStart = \Carbon\Carbon::parse($request->tanggal_peminjaman);
+        $reqEnd = \Carbon\Carbon::parse($request->tanggal_pengembalian);
+        $activeStatuses = ['pending', 'disetujui', 'siap_diambil', 'aktif', 'menunggu_pengembalian'];
+
+        $instrumentCounts = InstrumentRentalItem::where('rental_id', $rental->id)
+            ->selectRaw('instrument_id, count(*) as count')
+            ->groupBy('instrument_id')
+            ->pluck('count', 'instrument_id');
+
+        foreach ($instrumentCounts as $instrumentId => $requestedQty) {
+            $instrument = Instrument::find($instrumentId);
+            if (!$instrument) continue;
+
+            $otherRentals = InstrumentRentalItem::where('instrument_id', $instrumentId)
+                ->where('rental_id', '!=', $rental->id)
+                ->whereHas('rental', function ($q) use ($reqStart, $reqEnd, $activeStatuses) {
+                    $q->whereIn('status', $activeStatuses)
+                      ->where('tanggal_peminjaman', '<=', $reqEnd->toDateString())
+                      ->where('tanggal_pengembalian', '>=', $reqStart->toDateString());
+                })
+                ->with('rental')
+                ->get();
+
+            for ($date = $reqStart->copy(); $date->lte($reqEnd); $date->addDay()) {
+                $dateStr = $date->toDateString();
+                $bookedOnDate = $otherRentals->filter(function ($item) use ($dateStr) {
+                    return $item->rental
+                        && $dateStr >= $item->rental->tanggal_peminjaman
+                        && $dateStr <= $item->rental->tanggal_pengembalian;
+                })->count();
+
+                $sisaStok = $instrument->total_unit - $bookedOnDate;
+                if ($requestedQty > $sisaStok) {
+                    $dateFmt = $date->format('d-m-Y');
+                    return response()->json([
+                        'errors' => [
+                            'tanggal_peminjaman' => [
+                                "Alat '{$instrument->nama_alat}' sudah dipesan pada tanggal {$dateFmt}. Tidak dapat meminjam di tanggal yang bersamaan. Silakan pilih tanggal lain."
+                            ]
+                        ]
+                    ], 422);
+                }
+            }
+        }
+
         $rental->update([
             'tanggal_peminjaman' => $request->tanggal_peminjaman,
             'tanggal_pengembalian' => $request->tanggal_pengembalian,
@@ -660,43 +771,60 @@ class InstrumentRentalController extends Controller
         $instrumentIds = $request->query('instrument_ids', []);
         
         if (!is_array($instrumentIds)) {
-            $instrumentIds = explode(',', $instrumentIds);
+            $instrumentIds = array_filter(explode(',', $instrumentIds));
         }
 
-        if (empty($instrumentIds)) {
-            return response()->json(['data' => []], 200);
-        }
-
-        $instruments = Instrument::whereIn('id', $instrumentIds)->get();
         $fullyBookedDatesSet = [];
 
-        foreach ($instruments as $instrument) {
-            $rentals = InstrumentRental::whereHas('instruments', function ($query) use ($instrument) {
-                $query->where('instrument_id', $instrument->id);
-            })
-            ->whereIn('status', ['pending', 'disetujui', 'aktif', 'menunggu_pengembalian'])
-            ->get(['tanggal_peminjaman', 'tanggal_pengembalian']);
+        // Tambahkan tanggal yang ditutup koordinator
+        $closedDates = ClosedRentalDate::pluck('tanggal')->map(function ($d) {
+            return \Carbon\Carbon::parse($d)->toDateString();
+        })->toArray();
 
-            if ($rentals->isEmpty()) continue;
+        foreach ($closedDates as $cDate) {
+            $fullyBookedDatesSet[$cDate] = true;
+        }
 
-            $minDate = $rentals->min('tanggal_peminjaman');
-            $maxDate = $rentals->max('tanggal_pengembalian');
+        $activeStatuses = ['pending', 'disetujui', 'siap_diambil', 'aktif', 'menunggu_pengembalian'];
 
-            $current = \Carbon\Carbon::parse($minDate);
-            $end = \Carbon\Carbon::parse($maxDate);
+        if (!empty($instrumentIds)) {
+            $instruments = Instrument::whereIn('id', $instrumentIds)->get();
 
-            while ($current->lte($end)) {
-                $dateString = $current->toDateString();
-                $count = 0;
-                foreach ($rentals as $rental) {
-                    if ($dateString >= $rental->tanggal_peminjaman && $dateString <= $rental->tanggal_pengembalian) {
-                        $count++;
+            foreach ($instruments as $instrument) {
+                if ($instrument->total_unit <= 0 || in_array($instrument->status, ['rusak', 'perawatan'])) {
+                    continue;
+                }
+
+                $rentalItems = InstrumentRentalItem::where('instrument_id', $instrument->id)
+                    ->whereHas('rental', function ($query) use ($activeStatuses) {
+                        $query->whereIn('status', $activeStatuses);
+                    })
+                    ->with('rental')
+                    ->get();
+
+                if ($rentalItems->isEmpty()) continue;
+
+                $minDate = $rentalItems->min(fn($item) => $item->rental?->tanggal_peminjaman);
+                $maxDate = $rentalItems->max(fn($item) => $item->rental?->tanggal_pengembalian);
+
+                if (!$minDate || !$maxDate) continue;
+
+                $current = \Carbon\Carbon::parse($minDate);
+                $end = \Carbon\Carbon::parse($maxDate);
+
+                while ($current->lte($end)) {
+                    $dateString = $current->toDateString();
+                    $count = $rentalItems->filter(function ($item) use ($dateString) {
+                        return $item->rental
+                            && $dateString >= $item->rental->tanggal_peminjaman
+                            && $dateString <= $item->rental->tanggal_pengembalian;
+                    })->count();
+
+                    if ($count >= $instrument->total_unit) {
+                        $fullyBookedDatesSet[$dateString] = true;
                     }
+                    $current->addDay();
                 }
-                if ($count >= $instrument->total_unit) {
-                    $fullyBookedDatesSet[$dateString] = true;
-                }
-                $current->addDay();
             }
         }
 
@@ -712,6 +840,67 @@ class InstrumentRentalController extends Controller
         }
 
         return response()->json(['data' => $bookedDates], 200);
+    }
+
+    // Mendapatkan stok tersedia per alat untuk rentang tanggal tertentu
+    public function getAvailableStock(Request $request)
+    {
+        $instrumentIds = $request->query('instrument_ids', []);
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+
+        if (!is_array($instrumentIds)) {
+            $instrumentIds = array_filter(explode(',', $instrumentIds));
+        }
+
+        if (empty($instrumentIds) || !$startDate || !$endDate) {
+            return response()->json(['data' => []], 200);
+        }
+
+        $reqStart = \Carbon\Carbon::parse($startDate);
+        $reqEnd = \Carbon\Carbon::parse($endDate);
+        $activeStatuses = ['pending', 'disetujui', 'siap_diambil', 'aktif', 'menunggu_pengembalian'];
+
+        $instruments = Instrument::whereIn('id', $instrumentIds)->get();
+        $result = [];
+
+        foreach ($instruments as $instrument) {
+            // Ambil rental aktif yang beririsan dengan rentang tanggal:
+            // (tanggal_peminjaman <= reqEnd) AND (tanggal_pengembalian >= reqStart)
+            $rentals = InstrumentRentalItem::where('instrument_id', $instrument->id)
+                ->whereHas('rental', function ($q) use ($reqStart, $reqEnd, $activeStatuses) {
+                    $q->whereIn('status', $activeStatuses)
+                      ->where('tanggal_peminjaman', '<=', $reqEnd->toDateString())
+                      ->where('tanggal_pengembalian', '>=', $reqStart->toDateString());
+                })
+                ->with('rental')
+                ->get();
+
+            $maxBooked = 0;
+
+            for ($date = $reqStart->copy(); $date->lte($reqEnd); $date->addDay()) {
+                $dateStr = $date->toDateString();
+                $count = $rentals->filter(function ($item) use ($dateStr) {
+                    return $item->rental
+                        && $dateStr >= $item->rental->tanggal_peminjaman
+                        && $dateStr <= $item->rental->tanggal_pengembalian;
+                })->count();
+
+                $maxBooked = max($maxBooked, $count);
+            }
+
+            $available = in_array($instrument->status, ['rusak', 'perawatan'])
+                ? 0
+                : max(0, $instrument->total_unit - $maxBooked);
+
+            $result[$instrument->id] = [
+                'total_unit' => $instrument->total_unit,
+                'max_booked' => $maxBooked,
+                'available' => $available,
+            ];
+        }
+
+        return response()->json(['data' => $result], 200);
     }
 
     public function cancelRental(Request $request, $id)
@@ -770,5 +959,74 @@ class InstrumentRentalController extends Controller
         $rental->delete();
 
         return response()->json(['success' => true, 'message' => 'Data peminjaman berhasil dihapus.']);
+    }
+
+    // Mendapatkan daftar tanggal yang ditutup koordinator
+    public function getClosedDates(Request $request)
+    {
+        $query = ClosedRentalDate::with('creator:id,name');
+
+        if ($request->has('month') && $request->has('year')) {
+            $query->whereYear('tanggal', $request->year)
+                  ->whereMonth('tanggal', $request->month);
+        }
+
+        $closedDates = $query->orderBy('tanggal', 'asc')->get();
+
+        return response()->json([
+            'message' => 'Berhasil mengambil daftar tanggal ditutup',
+            'data' => $closedDates
+        ], 200);
+    }
+
+    // Menutup tanggal peminjaman alat (Koordinator)
+    public function storeClosedDate(Request $request)
+    {
+        $user = $request->user();
+        if ($user->role !== 'koordinator') {
+            return response()->json(['message' => 'Hanya koordinator yang dapat menutup tanggal peminjaman.'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'tanggal' => 'required|date',
+            'alasan' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $closedDate = ClosedRentalDate::updateOrCreate(
+            ['tanggal' => $request->tanggal],
+            [
+                'alasan' => $request->alasan,
+                'created_by' => $user->id,
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Tanggal peminjaman alat berhasil ditutup',
+            'data' => $closedDate
+        ], 200);
+    }
+
+    // Membuka kembali tanggal peminjaman alat (Koordinator)
+    public function deleteClosedDate(Request $request, $date)
+    {
+        $user = $request->user();
+        if ($user->role !== 'koordinator') {
+            return response()->json(['message' => 'Hanya koordinator yang dapat membuka tanggal peminjaman.'], 403);
+        }
+
+        $closedDate = ClosedRentalDate::where('tanggal', $date)->first();
+        if (!$closedDate) {
+            return response()->json(['message' => 'Tanggal tidak ditemukan dalam daftar penutupan.'], 404);
+        }
+
+        $closedDate->delete();
+
+        return response()->json([
+            'message' => 'Tanggal peminjaman alat berhasil dibuka kembali'
+        ], 200);
     }
 }

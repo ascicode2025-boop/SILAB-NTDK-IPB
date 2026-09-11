@@ -38,6 +38,12 @@ function RegisterPage() {
     setError(null);
     setSuccess(null);
 
+    if (formData.password.length < 8) {
+      setError("Password minimal 8 karakter.");
+      setLoading(false);
+      return;
+    }
+
     if (formData.password !== formData.password_confirmation) {
       setError("Password dan Konfirmasi Password tidak cocok.");
       setLoading(false);
@@ -59,16 +65,14 @@ function RegisterPage() {
       }, 2000);
     } catch (err) {
       setLoading(false);
-      const errors = err.response?.data?.errors || {};
+      const errors = err.response?.data?.errors;
       const message = err.response?.data?.message || "";
 
-      if (errors.email?.includes("The email has already been taken.") || message.includes("email")) {
-        setError("Email sudah terdaftar, silakan login.");
-      } else if (errors.name?.includes("The name has already been taken.") || message.includes("username")) {
-        setError("Username sudah digunakan, silakan pilih username lain.");
-      } else if (Object.keys(errors).length > 0) {
-        const allErrors = Object.values(errors).flat().join(" ");
-        setError(allErrors);
+      console.error("Validation error response:", err.response?.data);
+
+      if (errors && typeof errors === "object" && Object.keys(errors).length > 0) {
+        const errorList = Object.values(errors).flat();
+        setError(errorList.length > 1 ? errorList : errorList[0]);
       } else if (message) {
         setError(message);
       } else {
@@ -107,16 +111,25 @@ function RegisterPage() {
         {error && (
           <div
             style={{
-              backgroundColor: "rgba(255,0,0,0.1)",
-              border: "1px solid red",
-              color: "red",
-              padding: "8px 12px",
-              borderRadius: "6px",
+              backgroundColor: "#fef2f2",
+              border: "1px solid #ef4444",
+              color: "#b91c1c",
+              padding: "10px 14px",
+              borderRadius: "8px",
               marginBottom: "15px",
               fontSize: "13px",
+              textAlign: "left",
             }}
           >
-            {error}
+            {Array.isArray(error) ? (
+              <ul className="mb-0 ps-3">
+                {error.map((msg, i) => (
+                  <li key={i}>{msg}</li>
+                ))}
+              </ul>
+            ) : (
+              <div>{error}</div>
+            )}
           </div>
         )}
         {success && (
@@ -176,11 +189,14 @@ function RegisterPage() {
           <Form.Group className="mb-4 text-start">
             <Form.Label className="fw-medium">Password</Form.Label>
             <InputGroup>
-              <Form.Control type={showPassword ? "text" : "password"} placeholder="Masukkan password" name="password" value={formData.password} onChange={handleChange} required style={{ borderRadius: "8px", padding: "10px" }} />
+              <Form.Control type={showPassword ? "text" : "password"} placeholder="Masukkan password (min. 8 karakter)" name="password" value={formData.password} onChange={handleChange} required style={{ borderRadius: "8px", padding: "10px" }} />
               <Button variant="light" onClick={() => setShowPassword(!showPassword)} className="border" style={{ borderRadius: "0 8px 8px 0" }}>
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </Button>
             </InputGroup>
+            <Form.Text className="text-muted" style={{ fontSize: "12px" }}>
+              Minimal 8 karakter.
+            </Form.Text>
           </Form.Group>
 
           <Form.Group className="mb-4 text-start">

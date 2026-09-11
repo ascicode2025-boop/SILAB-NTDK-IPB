@@ -57,10 +57,10 @@ function Dashboard() {
           : [];
 
         const pendingCount = rentalsData.filter((r) => r.status === "pending" || r.status === "menunggu_pengembalian").length;
-        const approvedCount = rentalsData.filter((r) => r.status === "disetujui").length;
+        const approvedCount = rentalsData.filter((r) => r.status === "disetujui" || r.status === "siap_diambil").length;
         const inUseCount = rentalsData.filter((r) => r.status === "aktif").length;
         const completedCount = rentalsData.filter((r) => r.status === "selesai").length;
-        const rejectedCount = rentalsData.filter((r) => r.status === "ditolak").length;
+        const rejectedCount = rentalsData.filter((r) => r.status === "ditolak" || r.status === "dibatalkan").length;
 
         setToolStats({
           pending: pendingCount,

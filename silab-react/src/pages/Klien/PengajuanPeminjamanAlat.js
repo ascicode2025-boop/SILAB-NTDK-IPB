@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Container, Row, Col, Card, Form, Button, Modal, Spinner } from "react-bootstrap";
-import { FaChevronLeft, FaSave, FaPlus, FaTrashAlt, FaDownload, FaUpload } from "react-icons/fa";
+import { Container, Row, Col, Card, Form, Button, Modal, Spinner, Badge } from "react-bootstrap";
+import { FaChevronLeft, FaSave, FaPlus, FaMinus, FaTrashAlt, FaDownload, FaUpload, FaShoppingCart } from "react-icons/fa";
 import { useHistory, useLocation } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "@fontsource/poppins/400.css";
@@ -36,9 +36,28 @@ const PengajuanPeminjamanAlat = () => {
   const queryParams = new URLSearchParams(location.search);
   const toolIdFromUrl = queryParams.get("id");
 
+  // Load initial tools from URL or equipment_cart
+  const getInitialTools = () => {
+    try {
+      const cartData = localStorage.getItem("equipment_cart");
+      if (cartData) {
+        const parsed = JSON.parse(cartData);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((item) => ({
+            id: item.id.toString(),
+            quantity: Math.max(1, parseInt(item.quantity, 10) || 1),
+          }));
+        }
+      }
+    } catch (e) { }
+    return toolIdFromUrl
+      ? [{ id: toolIdFromUrl.toString(), quantity: 1 }]
+      : [{ id: "", quantity: 1 }];
+  };
+
   // State
   const [availableTools, setAvailableTools] = useState([]);
-  const [selectedTools, setSelectedTools] = useState(toolIdFromUrl ? [toolIdFromUrl] : [""]);
+  const [selectedTools, setSelectedTools] = useState(getInitialTools);
   const [tanggalPeminjaman, setTanggalPeminjaman] = useState("");
   const [tanggalPengembalian, setTanggalPengembalian] = useState("");
   const [tujuanPeminjaman, setTujuanPeminjaman] = useState("");
@@ -49,17 +68,20 @@ const PengajuanPeminjamanAlat = () => {
   const [buktiPembayaran, setBuktiPembayaran] = useState(null);
   const [buktiFileName, setBuktiFileName] = useState("");
   const [bookedDates, setBookedDates] = useState([]);
-  
-  const isAnyToolPaid = selectedTools.some(id => {
-    const tool = availableTools.find(t => t.id.toString() === id);
+  const [closedDatesList, setClosedDatesList] = useState([]);
+  const [availableStock, setAvailableStock] = useState({}); // { instrumentId: { total_unit, max_booked, available } }
+
+  const isAnyToolPaid = selectedTools.some((item) => {
+    const tool = availableTools.find((t) => t.id.toString() === item.id.toString());
     return tool && (tool.is_paid === 1 || tool.is_paid === true);
   });
-  
-  const totalHargaSewa = selectedTools.reduce((acc, id) => {
-    const tool = availableTools.find(t => t.id.toString() === id);
-    return acc + (tool && (tool.is_paid === 1 || tool.is_paid === true) ? parseInt(tool.harga_sewa) || 0 : 0);
+
+  const totalHargaSewa = selectedTools.reduce((acc, item) => {
+    const tool = availableTools.find((t) => t.id.toString() === item.id.toString());
+    const qty = Math.max(1, parseInt(item.quantity, 10) || 1);
+    return acc + (tool && (tool.is_paid === 1 || tool.is_paid === true) ? (parseInt(tool.harga_sewa, 10) || 0) * qty : 0);
   }, 0);
-  
+
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
   const [resultType, setResultType] = useState("success");
@@ -71,14 +93,30 @@ const PengajuanPeminjamanAlat = () => {
   useEffect(() => {
     document.title = "SILAB-NTDK - Pengajuan Peminjaman Alat";
     fetchInstruments();
+    fetchClosedDates();
   }, []);
+
+  const fetchClosedDates = async () => {
+    try {
+      const response = await axios.get("http://localhost:8000/api/rentals/closed-dates", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Accept: "application/json",
+        },
+      });
+      setClosedDatesList(response.data.data || []);
+    } catch (error) {
+      console.error("Gagal memuat tanggal ditutup", error);
+    }
+  };
 
   const fetchInstruments = async () => {
     try {
       const response = await axios.get("http://localhost:8000/api/instruments");
-      setAvailableTools(response.data.data || []);
-      if (!toolIdFromUrl && response.data.data.length > 0) {
-          setSelectedTools([response.data.data[0].id.toString()]);
+      const list = response.data.data || [];
+      setAvailableTools(list);
+      if (!toolIdFromUrl && selectedTools.length === 1 && !selectedTools[0].id && list.length > 0) {
+        setSelectedTools([{ id: list[0].id.toString(), quantity: 1 }]);
       }
     } catch (error) {
       console.error("Gagal memuat daftar alat", error);
@@ -87,12 +125,11 @@ const PengajuanPeminjamanAlat = () => {
 
   const fetchBookedDates = async () => {
     try {
-      const ids = selectedTools.filter(id => id).join(",");
-      if (!ids) {
-        setBookedDates([]);
-        return;
-      }
-      const response = await axios.get(`http://localhost:8000/api/rentals/booked-dates?instrument_ids=${ids}`, {
+      const ids = [...new Set(selectedTools.map((item) => item.id).filter(Boolean))].join(",");
+      const url = ids
+        ? `http://localhost:8000/api/rentals/booked-dates?instrument_ids=${ids}`
+        : `http://localhost:8000/api/rentals/booked-dates`;
+      const response = await axios.get(url, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
           Accept: "application/json",
@@ -108,11 +145,65 @@ const PengajuanPeminjamanAlat = () => {
     fetchBookedDates();
   }, [selectedTools]);
 
+  // Fetch available stock when dates or tools change
+  const fetchAvailableStock = async () => {
+    try {
+      const ids = [...new Set(selectedTools.map((item) => item.id).filter(Boolean))].join(",");
+      if (!ids || !tanggalPeminjaman || !tanggalPengembalian) {
+        setAvailableStock({});
+        return;
+      }
+      const response = await axios.get(
+        `http://localhost:8000/api/rentals/available-stock?instrument_ids=${ids}&start_date=${tanggalPeminjaman}&end_date=${tanggalPengembalian}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Accept: "application/json",
+          },
+        }
+      );
+      setAvailableStock(response.data.data || {});
+
+      // Auto-cap quantities if they exceed available stock
+      setSelectedTools((prev) => {
+        const stockData = response.data.data || {};
+        let changed = false;
+        const updated = prev.map((item) => {
+          const stock = stockData[item.id];
+          if (stock && item.quantity > stock.available && stock.available > 0) {
+            changed = true;
+            return { ...item, quantity: stock.available };
+          }
+          return item;
+        });
+        return changed ? updated : prev;
+      });
+    } catch (error) {
+      console.error("Gagal memuat stok tersedia", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAvailableStock();
+  }, [selectedTools, tanggalPeminjaman, tanggalPengembalian]);
+
   const disabledDatePeminjaman = (current) => {
     if (!current) return false;
-    
+
+    // Disable weekend (Saturday & Sunday)
+    const dayOfWeek = current.day();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      return true;
+    }
+
     // Disable past dates
     if (current < dayjs().startOf('day')) {
+      return true;
+    }
+
+    // Disable closed dates by coordinator
+    const currentFormatted = current.format("YYYY-MM-DD");
+    if (closedDatesList.some((item) => dayjs(item.tanggal).format("YYYY-MM-DD") === currentFormatted)) {
       return true;
     }
 
@@ -129,14 +220,20 @@ const PengajuanPeminjamanAlat = () => {
     if (tanggalPengembalian && current.isAfter(dayjs(tanggalPengembalian).endOf('day'))) {
       return true;
     }
-    
-    // Disable if there's a booked date between current and tanggalPengembalian
+
+    // Disable if there's a booked date or closed date between current and tanggalPengembalian
     if (tanggalPengembalian) {
       const returnDate = dayjs(tanggalPengembalian).endOf('day');
       for (const range of bookedDates) {
         const start = dayjs(range.start).startOf('day');
         if (current.isBefore(start) && returnDate.isAfter(start)) {
-           return true; // range overlaps a booked date
+          return true; // range overlaps a booked date
+        }
+      }
+      for (const item of closedDatesList) {
+        const cDate = dayjs(item.tanggal).startOf('day');
+        if (current.isBefore(cDate) && returnDate.isAfter(cDate)) {
+          return true;
         }
       }
     }
@@ -146,9 +243,21 @@ const PengajuanPeminjamanAlat = () => {
 
   const disabledDatePengembalian = (current) => {
     if (!current) return false;
-    
+
+    // Disable weekend (Saturday & Sunday)
+    const dayOfWeek = current.day();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      return true;
+    }
+
     // Disable past dates
     if (current < dayjs().startOf('day')) {
+      return true;
+    }
+
+    // Disable closed dates by coordinator
+    const currentFormatted = current.format("YYYY-MM-DD");
+    if (closedDatesList.some((item) => dayjs(item.tanggal).format("YYYY-MM-DD") === currentFormatted)) {
       return true;
     }
 
@@ -166,13 +275,19 @@ const PengajuanPeminjamanAlat = () => {
       }
     }
 
-    // Disable if there's a booked date between tanggalPeminjaman and current
+    // Disable if there's a booked date or closed date between tanggalPeminjaman and current
     if (tanggalPeminjaman) {
       const borrowDate = dayjs(tanggalPeminjaman).startOf('day');
       for (const range of bookedDates) {
         const start = dayjs(range.start).startOf('day');
         if (borrowDate.isBefore(start) && current.isAfter(start)) {
-           return true; // range overlaps a booked date
+          return true; // range overlaps a booked date
+        }
+      }
+      for (const item of closedDatesList) {
+        const cDate = dayjs(item.tanggal).startOf('day');
+        if (borrowDate.isBefore(cDate) && current.isAfter(cDate)) {
+          return true;
         }
       }
     }
@@ -182,13 +297,26 @@ const PengajuanPeminjamanAlat = () => {
 
   const handleToolChange = (index, value) => {
     const updated = [...selectedTools];
-    updated[index] = value;
+    updated[index] = { ...updated[index], id: value, quantity: 1 };
+    setSelectedTools(updated);
+  };
+
+  const handleQuantityChange = (index, delta) => {
+    const updated = [...selectedTools];
+    const toolId = updated[index].id.toString();
+    const currentTool = availableTools.find((t) => t.id.toString() === toolId);
+    const stockInfo = availableStock[toolId];
+    // Use available stock from API if we have date-based data, otherwise fall back to total_unit
+    const maxStock = stockInfo ? stockInfo.available : (currentTool ? (currentTool.total_unit ?? 99) : 99);
+    const newQty = Math.max(1, Math.min(maxStock, (parseInt(updated[index].quantity, 10) || 1) + delta));
+    updated[index] = { ...updated[index], quantity: newQty };
     setSelectedTools(updated);
   };
 
   const handleAddTool = () => {
     if (availableTools.length > 0) {
-      setSelectedTools([...selectedTools, availableTools[0].id.toString()]);
+      const unusedTool = availableTools.find((t) => !selectedTools.some((st) => st.id.toString() === t.id.toString()));
+      setSelectedTools([...selectedTools, { id: (unusedTool || availableTools[0]).id.toString(), quantity: 1 }]);
     }
   };
 
@@ -223,7 +351,7 @@ const PengajuanPeminjamanAlat = () => {
         },
       });
       if (!response.ok) throw new Error("Gagal mengunduh template");
-      
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -246,6 +374,44 @@ const PengajuanPeminjamanAlat = () => {
       setErrorMsg("Harap lengkapi semua isian formulir.");
       return;
     }
+    const startDay = dayjs(tanggalPeminjaman).day();
+    const endDay = dayjs(tanggalPengembalian).day();
+    if (startDay === 0 || startDay === 6 || endDay === 0 || endDay === 6) {
+      setErrorMsg("Peminjaman alat tidak dapat dilakukan pada hari Sabtu & Minggu (Hari Libur).");
+      return;
+    }
+    const hasClosedDate = closedDatesList.some((item) => {
+      const dStr = dayjs(item.tanggal).format("YYYY-MM-DD");
+      return dStr >= tanggalPeminjaman && dStr <= tanggalPengembalian;
+    });
+    if (hasClosedDate) {
+      setErrorMsg("Periode peminjaman mencakup tanggal yang ditutup oleh koordinator.");
+      return;
+    }
+
+    // Validasi ketersediaan tanggal & unit alat
+    for (const toolItem of selectedTools) {
+      if (!toolItem.id) continue;
+      const tool = availableTools.find((t) => t.id.toString() === toolItem.id.toString());
+      const toolName = tool?.nama_alat || "Alat";
+      const stockInfo = availableStock[toolItem.id];
+      const availableQty = stockInfo ? stockInfo.available : (tool?.total_unit ?? 99);
+      const requestedQty = parseInt(toolItem.quantity, 10) || 1;
+
+      if (stockInfo && availableQty <= 0) {
+        setErrorMsg(`Alat "${toolName}" sudah dipesan pada rentang tanggal yang dipilih. Anda tidak dapat memesan di tanggal yang bersamaan. Silakan pilih tanggal peminjaman yang lain.`);
+        return;
+      }
+      if (requestedQty > (tool?.total_unit ?? 99)) {
+        setErrorMsg(`Jumlah peminjaman "${toolName}" (${requestedQty} unit) melebihi kapasitas total unit laboratorium (${tool?.total_unit ?? 1} unit).`);
+        return;
+      }
+      if (stockInfo && requestedQty > availableQty) {
+        setErrorMsg(`Alat "${toolName}" pada tanggal tersebut sudah dipesan sebagian (tersisa ${availableQty} unit). Permintaan Anda (${requestedQty} unit) tidak dapat diproses di tanggal yang bersamaan.`);
+        return;
+      }
+    }
+
     if (!suratPembimbing) {
       setErrorMsg("Harap unggah Formulir Peminjaman (PDF) yang sudah diisi dan ditandatangani.");
       return;
@@ -261,11 +427,16 @@ const PengajuanPeminjamanAlat = () => {
   const handleConfirmSubmit = async () => {
     setShowConfirmModal(false);
     setIsSubmitting(true);
-    
+
     try {
       const formData = new FormData();
-      selectedTools.forEach(id => {
-        if(id) formData.append("instrument_ids[]", id);
+      selectedTools.forEach((item) => {
+        if (item.id) {
+          const qty = parseInt(item.quantity, 10) || 1;
+          for (let i = 0; i < qty; i++) {
+            formData.append("instrument_ids[]", item.id);
+          }
+        }
       });
       formData.append("tujuan_peminjaman", tujuanPeminjaman);
       formData.append("kegiatan_penelitian", kegiatanPenelitian);
@@ -285,18 +456,33 @@ const PengajuanPeminjamanAlat = () => {
         }
       });
 
+      // Clear equipment cart from localStorage on success
+      try {
+        localStorage.removeItem("equipment_cart");
+      } catch (e) { }
+
       setResultType("success");
       setResultMessage("Pengajuan peminjaman alat berhasil disimpan!");
       setShowResultModal(true);
     } catch (error) {
       console.error(error);
       setResultType("error");
-      
+
       let msg = error.response?.data?.message || "Terjadi kesalahan saat menyimpan pengajuan.";
-      if (error.response?.data?.errors?.tanggal_peminjaman) {
-        msg = error.response.data.errors.tanggal_peminjaman[0];
+      const errors = error.response?.data?.errors;
+      if (errors) {
+        if (errors.tanggal_peminjaman) {
+          msg = errors.tanggal_peminjaman[0];
+        } else if (errors.instrument_ids) {
+          msg = errors.instrument_ids[0];
+        } else {
+          const firstKey = Object.keys(errors)[0];
+          if (firstKey && errors[firstKey]?.[0]) {
+            msg = errors[firstKey][0];
+          }
+        }
       }
-      
+
       setResultMessage(msg);
       setShowResultModal(true);
     } finally {
@@ -404,49 +590,163 @@ const PengajuanPeminjamanAlat = () => {
                 </Card>
               </Col>
 
-              {/* Right Column: Alat Selector */}
+              {/* Right Column: Alat Selector & Quantity */}
               <Col xs={12} md={6}>
                 <Form.Group className="h-100 d-flex flex-column justify-content-start">
-                  <Form.Label className="fw-bold text-dark mb-2" style={{ fontSize: "1.05rem" }}>
-                    Alat
-                  </Form.Label>
-                  <div className="d-flex flex-column gap-2">
-                    {selectedTools.map((toolId, index) => (
-                      <div key={index} className="d-flex align-items-center gap-2">
-                        <Form.Select
-                          value={toolId}
-                          onChange={(e) => handleToolChange(index, e.target.value)}
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <Form.Label className="fw-bold text-dark mb-0" style={{ fontSize: "1.05rem" }}>
+                      Alat Yang Dipinjam
+                    </Form.Label>
+                    <Badge bg="secondary" style={{ fontSize: "0.75rem" }}>
+                      {selectedTools.length} Alat ({selectedTools.reduce((acc, it) => acc + (parseInt(it.quantity, 10) || 1), 0)} Unit)
+                    </Badge>
+                  </div>
+
+                    <div className="d-flex flex-column gap-3">
+                    {selectedTools.map((toolItem, index) => {
+                      const tool = availableTools.find((t) => t.id.toString() === toolItem.id.toString());
+                      const stockInfo = availableStock[toolItem.id];
+                      const maxStock = stockInfo ? stockInfo.available : (tool ? (tool.total_unit ?? 99) : 99);
+                      const isDateBooked = Boolean(toolItem.id && tanggalPeminjaman && tanggalPengembalian && stockInfo && stockInfo.available <= 0);
+
+                      return (
+                        <div
+                          key={index}
+                          className="p-3 d-flex flex-column gap-2"
                           style={{
-                            backgroundColor: "#ECECEC",
-                            border: "1px solid #D5D5D5",
-                            borderRadius: "14px",
-                            padding: "10px 16px",
-                            fontSize: "0.92rem",
-                            color: "#333333",
-                            fontWeight: "500",
-                            boxShadow: "none",
+                            backgroundColor: isDateBooked ? "#FFF5F5" : "#F7F5F3",
+                            border: `1.5px solid ${isDateBooked ? "#FCA5A5" : "#DED8D3"}`,
+                            borderRadius: "16px",
                           }}
                         >
-                          <option value="">-- Pilih Alat --</option>
-                          {availableTools.map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.nama_alat}
-                            </option>
-                          ))}
-                        </Form.Select>
-                        {selectedTools.length > 1 && (
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            className="rounded-circle p-2 d-flex align-items-center justify-content-center"
-                            style={{ width: "36px", height: "36px", flexShrink: 0 }}
-                            onClick={() => handleRemoveTool(index)}
-                          >
-                            <FaTrashAlt size={12} />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
+                          <div className="d-flex align-items-center gap-2">
+                            <Form.Select
+                              value={toolItem.id}
+                              onChange={(e) => handleToolChange(index, e.target.value)}
+                              style={{
+                                backgroundColor: "#FFFFFF",
+                                border: `1px solid ${isDateBooked ? "#EF4444" : "#D5D5D5"}`,
+                                borderRadius: "12px",
+                                padding: "8px 14px",
+                                fontSize: "0.88rem",
+                                color: isDateBooked ? "#B91C1C" : "#333333",
+                                fontWeight: "600",
+                                boxShadow: "none",
+                              }}
+                            >
+                              <option value="">-- Pilih Alat --</option>
+                              {availableTools.map((t) => (
+                                <option key={t.id} value={t.id}>
+                                  {t.nama_alat} {t.is_paid ? `(Berbayar - Rp ${Number(t.harga_sewa).toLocaleString("id-ID")})` : "(Gratis)"} (Total: {t.total_unit ?? 1} Unit)
+                                </option>
+                              ))}
+                            </Form.Select>
+
+                            {selectedTools.length > 1 && (
+                              <Button
+                                variant="outline-danger"
+                                size="sm"
+                                className="rounded-circle p-2 d-flex align-items-center justify-content-center"
+                                style={{ width: "34px", height: "34px", flexShrink: 0 }}
+                                onClick={() => handleRemoveTool(index)}
+                                title="Hapus alat"
+                              >
+                                <FaTrashAlt size={12} />
+                              </Button>
+                            )}
+                          </div>
+
+                          {/* Error Message when Booked on Selected Date */}
+                          {isDateBooked && (
+                            <div
+                              style={{
+                                backgroundColor: "#FEF2F2",
+                                border: "1px solid #FCA5A5",
+                                color: "#DC2626",
+                                padding: "8px 12px",
+                                borderRadius: "10px",
+                                fontSize: "0.82rem",
+                                fontWeight: "600",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                              }}
+                            >
+                              <span>🚫 Alat ini sudah dipesan pada rentang tanggal yang dipilih. Anda tidak dapat memesan di tanggal yang bersamaan. Silakan ganti tanggal peminjaman.</span>
+                            </div>
+                          )}
+
+                          {/* Quantity and Price Row */}
+                          <div className="d-flex align-items-center justify-content-between pt-1 px-1">
+                            <div className="d-flex align-items-center gap-2">
+                              <span className="text-muted" style={{ fontSize: "0.8rem", fontWeight: "600" }}>
+                                Jumlah:
+                              </span>
+                              <Button
+                                variant="light"
+                                size="sm"
+                                style={{
+                                  width: "28px",
+                                  height: "28px",
+                                  borderRadius: "50%",
+                                  padding: 0,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  backgroundColor: "#fff",
+                                  border: "1px solid #D0D0D0",
+                                }}
+                                onClick={() => handleQuantityChange(index, -1)}
+                                disabled={isDateBooked || (parseInt(toolItem.quantity, 10) || 1) <= 1}
+                              >
+                                <FaMinus size={9} />
+                              </Button>
+                              <span
+                                style={{
+                                  minWidth: "24px",
+                                  textAlign: "center",
+                                  fontWeight: "700",
+                                  fontSize: "0.88rem",
+                                  color: isDateBooked ? "#DC2626" : "#4A3933",
+                                }}
+                              >
+                                {isDateBooked ? 0 : (toolItem.quantity || 1)}
+                              </span>
+                              <Button
+                                variant="light"
+                                size="sm"
+                                style={{
+                                  width: "28px",
+                                  height: "28px",
+                                  borderRadius: "50%",
+                                  padding: 0,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  backgroundColor: "#fff",
+                                  border: "1px solid #D0D0D0",
+                                }}
+                                onClick={() => handleQuantityChange(index, 1)}
+                                disabled={isDateBooked || (parseInt(toolItem.quantity, 10) || 1) >= maxStock}
+                              >
+                                <FaPlus size={9} />
+                              </Button>
+                              <span className={isDateBooked ? "text-danger fw-bold" : "text-muted"} style={{ fontSize: "0.75rem" }}>
+                                {isDateBooked ? "(Sudah Dipesan di Tanggal Ini)" : `(Kapasitas: ${tool?.total_unit ?? 1} Unit)`}
+                              </span>
+                            </div>
+
+                            <div className="text-end">
+                              <span className="fw-bold" style={{ color: isDateBooked ? "#999" : "#543D31", fontSize: "0.85rem" }}>
+                                {tool && tool.is_paid
+                                  ? `Rp ${(Number(tool.harga_sewa) * (parseInt(toolItem.quantity, 10) || 1)).toLocaleString("id-ID")}`
+                                  : "Gratis"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
 
                     <Button
                       variant="link"
@@ -486,6 +786,9 @@ const PengajuanPeminjamanAlat = () => {
                       }}
                     />
                   </ConfigProvider>
+                  <small className="text-muted d-block mt-1" style={{ fontSize: "0.75rem" }}>
+                    * Tanggal yang sudah dipesan klien lain tidak dapat dipilih (tidak dapat memesan di tanggal bersamaan). Hari libur (Sabtu & Minggu) dan tanggal tutup juga dinonaktifkan.
+                  </small>
                 </Form.Group>
               </Col>
 
@@ -512,6 +815,9 @@ const PengajuanPeminjamanAlat = () => {
                       }}
                     />
                   </ConfigProvider>
+                  <small className="text-muted d-block mt-1" style={{ fontSize: "0.75rem" }}>
+                    * Tanggal yang sudah dipesan klien lain tidak dapat dipilih (tidak dapat memesan di tanggal bersamaan). Hari libur (Sabtu & Minggu) dan tanggal tutup juga dinonaktifkan.
+                  </small>
                 </Form.Group>
               </Col>
             </Row>
@@ -598,8 +904,8 @@ const PengajuanPeminjamanAlat = () => {
                 <Form.Group>
                   <Form.Label className="fw-bold text-dark mb-2 d-flex justify-content-between align-items-center" style={{ fontSize: "1.05rem" }}>
                     Formulir Peminjaman
-                    <Button 
-                      variant="link" 
+                    <Button
+                      variant="link"
                       type="button"
                       className="p-0 text-decoration-none"
                       style={{ fontSize: "0.85rem", color: "#8D6E63" }}
@@ -608,8 +914,8 @@ const PengajuanPeminjamanAlat = () => {
                       <FaDownload className="me-1" /> Unduh Template
                     </Button>
                   </Form.Label>
-                  
-                  <div 
+
+                  <div
                     className="position-relative"
                     style={{
                       backgroundColor: "#ECECEC",
@@ -622,10 +928,10 @@ const PengajuanPeminjamanAlat = () => {
                     }}
                     onClick={() => document.getElementById("file-upload").click()}
                   >
-                    <input 
-                      type="file" 
-                      id="file-upload" 
-                      className="d-none" 
+                    <input
+                      type="file"
+                      id="file-upload"
+                      className="d-none"
                       accept=".pdf"
                       onChange={handleFileChange}
                     />
@@ -684,7 +990,7 @@ const PengajuanPeminjamanAlat = () => {
                         <Form.Label className="fw-bold text-dark mb-2" style={{ fontSize: "1.05rem" }}>
                           Unggah Bukti Pembayaran
                         </Form.Label>
-                        <div 
+                        <div
                           className="position-relative"
                           style={{
                             backgroundColor: "#ECECEC",
@@ -697,10 +1003,10 @@ const PengajuanPeminjamanAlat = () => {
                           }}
                           onClick={() => document.getElementById("bukti-upload").click()}
                         >
-                          <input 
-                            type="file" 
-                            id="bukti-upload" 
-                            className="d-none" 
+                          <input
+                            type="file"
+                            id="bukti-upload"
+                            className="d-none"
                             accept="image/*"
                             onChange={handleBuktiChange}
                           />
@@ -854,7 +1160,7 @@ const PengajuanPeminjamanAlat = () => {
         </Modal>
 
         {/* Result Modal */}
-        <Modal show={showResultModal} onHide={() => {}} centered dialogClassName="modal-confirm-custom">
+        <Modal show={showResultModal} onHide={() => { }} centered dialogClassName="modal-confirm-custom">
           <div
             className="p-4 p-md-5 text-center"
             style={{

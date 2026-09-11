@@ -9,6 +9,7 @@ import updateLocale from "dayjs/plugin/updateLocale";
 import "antd/dist/reset.css";
 import axios from "axios";
 import NavbarLoginKoordinator from "./NavbarLoginKoordinator";
+import { getClosedRentalDates, closeRentalDate, openRentalDate } from "../../services/RentalService";
 import "../../css/BookingCalenderKlien.css";
 
 dayjs.extend(updateLocale);
@@ -24,6 +25,26 @@ dayjs.locale("id");
 
 export default function KalenderPeminjamanAlat() {
   const [mockLoans, setMockLoans] = useState([]);
+  const [closedDatesMap, setClosedDatesMap] = useState({});
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [closeReason, setCloseReason] = useState("");
+  const [isSubmittingClose, setIsSubmittingClose] = useState(false);
+  const [showOpenConfirmModal, setShowOpenConfirmModal] = useState(false);
+  const [actionNotice, setActionNotice] = useState(null);
+
+  const fetchClosedDates = async () => {
+    try {
+      const list = await getClosedRentalDates();
+      const map = {};
+      list.forEach((item) => {
+        const dStr = dayjs(item.tanggal).format("YYYY-MM-DD");
+        map[dStr] = item;
+      });
+      setClosedDatesMap(map);
+    } catch (err) {
+      console.error("Gagal memuat tanggal ditutup:", err);
+    }
+  };
 
   const fetchRentals = async () => {
     try {
@@ -35,26 +56,26 @@ export default function KalenderPeminjamanAlat() {
       rentals.forEach(rental => {
         if (rental.instruments) {
           rental.instruments.forEach(instrument => {
-             mappedLoans.push({
-               id: `${rental.id}-${instrument.id}`,
-               rentalId: rental.id,
-               noPengajuan: `PJ${rental.id.toString().padStart(3, '0')}`,
-               namaPeminjam: rental.user?.name || 'Peminjam',
-               alat: instrument.nama_alat,
-               jumlah: `1 Unit`,
-             tanggalPinjam: dayjs(rental.tanggal_peminjaman).format("DD MMMM YYYY"),
-             tanggalKembali: dayjs(rental.tanggal_pengembalian).format("DD MMMM YYYY"),
-             status: rental.status,
-             catatan: rental.tujuan_peminjaman,
-             dateStr: dayjs(rental.tanggal_peminjaman).format("YYYY-MM-DD"),
-             rawTanggalPinjam: rental.tanggal_peminjaman,
-             rawTanggalKembali: rental.tanggal_pengembalian,
-           });
+            mappedLoans.push({
+              id: `${rental.id}-${instrument.id}`,
+              rentalId: rental.id,
+              noPengajuan: `PJ${rental.id.toString().padStart(3, '0')}`,
+              namaPeminjam: rental.user?.name || 'Peminjam',
+              alat: instrument.nama_alat,
+              jumlah: `1 Unit`,
+              tanggalPinjam: dayjs(rental.tanggal_peminjaman).format("DD MMMM YYYY"),
+              tanggalKembali: dayjs(rental.tanggal_pengembalian).format("DD MMMM YYYY"),
+              status: rental.status,
+              catatan: rental.tujuan_peminjaman,
+              dateStr: dayjs(rental.tanggal_peminjaman).format("YYYY-MM-DD"),
+              rawTanggalPinjam: rental.tanggal_peminjaman,
+              rawTanggalKembali: rental.tanggal_pengembalian,
+            });
           });
         }
       });
       setMockLoans(mappedLoans);
-    } catch(err) {
+    } catch (err) {
       console.error(err);
     }
   };
@@ -62,6 +83,7 @@ export default function KalenderPeminjamanAlat() {
   useEffect(() => {
     document.title = "SILAB-NTDK - Kalender Peminjaman Alat";
     fetchRentals();
+    fetchClosedDates();
   }, []);
 
   const [selectedDate, setSelectedDate] = useState(null);
@@ -76,7 +98,7 @@ export default function KalenderPeminjamanAlat() {
     mockLoans.forEach((item) => {
       let current = dayjs(item.rawTanggalPinjam).startOf('day');
       const end = dayjs(item.rawTanggalKembali).startOf('day');
-      
+
       while (current.isBefore(end) || current.isSame(end, 'day')) {
         const dStr = current.format("YYYY-MM-DD");
         if (!map[dStr]) map[dStr] = [];
@@ -120,7 +142,7 @@ export default function KalenderPeminjamanAlat() {
 
   const handleUpdateDates = async () => {
     if (!detailViewLoan || !editStartDate || !editEndDate) return;
-    
+
     setIsUpdating(true);
     try {
       await axios.put(`http://localhost:8000/api/rentals/${detailViewLoan.rentalId}/update-dates`, {
@@ -139,6 +161,38 @@ export default function KalenderPeminjamanAlat() {
     }
   };
 
+  const handleCloseDateSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!activeDate) return;
+    setIsSubmittingClose(true);
+    try {
+      await closeRentalDate(selectedDateStr, closeReason);
+      setShowCloseModal(false);
+      setCloseReason("");
+      setActionNotice({ type: "success", text: `Tanggal ${activeDate.format("DD MMMM YYYY")} berhasil ditutup.` });
+      await fetchClosedDates();
+    } catch (err) {
+      alert(err.message || "Gagal menutup tanggal peminjaman.");
+    } finally {
+      setIsSubmittingClose(false);
+    }
+  };
+
+  const handleOpenDateSubmit = async () => {
+    if (!activeDate) return;
+    setIsSubmittingClose(true);
+    try {
+      await openRentalDate(selectedDateStr);
+      setShowOpenConfirmModal(false);
+      setActionNotice({ type: "success", text: `Tanggal ${activeDate.format("DD MMMM YYYY")} berhasil dibuka kembali.` });
+      await fetchClosedDates();
+    } catch (err) {
+      alert(err.message || "Gagal membuka tanggal peminjaman.");
+    } finally {
+      setIsSubmittingClose(false);
+    }
+  };
+
   // Custom cell rendering for Calendar days
   const dateCellRender = (value) => {
     const dateStr = value.format("YYYY-MM-DD");
@@ -148,17 +202,19 @@ export default function KalenderPeminjamanAlat() {
     const isToday = value.isSame(dayjs(), "day");
     const isSameMonth = value.month() === viewDate.month();
     const items = loansMap[dateStr] || (isSelected ? loansForSelectedDate : []);
+    const isClosedByKoordinator = !!closedDatesMap[dateStr];
+    const closedDetail = closedDatesMap[dateStr];
 
     if (isSelected) {
       return (
         <div
           style={{
-            backgroundColor: "#4E3C36",
+            backgroundColor: isClosedByKoordinator ? "#991B1B" : "#4E3C36",
             borderRadius: "14px",
             color: "#ffffff",
             padding: "6px 4px",
             textAlign: "center",
-            boxShadow: "0 4px 12px rgba(78,60,54,0.35)",
+            boxShadow: isClosedByKoordinator ? "0 4px 12px rgba(153,27,27,0.4)" : "0 4px 12px rgba(78,60,54,0.35)",
             width: "100%",
             height: "100%",
             display: "flex",
@@ -190,17 +246,17 @@ export default function KalenderPeminjamanAlat() {
           </div>
           <span
             style={{
-              backgroundColor: "rgba(255,255,255,0.25)",
+              backgroundColor: isClosedByKoordinator ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.25)",
               color: "#ffffff",
               fontSize: "0.65rem",
-              fontWeight: "600",
+              fontWeight: "700",
               borderRadius: "8px",
               padding: "1px 6px",
               display: "inline-block",
               lineHeight: "1.3",
             }}
           >
-            Tersedia
+            {isClosedByKoordinator ? "DITUTUP" : isWeekend ? "TUTUP" : "Tersedia"}
           </span>
           <span
             style={{
@@ -260,6 +316,57 @@ export default function KalenderPeminjamanAlat() {
             }}
           >
             TUTUP
+          </span>
+        </div>
+      );
+    }
+
+    if (isClosedByKoordinator) {
+      return (
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "2px",
+            opacity: isSameMonth ? 1 : 0.35,
+            backgroundColor: isSameMonth ? "#FFF5F5" : "transparent",
+            borderRadius: "12px",
+          }}
+          title={closedDetail?.alasan ? `Ditutup Koordinator: ${closedDetail.alasan}` : "Ditutup oleh Koordinator"}
+        >
+          <div
+            style={{
+              fontSize: "0.85rem",
+              color: "#DC2626",
+              fontWeight: "700",
+              backgroundColor: isToday ? "rgba(220, 38, 38, 0.12)" : "transparent",
+              borderRadius: "50%",
+              width: isToday ? "24px" : "auto",
+              height: isToday ? "24px" : "auto",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: isToday ? "1.5px solid #DC2626" : "none",
+            }}
+          >
+            {value.date()}
+          </div>
+          <span
+            style={{
+              color: "#DC2626",
+              fontSize: "0.65rem",
+              fontWeight: "700",
+              letterSpacing: "0.3px",
+              backgroundColor: "#FEE2E2",
+              padding: "1px 6px",
+              borderRadius: "6px",
+            }}
+          >
+            DITUTUP
           </span>
         </div>
       );
@@ -402,7 +509,7 @@ export default function KalenderPeminjamanAlat() {
             Kalender Peminjaman
           </h2>
           <p style={{ color: "#616161", fontSize: "0.92rem", margin: 0 }}>
-            Lihat data peminjaman sesuai kalender dan atur jadwal disini.
+            Lihat data peminjaman sesuai kalender disini.
           </p>
         </div>
 
@@ -637,40 +744,16 @@ export default function KalenderPeminjamanAlat() {
 
                         <div>
                           <div style={{ color: "#757575", fontSize: "0.85rem", marginBottom: "4px" }}>Tanggal Pinjam</div>
-                          <DatePicker
-                            value={editStartDate}
-                            onChange={(val) => setEditStartDate(val)}
-                            format="DD MMMM YYYY"
-                            allowClear={false}
-                            disabled={activeDate.isBefore(dayjs().startOf('day'))}
-                            style={{
-                              width: "100%",
-                              borderRadius: "10px",
-                              padding: "6px 12px",
-                              border: "1px solid #E0E0E0",
-                              fontWeight: 700,
-                              color: "#3E2723",
-                            }}
-                          />
+                          <div style={{ color: "#3E2723", fontSize: "1.02rem", fontWeight: 800 }}>
+                            {detailViewLoan.rawTanggalPinjam ? dayjs(detailViewLoan.rawTanggalPinjam).format("DD MMMM YYYY") : detailViewLoan.tanggalPinjam}
+                          </div>
                         </div>
 
                         <div>
                           <div style={{ color: "#757575", fontSize: "0.85rem", marginBottom: "4px" }}>Tanggal Kembali</div>
-                          <DatePicker
-                            value={editEndDate}
-                            onChange={(val) => setEditEndDate(val)}
-                            format="DD MMMM YYYY"
-                            allowClear={false}
-                            disabled={activeDate.isBefore(dayjs().startOf('day'))}
-                            style={{
-                              width: "100%",
-                              borderRadius: "10px",
-                              padding: "6px 12px",
-                              border: "1px solid #E0E0E0",
-                              fontWeight: 700,
-                              color: "#3E2723",
-                            }}
-                          />
+                          <div style={{ color: "#3E2723", fontSize: "1.02rem", fontWeight: 800 }}>
+                            {detailViewLoan.rawTanggalKembali ? dayjs(detailViewLoan.rawTanggalKembali).format("DD MMMM YYYY") : "-"}
+                          </div>
                         </div>
 
                         <div>
@@ -694,94 +777,146 @@ export default function KalenderPeminjamanAlat() {
                       </div>
 
                       <hr style={{ borderTop: "1px solid #E0E0E0", width: "90%", margin: "24px auto 20px" }} />
-
-                      <h4
-                        style={{
-                          fontWeight: 800,
-                          fontSize: "1.1rem",
-                          color: "#3E2723",
-                          marginBottom: "16px",
-                        }}
-                      >
-                        Ketersediaan Alat
-                      </h4>
-
-                      <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                        <div>
-                          <div style={{ color: "#757575", fontSize: "0.85rem", marginBottom: "2px" }}>Total Unit</div>
-                          <div style={{ color: "#3E2723", fontSize: "1.02rem", fontWeight: 800 }}>10</div>
-                        </div>
-
-                        <div>
-                          <div style={{ color: "#757575", fontSize: "0.85rem", marginBottom: "2px" }}>Sudah Dipinjam</div>
-                          <div style={{ color: "#3E2723", fontSize: "1.02rem", fontWeight: 800 }}>8</div>
-                        </div>
-
-                        <div>
-                          <div style={{ color: "#757575", fontSize: "0.85rem", marginBottom: "2px" }}>Sisa</div>
-                          <div style={{ color: "#3E2723", fontSize: "1.02rem", fontWeight: 800 }}>2 Unit</div>
-                        </div>
-                      </div>
-
-                      <hr style={{ borderTop: "1px solid #E0E0E0", width: "90%", margin: "24px auto 20px" }} />
-
-                      <h4
-                        style={{
-                          fontWeight: 800,
-                          fontSize: "1.1rem",
-                          color: "#3E2723",
-                          marginBottom: "12px",
-                        }}
-                      >
-                        Tanggal Penggunaan
-                      </h4>
-
-                      <div style={{ color: "#3E2723", fontSize: "1.02rem", fontWeight: 800, marginBottom: "24px" }}>
-                        {detailViewLoan.tanggalPinjam}
-                      </div>
-
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "14px" }}>
                         <button
                           type="button"
                           onClick={() => setDetailViewLoan(null)}
                           style={{
-                            backgroundColor: "#666666",
+                            backgroundColor: "#44352F",
                             color: "#ffffff",
                             border: "none",
                             borderRadius: "20px",
-                            padding: "8px 24px",
+                            padding: "8px 28px",
                             fontWeight: "700",
                             fontSize: "0.88rem",
                             cursor: "pointer",
-                            boxShadow: "0 3px 8px rgba(0,0,0,0.15)",
+                            boxShadow: "0 3px 8px rgba(68,53,47,0.3)",
                           }}
                         >
-                          Batal
+                          Tutup
                         </button>
-                        {!activeDate.isBefore(dayjs().startOf('day')) && (
-                          <button
-                            type="button"
-                            onClick={() => setShowSaveConfirmModal(true)}
-                            style={{
-                              backgroundColor: "#44352F",
-                              color: "#ffffff",
-                              border: "none",
-                              borderRadius: "20px",
-                              padding: "8px 24px",
-                              fontWeight: "700",
-                              fontSize: "0.88rem",
-                              cursor: "pointer",
-                              boxShadow: "0 3px 8px rgba(68,53,47,0.3)",
-                            }}
-                          >
-                            Simpan Perubahan
-                          </button>
-                        )}
                       </div>
                     </div>
                   ) : (
                     /* Total Pinjaman List View */
                     <div style={{ padding: "24px 24px 16px", textAlign: "center" }}>
+                      {/* Notice Banner */}
+                      {actionNotice && (
+                        <div
+                          style={{
+                            backgroundColor: actionNotice.type === "success" ? "#F0FDF4" : "#FEF2F2",
+                            color: actionNotice.type === "success" ? "#166534" : "#991B1B",
+                            border: `1px solid ${actionNotice.type === "success" ? "#BBF7D0" : "#FCA5A5"}`,
+                            borderRadius: "12px",
+                            padding: "10px 14px",
+                            fontSize: "0.85rem",
+                            marginBottom: "16px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            textAlign: "left",
+                          }}
+                        >
+                          <span>{actionNotice.text}</span>
+                          <button
+                            type="button"
+                            onClick={() => setActionNotice(null)}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "inherit", fontWeight: "bold", fontSize: "1rem" }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Status Layanan Card */}
+                      <div
+                        style={{
+                          backgroundColor: closedDatesMap[selectedDateStr] ? "#FEF2F2" : (activeDate.day() === 0 || activeDate.day() === 6) ? "#FFFBEB" : "#F0FDF4",
+                          border: `1.5px solid ${closedDatesMap[selectedDateStr] ? "#FCA5A5" : (activeDate.day() === 0 || activeDate.day() === 6) ? "#FDE68A" : "#BBF7D0"}`,
+                          borderRadius: "16px",
+                          padding: "16px 18px",
+                          marginBottom: "20px",
+                          textAlign: "left",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: closedDatesMap[selectedDateStr]?.alasan ? "6px" : "10px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div
+                              style={{
+                                width: "10px",
+                                height: "10px",
+                                borderRadius: "50%",
+                                backgroundColor: closedDatesMap[selectedDateStr] ? "#EF4444" : (activeDate.day() === 0 || activeDate.day() === 6) ? "#F59E0B" : "#10B981",
+                              }}
+                            />
+                            <span
+                              style={{
+                                fontWeight: 800,
+                                fontSize: "0.92rem",
+                                color: closedDatesMap[selectedDateStr] ? "#991B1B" : (activeDate.day() === 0 || activeDate.day() === 6) ? "#92400E" : "#166534",
+                              }}
+                            >
+                              {closedDatesMap[selectedDateStr]
+                                ? "Layanan Ditutup Koordinator"
+                                : (activeDate.day() === 0 || activeDate.day() === 6)
+                                ? "Hari Libur Rutin (Akhir Pekan)"
+                                : "Layanan Peminjaman Buka"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {closedDatesMap[selectedDateStr]?.alasan && (
+                          <div style={{ fontSize: "0.82rem", color: "#7F1D1D", marginBottom: "12px", backgroundColor: "#FEE2E2", padding: "6px 10px", borderRadius: "8px" }}>
+                            <strong>Alasan:</strong> {closedDatesMap[selectedDateStr].alasan}
+                          </div>
+                        )}
+
+                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "6px" }}>
+                          {closedDatesMap[selectedDateStr] ? (
+                            <button
+                              type="button"
+                              onClick={() => setShowOpenConfirmModal(true)}
+                              disabled={isSubmittingClose}
+                              style={{
+                                backgroundColor: "#166534",
+                                color: "#ffffff",
+                                border: "none",
+                                borderRadius: "10px",
+                                padding: "6px 16px",
+                                fontSize: "0.82rem",
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                boxShadow: "0 2px 6px rgba(22,101,52,0.25)",
+                              }}
+                            >
+                              Buka Tanggal Ini
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCloseReason("");
+                                setShowCloseModal(true);
+                              }}
+                              disabled={isSubmittingClose}
+                              style={{
+                                backgroundColor: "#DC2626",
+                                color: "#ffffff",
+                                border: "none",
+                                borderRadius: "10px",
+                                padding: "6px 16px",
+                                fontSize: "0.82rem",
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                boxShadow: "0 2px 6px rgba(220,38,38,0.25)",
+                              }}
+                            >
+                              Tutup Tanggal Peminjaman
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
                       <div
                         style={{
                           fontSize: "1.25rem",
@@ -1060,6 +1195,167 @@ export default function KalenderPeminjamanAlat() {
                 }}
               >
                 {isUpdating ? "Menyimpan..." : "Simpan"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Modal Tutup Tanggal Peminjaman */}
+        <Modal
+          show={showCloseModal}
+          onHide={() => setShowCloseModal(false)}
+          centered
+          dialogClassName="custom-modal-narrow custom-modal-clean"
+        >
+          <div
+            style={{
+              backgroundColor: "#DC2626",
+              color: "#ffffff",
+              padding: "16px 20px",
+              textAlign: "center",
+              fontWeight: "700",
+              fontSize: "1.1rem",
+            }}
+          >
+            Tutup Tanggal Peminjaman Alat
+          </div>
+          <Form onSubmit={handleCloseDateSubmit} style={{ padding: "24px 28px" }}>
+            <div style={{ marginBottom: "16px", textAlign: "left" }}>
+              <div style={{ fontSize: "0.85rem", color: "#666", marginBottom: "4px" }}>Tanggal yang dipilih:</div>
+              <div style={{ fontSize: "1.05rem", fontWeight: "800", color: "#212121" }}>
+                {activeDate.format("dddd, DD MMMM YYYY")}
+              </div>
+            </div>
+
+            {loansForSelectedDate.length > 0 && (
+              <div
+                style={{
+                  backgroundColor: "#FFFBEB",
+                  border: "1px solid #FDE68A",
+                  borderRadius: "10px",
+                  padding: "10px 14px",
+                  fontSize: "0.82rem",
+                  color: "#92400E",
+                  marginBottom: "16px",
+                  textAlign: "left",
+                }}
+              >
+                ⚠️ <strong>Perhatian:</strong> Sudah ada {loansForSelectedDate.length} peminjaman pada tanggal ini. Penutupan tanggal akan memblokir pengajuan peminjaman baru dari klien.
+              </div>
+            )}
+
+            <Form.Group className="mb-4 text-start">
+              <Form.Label style={{ fontSize: "0.88rem", fontWeight: "700", color: "#333" }}>
+                Alasan Penutupan (Opsional)
+              </Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                placeholder="Contoh: Pemeliharaan rutin / Kalibrasi alat / Libur Lab..."
+                value={closeReason}
+                onChange={(e) => setCloseReason(e.target.value)}
+                style={{ borderRadius: "12px", fontSize: "0.88rem" }}
+              />
+            </Form.Group>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+              <button
+                type="button"
+                onClick={() => setShowCloseModal(false)}
+                disabled={isSubmittingClose}
+                style={{
+                  backgroundColor: "#E5E7EB",
+                  color: "#374151",
+                  border: "none",
+                  borderRadius: "12px",
+                  padding: "8px 20px",
+                  fontWeight: "600",
+                  fontSize: "0.88rem",
+                  cursor: "pointer",
+                }}
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmittingClose}
+                style={{
+                  backgroundColor: "#DC2626",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "12px",
+                  padding: "8px 22px",
+                  fontWeight: "700",
+                  fontSize: "0.88rem",
+                  cursor: isSubmittingClose ? "not-allowed" : "pointer",
+                  boxShadow: "0 2px 8px rgba(220,38,38,0.3)",
+                }}
+              >
+                {isSubmittingClose ? "Menyimpan..." : "Tutup Tanggal Ini"}
+              </button>
+            </div>
+          </Form>
+        </Modal>
+
+        {/* Modal Konfirmasi Buka Kembali Tanggal */}
+        <Modal
+          show={showOpenConfirmModal}
+          onHide={() => setShowOpenConfirmModal(false)}
+          centered
+          dialogClassName="custom-modal-narrow custom-modal-clean"
+        >
+          <div
+            style={{
+              backgroundColor: "#166534",
+              color: "#ffffff",
+              padding: "16px 20px",
+              textAlign: "center",
+              fontWeight: "700",
+              fontSize: "1.1rem",
+            }}
+          >
+            Buka Tanggal Peminjaman
+          </div>
+          <div style={{ padding: "24px 28px", textAlign: "center" }}>
+            <p style={{ fontSize: "0.95rem", color: "#374151", marginBottom: "20px" }}>
+              Apakah Anda yakin ingin membuka kembali layanan peminjaman alat pada tanggal{" "}
+              <strong>{activeDate.format("DD MMMM YYYY")}</strong>?
+            </p>
+            <div style={{ display: "flex", justifyContent: "center", gap: "14px" }}>
+              <button
+                type="button"
+                onClick={() => setShowOpenConfirmModal(false)}
+                disabled={isSubmittingClose}
+                style={{
+                  backgroundColor: "#E5E7EB",
+                  color: "#374151",
+                  border: "none",
+                  borderRadius: "12px",
+                  padding: "8px 24px",
+                  fontWeight: "600",
+                  fontSize: "0.88rem",
+                  cursor: "pointer",
+                }}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenDateSubmit}
+                disabled={isSubmittingClose}
+                style={{
+                  backgroundColor: "#166534",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "12px",
+                  padding: "8px 24px",
+                  fontWeight: "700",
+                  fontSize: "0.88rem",
+                  cursor: isSubmittingClose ? "not-allowed" : "pointer",
+                  boxShadow: "0 2px 8px rgba(22,101,52,0.3)",
+                }}
+              >
+                {isSubmittingClose ? "Membuka..." : "Ya, Buka Tanggal"}
               </button>
             </div>
           </div>

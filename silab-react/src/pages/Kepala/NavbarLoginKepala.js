@@ -128,7 +128,7 @@ function NavbarLoginKepala({ children }) {
           </button>
 
           <div className="d-flex align-items-center gap-3">
-            <Image src="/asset/gambarLogo.png" alt="IPB Logo" style={{ width: "120px", height: "auto" }} />
+            <Image src="/asset/gambarLogo.png" alt="IPB Logo" className="navbar-logo" style={{ width: "120px", height: "auto" }} />
             <div className="vr d-none d-md-block mx-2 text-muted opacity-25" style={{ height: "30px" }}></div>
             <div className="d-none d-md-flex flex-column justify-content-center">
               <span className="fw-bold text-dark mb-0" style={{ fontSize: "0.85rem", lineHeight: "1.2" }}>
@@ -209,8 +209,12 @@ function NavbarLoginKepala({ children }) {
 
           {/* User Profile Dropdown */}
           <Dropdown align="end">
-            <Dropdown.Toggle variant="light" className="d-flex align-items-center border-0 bg-light rounded-pill px-3 py-1 gap-2" style={{ transition: "0.3s" }}>
-              {avatarSrc ? <Image src={avatarSrc} roundedCircle width={28} height={28} style={{ objectFit: "cover" }} /> : <FaUserCircle size={24} className="text-primary" />}
+            <Dropdown.Toggle variant="light" className="d-flex align-items-center border-0 bg-light rounded-pill px-2 px-md-3 py-1 gap-2" style={{ transition: "0.3s" }}>
+              {avatarSrc ? (
+                <Image src={avatarSrc} roundedCircle className="navbar-avatar" width={28} height={28} style={{ width: "28px", height: "28px", objectFit: "cover", flexShrink: 0 }} />
+              ) : (
+                <FaUserCircle size={24} className="text-primary flex-shrink-0" />
+              )}
               <span className="fw-semibold d-none d-md-inline" style={{ fontSize: "0.85rem" }}>
                 {user?.name || "User"}
               </span>
@@ -320,9 +324,21 @@ function NavbarLoginKepala({ children }) {
           .dashboard-content { margin-left: 250px; margin-top: 70px; }
         }
 
+        .dashboard-header .navbar-avatar {
+          width: 28px !important;
+          height: 28px !important;
+          min-width: 28px !important;
+          min-height: 28px !important;
+          max-width: 28px !important;
+          max-height: 28px !important;
+          border-radius: 50% !important;
+          object-fit: cover !important;
+          flex-shrink: 0 !important;
+        }
+
         @media (max-width: 991.98px) {
           .dashboard-sidebar { padding-top: 1rem; width: 85%; max-width: 280px; box-shadow: 2px 0 15px rgba(0,0,0,0.2); }
-          .dashboard-header img { width: 100px; height: auto; }
+          .dashboard-header .navbar-logo { width: 100px; height: auto; }
           .dashboard-header .d-flex.align-items-center.gap-3 { gap: 0.5rem !important; }
           .dashboard-header .vr { display: none !important; }
           .dashboard-header .d-none.d-md-flex { display: none !important; }
@@ -332,7 +348,7 @@ function NavbarLoginKepala({ children }) {
         }
         
         @media (max-width: 576px) {
-          .dashboard-header img { width: 80px; }
+          .dashboard-header .navbar-logo { width: 80px; height: auto; }
           .dashboard-header { padding: 0.3rem 0.8rem !important; }
           .dashboard-sidebar { width: 90%; max-width: 300px; }
           .dashboard-sidebar .nav-link { font-size: 0.8rem; }
